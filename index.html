@@ -66,6 +66,19 @@
             <div class="flex h-9 shrink-0 items-center gap-3 border-b border-slate-800 bg-zinc-950 px-3">
               <h2 class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Editor SQL</h2>
               <kbd class="rounded border border-slate-700 bg-slate-900 px-1.5 font-mono text-[10px] text-slate-500">Ctrl+Enter para rodar</kbd>
+              <div class="relative">
+                <button id="btn-history" type="button"
+                  class="flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-slate-400 hover:bg-slate-800 hover:text-slate-200 aria-expanded:bg-slate-800 aria-expanded:text-slate-200">
+                  <span aria-hidden="true">🕘</span> Histórico
+                  <span id="history-count" hidden class="rounded-full bg-slate-700 px-1.5 font-mono text-[10px] text-slate-200"></span>
+                </button>
+                <div id="history-panel" role="dialog" aria-label="Últimas queries executadas"
+                  class="absolute left-0 top-full z-30 mt-1 w-[30rem] max-w-[60vw] rounded border border-slate-700 bg-zinc-950 p-1.5 shadow-2xl shadow-black/60">
+                  <p class="px-2 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Últimas 10 execuções (sessão)</p>
+                  <div id="history-list" class="max-h-80 overflow-y-auto"></div>
+                </div>
+              </div>
+              <span id="editor-status" role="status" aria-live="polite" class="truncate text-[11px] text-sky-300"></span>
               <div class="ml-auto flex items-center gap-2">
                 <button id="btn-validate" type="button" disabled
                   class="rounded border border-sky-700 px-2.5 py-1 text-xs font-medium text-sky-300 hover:bg-sky-950/50 disabled:cursor-not-allowed disabled:opacity-40">
@@ -77,6 +90,8 @@
                 </button>
               </div>
             </div>
+            <div id="editor-banner" hidden aria-live="assertive"
+              class="flex shrink-0 items-start gap-2 border-b border-amber-700/50 bg-amber-950/40 px-3 py-2 text-xs"></div>
             <label for="sql-editor" class="sr-only">Editor SQL</label>
             <textarea id="sql-editor" spellcheck="false" autocomplete="off" autocapitalize="off" autofocus
               class="min-h-0 flex-1 resize-none bg-slate-950 p-4 font-mono text-[13px] leading-6 text-emerald-200 caret-emerald-400 outline-none placeholder:text-slate-600"
@@ -87,6 +102,26 @@
             <div class="flex h-8 shrink-0 items-center gap-3 border-b border-slate-800 bg-zinc-950 px-3">
               <h2 class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Resultados</h2>
               <div id="output-meta" class="ml-auto flex items-center gap-3 font-mono text-[11px] text-slate-500"></div>
+              <div class="relative">
+                <button id="btn-export" type="button" disabled
+                  class="rounded px-1.5 py-0.5 text-[11px] text-slate-400 hover:bg-slate-800 hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent aria-expanded:bg-slate-800">
+                  <span aria-hidden="true">⤓</span> Exportar Dossiê <span class="text-slate-600">(CSV / Markdown)</span>
+                </button>
+                <div id="export-menu" role="menu" aria-label="Formato do dossiê"
+                  class="absolute right-0 top-full z-30 mt-1 w-64 rounded border border-slate-700 bg-zinc-950 p-1.5 shadow-2xl shadow-black/60">
+                  <p id="export-summary" class="px-2 pb-1.5 text-[10px] leading-relaxed text-slate-500"></p>
+                  <button type="button" role="menuitem" data-format="markdown"
+                    class="block w-full rounded px-2 py-1.5 text-left text-xs text-slate-200 hover:bg-slate-800 focus:bg-slate-800 focus:outline-none">
+                    Markdown <span class="font-mono text-slate-500">.md</span>
+                    <span class="block text-[10px] text-slate-500">Relatório legível com enquadramento, query e tabela</span>
+                  </button>
+                  <button type="button" role="menuitem" data-format="csv"
+                    class="block w-full rounded px-2 py-1.5 text-left text-xs text-slate-200 hover:bg-slate-800 focus:bg-slate-800 focus:outline-none">
+                    CSV <span class="font-mono text-slate-500">.csv</span>
+                    <span class="block text-[10px] text-slate-500">Planilha (UTF-8, vírgula) com metadados no topo</span>
+                  </button>
+                </div>
+              </div>
             </div>
             <div id="output-body" class="min-h-0 flex-1 overflow-auto"></div>
           </div>

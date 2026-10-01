@@ -21,6 +21,8 @@ export interface InvestigationPanelController {
 
 export interface InvestigationPanelHandlers {
   onLoadSolution: (sql: string) => void;
+  /** Disparado a cada troca de cenário (seleção manual, desafio gerado ou remoção do atual), exceto na carga inicial. */
+  onScenarioChange: (scenario: InvestigationScenario) => void;
 }
 
 const STATUS_STYLE: Record<ValidationStatus, { box: string; title: string; icon: string; label: string }> = {
@@ -102,7 +104,7 @@ function renderCommentedSql(sql: string): string {
     .join('\n');
 }
 
-export function initInvestigationPanel({ onLoadSolution }: InvestigationPanelHandlers): InvestigationPanelController {
+export function initInvestigationPanel({ onLoadSolution, onScenarioChange }: InvestigationPanelHandlers): InvestigationPanelController {
   const select = byId<HTMLSelectElement>('scenario-select');
   const card = byId('scenario-card');
   const feedback = byId('validation-feedback');
@@ -158,12 +160,14 @@ export function initInvestigationPanel({ onLoadSolution }: InvestigationPanelHan
       </div>`;
   };
 
-  const show = (scenario: InvestigationScenario): void => {
+  const show = (scenario: InvestigationScenario, notify = true): void => {
+    const changed = scenario.id !== selected.id;
     selected = scenario;
     select.value = scenario.id;
     card.innerHTML = renderScenario(scenario);
     clearFeedback();
     renderSolutionToggle();
+    if (notify && changed) onScenarioChange(scenario);
   };
 
   select.addEventListener('change', () => {
@@ -178,13 +182,12 @@ export function initInvestigationPanel({ onLoadSolution }: InvestigationPanelHan
 
   onScenariosChange(() => {
     const current = findScenario(selected.id);
-    if (!current) selected = firstScenario;
     renderOptions();
     if (!current) show(firstScenario);
   });
 
   renderOptions();
-  show(firstScenario);
+  show(firstScenario, false);
 
   return {
     getSelectedScenario: () => selected,

@@ -1,17 +1,21 @@
-import type { Database } from 'sql.js';
+import type { Database, QueryExecResult } from 'sql.js';
 import { AiServiceError, generateChallenge } from './agent/aiService.ts';
 import { loadAiSettings } from './agent/settingsStore.ts';
 import type { ChallengeDifficulty, ChallengeFocus } from './agent/types.ts';
-import { addGenerated, allScenarios } from './challenges/registry.ts';
-import { buildStarterTemplate } from './challenges/starterTemplate.ts';
+import { pruneDrafts } from './challenges/drafts.ts';
+import { addGenerated, allScenarios, onScenariosChange } from './challenges/registry.ts';
 import { validateChallenge } from './challenges/validator.ts';
 import { executeTimedQuery, getDatabase, resetDatabase } from './database/sqlite.ts';
+import { sameSql } from './database/sqlText.ts';
 import { initAgentPanel } from './ui/agentPanel.ts';
 import { initAiSettingsModal } from './ui/aiSettingsModal.ts';
+import { initDossierExport } from './ui/dossierExport.ts';
 import { initEditor } from './ui/editor.ts';
+import { createEditorSession } from './ui/editorSession.ts';
 import { initHeader, type DatasetCounts } from './ui/header.ts';
 import { initInvestigationPanel } from './ui/investigationPanel.ts';
 import { initOutputPanel } from './ui/outputPanel.ts';
+import { initQueryHistory, type HistoryOrigin } from './ui/queryHistory.ts';
 import { initSchemaPanel } from './ui/schemaPanel.ts';
 
 const QUERY_INICIAL = `-- Maiores transações PIX do período
@@ -38,14 +42,31 @@ let db: Database | null = null;
 let validating = false;
 
 const output = initOutputPanel();
+const dossier = initDossierExport();
 const investigation = initInvestigationPanel({
-  onLoadSolution: (sql) => {
-    editor.setSql(sql);
-    editor.focus();
-  },
+  onLoadSolution: (sql) => editor.replaceSql(sql),
+  onScenarioChange: (scenario) => void session.switchTo(scenario),
 });
 const schema = initSchemaPanel((column) => editor.insertAtCursor(column));
-const editor = initEditor({ onRun: runCurrentQuery, onValidate: () => void validateCurrentQuery() });
+const editor = initEditor({
+  onRun: runCurrentQuery,
+  onValidate: () => void validateCurrentQuery(),
+  onChange: () => session.noteEdit(),
+});
+const session = createEditorSession(editor, investigation.getSelectedScenario());
+const history = initQueryHistory((sql) => {
+  editor.replaceSql(sql);
+  editor.flashStatus('Query do histórico carregada (Ctrl+Z desfaz).');
+});
+
+onScenariosChange(() => pruneDrafts(new Set(allScenarios().map((s) => s.id))));
+window.addEventListener('pagehide', () => session.flush());
+
+function recordExecution(origin: HistoryOrigin, sql: string, executedAt: Date, elapsedMs: number, rows: number | null): void {
+  history.record({ sql, executedAt, origin, elapsedMs, rows, scenarioTitle: investigation.getSelectedScenario().titulo });
+}
+
+const totalRows = (results: readonly QueryExecResult[]): number => results.reduce((acc, r) => acc + r.values.length, 0);
 const header = initHeader({
   onReset: () => void handleReset(),
   onOpenAiSettings: () => settingsModal.open(),
@@ -79,7 +100,6 @@ async function generateNewChallenge(focus: ChallengeFocus, difficulty: Challenge
     );
     const scenario = addGenerated(outcome);
     investigation.selectScenario(scenario.id);
-    editor.setSql(buildStarterTemplate(scenario));
     editor.focus();
 
     if (outcome.source === 'ia') {
@@ -108,13 +128,19 @@ function runCurrentQuery(): boolean {
     return false;
   }
   const start = performance.now();
+  const executedAt = new Date();
   try {
     const { results, elapsedMs } = executeTimedQuery(db, sql);
     output.showResults(results, elapsedMs);
     header.setDatasetCounts(countRows(db));
+    dossier.setData({ scenario: investigation.getSelectedScenario(), sql, results, executedAt, elapsedMs });
+    recordExecution('execucao', sql, executedAt, elapsedMs, totalRows(results));
     return true;
   } catch (error) {
-    output.showError(errorMessage(error), performance.now() - start);
+    const elapsedMs = performance.now() - start;
+    output.showError(errorMessage(error), elapsedMs);
+    dossier.setData(null);
+    recordExecution('execucao', sql, executedAt, elapsedMs, null);
     return false;
   }
 }
@@ -125,10 +151,20 @@ async function validateCurrentQuery(): Promise<void> {
   editor.setActionsEnabled(false);
   investigation.showPending();
   try {
-    const result = await validateChallenge(db, investigation.getSelectedScenario(), editor.getSql());
+    const scenario = investigation.getSelectedScenario();
+    const sql = editor.getSql();
+    const executedAt = new Date();
+    const result = await validateChallenge(db, scenario, sql);
     const run = result.studentRun;
-    if (run?.ok) output.showResults(run.results, run.elapsedMs);
-    else if (run) output.showError(run.error, run.elapsedMs);
+    if (run?.ok) {
+      output.showResults(run.results, run.elapsedMs);
+      dossier.setData({ scenario, sql, results: run.results, executedAt, elapsedMs: run.elapsedMs });
+      recordExecution('validacao', sql, executedAt, run.elapsedMs, totalRows(run.results));
+    } else if (run) {
+      output.showError(run.error, run.elapsedMs);
+      dossier.setData(null);
+      recordExecution('validacao', sql, executedAt, run.elapsedMs, null);
+    }
     investigation.showValidation(result);
   } catch (error) {
     investigation.showValidation({
@@ -164,6 +200,7 @@ async function handleReset(): Promise<void> {
   try {
     applyDatabase(await resetDatabase());
     investigation.clearFeedback();
+    dossier.setData(null);
     output.showMessage('Banco recriado a partir do dataset original.');
   } catch (error) {
     header.setConnectionState('error');
@@ -175,13 +212,14 @@ async function handleReset(): Promise<void> {
 
 async function bootstrap(): Promise<void> {
   header.setConnectionState('loading');
-  editor.setSql(QUERY_INICIAL);
+  session.start(QUERY_INICIAL);
   editor.focus();
   output.showMessage('Inicializando SQLite WebAssembly…');
 
   try {
     applyDatabase(await getDatabase());
-    runCurrentQuery();
+    if (sameSql(editor.getFullSql(), QUERY_INICIAL)) runCurrentQuery();
+    else output.showMessage('Rascunho restaurado. Pressione Ctrl+Enter para executar.');
   } catch (error) {
     console.error(error);
     header.setConnectionState('error');
