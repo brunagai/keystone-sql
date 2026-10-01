@@ -1,0 +1,7 @@
+node_modules/
+dist/
+*.log
+.DS_Store
+
+# Copiado de node_modules/sql.js no postinstall (scripts/copy-wasm.mjs)
+public/sql-wasm.wasm

@@ -1,0 +1,144 @@
+import type { Database, QueryExecResult, SqlJsStatic } from 'sql.js';
+import initSqlJs from 'sql.js/dist/sql-wasm.js';
+import rawDataset from '../data/dataset.json';
+import type { Conta, Dataset, TransacaoPix } from '../types/domain.ts';
+import { SCHEMA_SQL } from './schema.ts';
+
+const dataset = rawDataset as Dataset;
+
+/** O binário fica em public/ (copiado por scripts/copy-wasm.mjs) e é servido na base do app. */
+const WASM_FILE = 'sql-wasm.wasm';
+
+/**
+ * A URL precisa ser absoluta: o Emscripten resolve caminhos relativos a partir do script do sql.js
+ * (ex.: /node_modules/.vite/deps/), e não da página.
+ */
+const resolvePublicAsset = (file: string): string =>
+  new URL(`${import.meta.env.BASE_URL}${file}`, document.baseURI).href;
+
+let sqlJsPromise: Promise<SqlJsStatic> | null = null;
+let databasePromise: Promise<Database> | null = null;
+
+function loadSqlJs(): Promise<SqlJsStatic> {
+  sqlJsPromise ??= initSqlJs({
+    locateFile: resolvePublicAsset,
+  }).catch((error: unknown) => {
+    sqlJsPromise = null;
+    throw new Error(
+      `Falha ao carregar o SQLite WebAssembly (${WASM_FILE}). Verifique se o arquivo existe em public/ ` +
+        `(rode "npm install" ou "node scripts/copy-wasm.mjs"). Detalhe: ${String(error)}`,
+    );
+  });
+  return sqlJsPromise;
+}
+
+function insertContas(db: Database, contas: readonly Conta[]): void {
+  const stmt = db.prepare(`
+    INSERT INTO contas (
+      id_conta, titular, tipo_pessoa, documento, ocupacao, renda_mensal_declarada,
+      banco_ispb, banco_nome, agencia, numero_conta, tipo_chave_pix, chave_pix,
+      cidade, uf, data_abertura
+    ) VALUES (
+      $id_conta, $titular, $tipo_pessoa, $documento, $ocupacao, $renda_mensal_declarada,
+      $banco_ispb, $banco_nome, $agencia, $numero_conta, $tipo_chave_pix, $chave_pix,
+      $cidade, $uf, $data_abertura
+    )
+  `);
+  try {
+    for (const c of contas) {
+      stmt.run({
+        $id_conta: c.id_conta,
+        $titular: c.titular,
+        $tipo_pessoa: c.tipo_pessoa,
+        $documento: c.documento,
+        $ocupacao: c.ocupacao,
+        $renda_mensal_declarada: c.renda_mensal_declarada,
+        $banco_ispb: c.banco_ispb,
+        $banco_nome: c.banco_nome,
+        $agencia: c.agencia,
+        $numero_conta: c.numero_conta,
+        $tipo_chave_pix: c.tipo_chave_pix,
+        $chave_pix: c.chave_pix,
+        $cidade: c.cidade,
+        $uf: c.uf,
+        $data_abertura: c.data_abertura,
+      });
+    }
+  } finally {
+    stmt.free();
+  }
+}
+
+function insertTransacoes(db: Database, transacoes: readonly TransacaoPix[]): void {
+  const stmt = db.prepare(`
+    INSERT INTO transacoes_pix (
+      id_transacao, id_conta_origem, id_conta_destino, valor, data_hora,
+      tipo_chave_destino, chave_pix_destino, descricao, canal
+    ) VALUES (
+      $id_transacao, $id_conta_origem, $id_conta_destino, $valor, $data_hora,
+      $tipo_chave_destino, $chave_pix_destino, $descricao, $canal
+    )
+  `);
+  try {
+    for (const t of transacoes) {
+      stmt.run({
+        $id_transacao: t.id_transacao,
+        $id_conta_origem: t.id_conta_origem,
+        $id_conta_destino: t.id_conta_destino,
+        $valor: t.valor,
+        $data_hora: t.data_hora,
+        $tipo_chave_destino: t.tipo_chave_destino,
+        $chave_pix_destino: t.chave_pix_destino,
+        $descricao: t.descricao,
+        $canal: t.canal,
+      });
+    }
+  } finally {
+    stmt.free();
+  }
+}
+
+export function seedDatabase(db: Database, data: Dataset = dataset): void {
+  db.exec('BEGIN TRANSACTION;');
+  try {
+    insertContas(db, data.contas);
+    insertTransacoes(db, data.transacoes_pix);
+    db.exec('COMMIT;');
+  } catch (error) {
+    db.exec('ROLLBACK;');
+    throw error;
+  }
+}
+
+/** Cria um banco em memória novo, com schema e seed aplicados. */
+export async function createDatabase(): Promise<Database> {
+  const SQL = await loadSqlJs();
+  const db = new SQL.Database();
+  db.exec('PRAGMA foreign_keys = ON;');
+  db.exec(SCHEMA_SQL);
+  seedDatabase(db);
+  return db;
+}
+
+/** Instância compartilhada do banco (inicializada sob demanda). */
+export function getDatabase(): Promise<Database> {
+  databasePromise ??= createDatabase().catch((error: unknown) => {
+    databasePromise = null;
+    throw error;
+  });
+  return databasePromise;
+}
+
+/** Descarta o banco atual e recria a partir do dataset (útil após comandos DML/DDL do usuário). */
+export async function resetDatabase(): Promise<Database> {
+  const current = databasePromise;
+  databasePromise = null;
+  if (current) (await current.catch(() => null))?.close();
+  return getDatabase();
+}
+
+export function runQuery(db: Database, sql: string): QueryExecResult[] {
+  return db.exec(sql);
+}
+
+export const datasetMetadata = dataset.metadata;

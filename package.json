@@ -1,0 +1,26 @@
+{
+  "name": "pandascomia",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Laboratório local de SQL Analítico para Prevenção à Lavagem de Dinheiro (PLD/AML) com sql.js no navegador.",
+  "type": "module",
+  "scripts": {
+    "postinstall": "node scripts/copy-wasm.mjs",
+    "predev": "node scripts/copy-wasm.mjs",
+    "dev": "vite",
+    "prebuild": "node scripts/copy-wasm.mjs",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "generate:dataset": "node scripts/generate-dataset.mjs"
+  },
+  "dependencies": {
+    "sql.js": "^1.14.2"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.3",
+    "@types/sql.js": "^1.4.11",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.1"
+  }
+}
