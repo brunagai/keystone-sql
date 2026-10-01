@@ -146,7 +146,7 @@ function compareResults(
     return {
       status: 'warning',
       title: 'Divergência nas métricas calculadas',
-      message: `Os ${plural} estão corretos, mas os valores de \`${unmatched.join('`, `')}\` não conferem com o gabarito (tolerância de R$ 0,01).`,
+      message: `A identificação de ${plural} está correta, mas os valores de \`${unmatched.join('`, `')}\` não conferem com o gabarito (tolerância numérica de 0,01).`,
       details: [hints.valores],
       entities: [],
     };

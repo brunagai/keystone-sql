@@ -20,6 +20,7 @@ export function toScenario({ challenge: ch, source, model }: StoredChallenge): I
   return {
     id: ch.id,
     origem: source,
+    nivel: 5,
     ...(model ? { modelo: model } : {}),
     titulo: ch.titulo,
     enquadramento: ch.badgeEnquadramento,

@@ -75,7 +75,7 @@ src/
     safeQuery.ts           Bloqueio de escrita, execução isolada (SAVEPOINT), extração do ORDER BY
     sqlText.ts             Utilitários de texto SQL (remover comentários, comparar)
   challenges/
-    scenarios.ts           Interface InvestigationScenario + 3 cenários base
+    scenarios.ts           Interface InvestigationScenario, níveis da trilha e 5 cenários base
     registry.ts            Catálogo único: cenários base + gerados (persistidos)
     validator.ts           Motor de validação semântica
     compare.ts             Comparação de células/colunas/linhas com tolerância
@@ -262,17 +262,36 @@ Todo desafio — base ou gerado — implementa `InvestigationScenario` (`src/cha
 | `dicasDivergencia` | Textos para excesso, falta, valores e ordenação |
 | `resumirSucesso(gabarito)` | Mensagem e entidades exibidas no sucesso |
 
-### 8.2 Cenários base
+### 8.2 Trilha pedagógica por níveis
 
-| id | Título | Colunas esperadas | Ordenação |
-| --- | --- | --- | --- |
-| `smurfing` | Smurfing para a receptora Aurora (C025) | `conta_origem, total_operacoes, valor_total` | `valor_total DESC` |
-| `burst` | Burst / alta frequência em janela curta | `id_transacao, conta_origem, conta_destino, valor, data_hora, intervalo_segundos` | `conta_origem ASC, data_hora ASC` |
-| `incompatibilidade` | Incompatibilidade patrimonial bruta | `id_transacao, conta_origem, titular, renda_mensal, valor, fator_incompatibilidade` | `fator_incompatibilidade DESC` |
+Todo cenário tem `nivel: TrailLevel` (`1 | 2 | 3 | 4 | 5`). `TRAIL_LEVELS` guarda o título e a técnica-alvo de cada nível, e `TRAIL_ORDER` define a ordem de exibição. O `<select>` monta um `<optgroup>` por nível ("Nível N — Título"), numera as opções como `N.k` e, se um nível estiver vazio, mostra uma opção desabilitada. O cartão do cenário exibe o selo `N#` com a técnica, e o template inicial do editor começa com o nível.
 
-### 8.3 Adicionar um cenário base
+| Nível | Tema | Técnica-alvo |
+| --- | --- | --- |
+| 1 | Fundamentos de Agregação | `GROUP BY`, `HAVING`, `JOIN` e limiares |
+| 2 | Janelas e Classificação | `ROW_NUMBER() OVER (PARTITION BY …)` |
+| 3 | Análise Temporal e Mudança de Padrão | `LAG` / `LEAD` |
+| 4 | Composição Analítica com CTEs | `WITH` + janelas + regras combinadas |
+| 5 | Laboratório Aberto (Agente IA) | Desafios gerados (LLM ou offline); o adaptador atribui `nivel: 5` |
 
-1. Acrescente um objeto ao array `SCENARIOS` em `scenarios.ts` respeitando a interface.
+### 8.3 Cenários base
+
+| Nível | id | Título | Colunas esperadas | Ordenação |
+| --- | --- | --- | --- | --- |
+| 1 | `smurfing` | Smurfing para a receptora Aurora (C025) | `conta_origem, total_operacoes, valor_total` | `valor_total DESC` |
+| 1 | `incompatibilidade` | Incompatibilidade patrimonial bruta | `id_transacao, conta_origem, titular, renda_mensal, valor, fator_incompatibilidade` | `fator_incompatibilidade DESC` |
+| 2 | `pico-diario` | Pico individual por conta no dia 18/08 (ROW_NUMBER) | `conta_origem, id_transacao, maior_pix, data_hora, qtd_no_dia, total_no_dia` | `maior_pix DESC, conta_origem` |
+| 3 | `burst` | Burst / alta frequência em janela curta | `id_transacao, conta_origem, conta_destino, valor, data_hora, intervalo_segundos` | `conta_origem ASC, data_hora ASC` |
+| 4 | `conta-aquecida` | Conta "aquecida": PIX de teste seguido de salto abrupto (CTE) | `id_transacao, conta_origem, titular, valor, data_hora, intervalo_horas, media_historica, salto` | `salto DESC, id_transacao` |
+
+Notas de desenho:
+
+- **`pico-diario`** usa o dia de rajada (18/08), em que C031 e C032 enviam 9 e 7 PIX. C031 tem dois PIX empatados em R$ 4.990, então o desempate `data_hora ASC` é obrigatório para o resultado ser determinístico. `COUNT`/`SUM` com `OVER (PARTITION BY …)` mostram que janelas agregam sem colapsar linhas.
+- **`conta-aquecida`** combina quatro regras no `WHERE` externo: 1 a 3 PIX anteriores, `valor >= 10 × média histórica` (frame `ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING`), `valor >= 5000` e intervalo de até 10 dias desde o PIX anterior (`LAG`). O resultado são as quatro contas laranja que fazem PIX de teste (C026, C027, C035, C036). Relaxar o critério de histórico faz aparecer falsos positivos legítimos (C006, C016).
+
+### 8.4 Adicionar um cenário base
+
+1. Acrescente um objeto ao array `CATALOG` em `scenarios.ts` respeitando a interface e definindo `nivel`. `SCENARIOS` é o catálogo ordenado por nível (ordenação estável).
 2. Garanta que `gabaritoSql` tenha `ORDER BY` determinístico (com desempate) e que `colunasEsperadas` reflita o `SELECT` final.
 3. Rode `npm run typecheck` e valide o próprio gabarito pela interface (deve resultar em **sucesso**).
 
@@ -334,7 +353,7 @@ flowchart TD
 
 ### 9.4 Integração com o validador
 
-`challengeAdapter.toScenario` converte o desafio gerado em `InvestigationScenario`: `ordenacao` vem de `extractOrderBy(solutionQuery)`, `colunaChave` é a primeira coluna esperada e as dicas de divergência são genéricas. Assim, desafios gerados usam exatamente o mesmo validador, a mesma tolerância e o mesmo gabarito comentado dos cenários base. O `registry.ts` guarda até 20 desafios gerados.
+`challengeAdapter.toScenario` converte o desafio gerado em `InvestigationScenario` no **Nível 5** da trilha: `ordenacao` vem de `extractOrderBy(solutionQuery)`, `colunaChave` é a primeira coluna esperada e as dicas de divergência são genéricas. Assim, desafios gerados usam exatamente o mesmo validador, a mesma tolerância e o mesmo gabarito comentado dos cenários base. O `registry.ts` guarda até 20 desafios gerados.
 
 ---
 

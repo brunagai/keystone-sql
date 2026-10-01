@@ -85,7 +85,7 @@ Valores em reais aparecem formatados como **R$ 9.850,00** e datas como **dd/mm/a
 
 ## 3. Resolvendo seu primeiro desafio
 
-1. No Painel 3, escolha um cenário — por exemplo, **01 · Smurfing para a receptora Aurora (C025)**.
+1. No Painel 3, escolha um cenário — por exemplo, **1.1 · Smurfing para a receptora Aurora (C025)**.
 2. Leia o **Objetivo da Análise SQL** com atenção: ele diz quais **colunas** retornar e qual **ordenação** usar.
 3. Escreva sua consulta no editor. Use o Painel 1 para lembrar os nomes das colunas.
 4. Pressione **Ctrl+Enter** para conferir o resultado enquanto escreve.
@@ -95,13 +95,18 @@ Valores em reais aparecem formatados como **R$ 9.850,00** e datas como **dd/mm/a
 
 > **Dica:** se você selecionar um trecho do editor, apenas esse trecho é executado. Útil para testar uma subconsulta isoladamente.
 
-### Os três casos base
+### A trilha de aprendizagem
 
-| Caso | O que investigar |
-| --- | --- |
-| **Smurfing** | Remetentes que enviaram várias transferências logo abaixo de R$ 10 mil para a mesma empresa, para fugir do limiar de comunicação |
-| **Burst / alta frequência** | Transferências feitas em sequência muito rápida (segundos de diferença) pela mesma conta |
-| **Incompatibilidade patrimonial** | Pessoas que movimentam valores muito acima da renda que declararam |
+Os desafios estão organizados em **níveis progressivos**: cada nível introduz uma técnica de SQL nova, aplicada a uma tipologia de lavagem. No seletor de cenários, os desafios aparecem agrupados por nível e numerados (1.1, 1.2, 2.1…). No cartão do desafio, o selo **N1** a **N5** mostra o nível e a técnica-alvo. A sugestão é seguir a ordem.
+
+| Nível | Técnica | Desafio | O que investigar |
+| --- | --- | --- | --- |
+| **1 — Fundamentos de Agregação** | `GROUP BY`, `HAVING`, `JOIN` | **1.1 Smurfing** | Remetentes que enviaram várias transferências logo abaixo de R$ 10 mil para a mesma empresa |
+| | | **1.2 Incompatibilidade patrimonial** | Transferências de valor muito acima da renda declarada do titular |
+| **2 — Janelas e Classificação** | `ROW_NUMBER()` | **2.1 Pico individual por conta** | O maior PIX de cada conta no dia 18/08, com quantas operações e quanto cada uma movimentou no dia (atenção ao empate!) |
+| **3 — Análise Temporal** | `LAG` / `LEAD` | **3.1 Burst / alta frequência** | Transferências feitas com segundos de diferença pela mesma conta |
+| **4 — Composição com CTEs** | `WITH` + janelas | **4.1 Conta "aquecida"** | Contas que fazem PIX de teste de poucos reais e, dias depois, movimentam valores dezenas de vezes maiores |
+| **5 — Laboratório Aberto** | Livre | Desafios gerados pelo agente | Casos inéditos criados pela IA (ou pelo gerador offline) |
 
 ---
 
@@ -138,7 +143,7 @@ O que ele **aponta**:
 1. No Painel 3, em **✨ Agente Educador IA**, escolha o **Foco da tipologia** (ou "Livre") e a **Dificuldade** (Iniciante, Intermediário ou Avançado).
 2. Clique em **✨ Gerar Novo Desafio com IA**.
 3. Acompanhe as mensagens: o agente analisa as tipologias do Bacen e o dataset, redige o caso e roda um **Sanity Check** — executa o gabarito no banco para garantir que ele funciona e encontra evidências.
-4. Quando terminar, o desafio aparece no grupo **"Gerados pelo agente"** do seletor, já selecionado, e o editor recebe um **template comentado** com o título, o objetivo, as colunas esperadas e a ordenação. É só começar a escrever depois do `SELECT`.
+4. Quando terminar, o desafio aparece no grupo **"Nível 5 — Laboratório Aberto (Agente IA)"** do seletor, já selecionado, e o editor recebe um **template comentado** com o título, o objetivo, as colunas esperadas e a ordenação. É só começar a escrever depois do `SELECT`.
 
 Focos disponíveis: fracionamento/smurfing, alta frequência/burst, incompatibilidade patrimonial, conta de passagem, concentração/dispersão (fan-in/fan-out), horário e canal atípicos e valores redondos.
 

@@ -1,4 +1,4 @@
-import type { InvestigationScenario } from './scenarios.ts';
+import { TRAIL_LEVELS, type InvestigationScenario } from './scenarios.ts';
 
 const LINE_WIDTH = 78;
 
@@ -30,7 +30,9 @@ function wrapComment(text: string, prefix: string): string[] {
 /** Cabeçalho comentado com o enunciado do desafio, pronto para a aluna escrever a consulta abaixo. */
 export function buildStarterTemplate(scenario: InvestigationScenario): string {
   const origin = scenario.modelo ? `${ORIGIN_TAG[scenario.origem]} · ${scenario.modelo}` : ORIGIN_TAG[scenario.origem];
+  const level = TRAIL_LEVELS[scenario.nivel];
   return [
+    `-- Nível ${scenario.nivel} — ${level.titulo} (${level.tecnica})`,
     `-- ${origin}: ${plain(scenario.titulo)}`,
     ...wrapComment(scenario.enquadramento, '-- Enquadramento: '),
     '--',

@@ -5,6 +5,25 @@ export type ScenarioId = string;
 
 export type ScenarioOrigin = 'base' | 'ia' | 'offline';
 
+/** Degraus da trilha pedagógica; o nível 5 agrupa os desafios gerados pelo agente. */
+export type TrailLevel = 1 | 2 | 3 | 4 | 5;
+
+export interface TrailLevelInfo {
+  titulo: string;
+  /** Técnica SQL que o nível exercita. */
+  tecnica: string;
+}
+
+export const TRAIL_LEVELS: Record<TrailLevel, TrailLevelInfo> = {
+  1: { titulo: 'Fundamentos de Agregação', tecnica: 'GROUP BY, HAVING, JOIN e limiares' },
+  2: { titulo: 'Janelas e Classificação', tecnica: 'ROW_NUMBER() OVER (PARTITION BY …)' },
+  3: { titulo: 'Análise Temporal e Mudança de Padrão', tecnica: 'LAG / LEAD' },
+  4: { titulo: 'Composição Analítica com CTEs', tecnica: 'WITH + janelas + regras combinadas' },
+  5: { titulo: 'Laboratório Aberto (Agente IA)', tecnica: 'Desafios gerados por LLM ou offline' },
+};
+
+export const TRAIL_ORDER: readonly TrailLevel[] = [1, 2, 3, 4, 5];
+
 export interface SuccessSummary {
   message: string;
   entities: string[];
@@ -24,6 +43,7 @@ export interface DivergenceHints {
 export interface InvestigationScenario {
   id: ScenarioId;
   origem: ScenarioOrigin;
+  nivel: TrailLevel;
   /** Modelo de IA que gerou o desafio (apenas origem 'ia'). */
   modelo?: string;
   titulo: string;
@@ -53,10 +73,11 @@ function columnValues(result: QueryExecResult, column: string): unknown[] {
 const distinct = (values: unknown[]): string[] => [...new Set(values.map(String))];
 const sum = (values: unknown[]): number => values.reduce<number>((acc, v) => acc + Number(v), 0);
 
-export const SCENARIOS: readonly InvestigationScenario[] = [
+const CATALOG: readonly InvestigationScenario[] = [
   {
     id: 'smurfing',
     origem: 'base',
+    nivel: 1,
     titulo: 'Smurfing para a receptora Aurora (C025)',
     enquadramento: 'Carta Circular Bacen 4.001/2020 · Inciso I - Fracionamento',
     dossie:
@@ -113,6 +134,7 @@ ORDER BY valor_total DESC;               -- maior exposição primeiro`,
   {
     id: 'burst',
     origem: 'base',
+    nivel: 3,
     titulo: 'Burst / alta frequência em janela curta',
     enquadramento: 'Carta Circular Bacen 4.001/2020 · Inciso IV - Alta Frequência',
     dossie:
@@ -192,6 +214,7 @@ ORDER BY conta_origem ASC, data_hora ASC;`,
   {
     id: 'incompatibilidade',
     origem: 'base',
+    nivel: 1,
     titulo: 'Incompatibilidade patrimonial bruta',
     enquadramento: 'Circular Bacen 3.978/2020, Art. 38 c/c Carta Circular 4.001/2020, Inciso II',
     dossie:
@@ -246,4 +269,206 @@ ORDER BY fator_incompatibilidade DESC;         -- casos mais graves primeiro`,
       };
     },
   },
+  {
+    id: 'pico-diario',
+    origem: 'base',
+    nivel: 2,
+    titulo: 'Pico individual por conta no dia 18/08 (ROW_NUMBER)',
+    enquadramento: 'Carta Circular Bacen 4.001/2020 · Alta Frequência e Valores Atípicos',
+    dossie:
+      'Na madrugada de 18/08/2026 o monitoramento disparou dezenas de alertas para o mesmo dia, muitos repetidos para as ' +
+      'mesmas contas. Para priorizar a fila, a gestão de PLD pediu uma visão desduplicada: uma única linha por conta de ' +
+      'origem, mostrando o maior PIX enviado no dia e o volume total que a conta movimentou.',
+    objetivo:
+      'Considerando apenas os PIX de `2026-08-18`, retorne uma linha por conta de origem com sua MAIOR transação do dia, ' +
+      'usando `ROW_NUMBER() OVER (PARTITION BY id_conta_origem ORDER BY valor DESC, data_hora ASC)` (em caso de empate no ' +
+      'valor, vale o PIX mais antigo). Retorne `conta_origem`, `id_transacao`, `maior_pix`, `data_hora`, `qtd_no_dia` ' +
+      '(quantos PIX a conta enviou no dia) e `total_no_dia` (`ROUND(SUM(valor), 2)` do dia).',
+    colunasEsperadas: ['conta_origem', 'id_transacao', 'maior_pix', 'data_hora', 'qtd_no_dia', 'total_no_dia'],
+    ordenacao: 'maior_pix DESC, conta_origem',
+    dicaTexto:
+      'Numere os PIX de cada conta numa CTE (posição 1 = maior valor) e, na consulta externa, mantenha só a posição 1. ' +
+      'COUNT e SUM com OVER (PARTITION BY ...) trazem os totais do dia sem colapsar as linhas como o GROUP BY faria.',
+    dicaSql: `WITH pix_do_dia AS (
+  SELECT *,
+         ROW_NUMBER() OVER (
+           PARTITION BY id_conta_origem
+           ORDER BY valor DESC, data_hora ASC
+         ) AS posicao,
+         COUNT(*)   OVER (PARTITION BY ...) AS qtd_no_dia,
+         SUM(valor) OVER (PARTITION BY ...) AS soma_no_dia
+  FROM transacoes_pix
+  WHERE data_hora >= '...' AND data_hora < '...'
+)
+SELECT ...
+FROM pix_do_dia
+WHERE posicao = ...
+ORDER BY ...;`,
+    gabaritoSql: `-- Gabarito comentado · Pico individual por conta (ROW_NUMBER)
+WITH pix_do_dia AS (
+  SELECT
+    t.id_conta_origem AS conta_origem,
+    t.id_transacao,
+    t.valor,
+    t.data_hora,
+    ROW_NUMBER() OVER (                   -- numera os PIX de cada conta...
+      PARTITION BY t.id_conta_origem      -- ...reiniciando a contagem por remetente
+      ORDER BY t.valor DESC,              -- 1 = maior valor do dia
+               t.data_hora ASC            -- desempate determinístico: o PIX mais antigo
+    ) AS posicao,
+    COUNT(*)     OVER (PARTITION BY t.id_conta_origem) AS qtd_no_dia,   -- janela sem ORDER BY = total da partição
+    SUM(t.valor) OVER (PARTITION BY t.id_conta_origem) AS soma_no_dia
+  FROM transacoes_pix AS t
+  WHERE t.data_hora >= '2026-08-18 00:00:00'   -- intervalo semiaberto: cobre o dia inteiro
+    AND t.data_hora <  '2026-08-19 00:00:00'   -- e continua usando o índice de data_hora
+)
+SELECT
+  conta_origem,
+  id_transacao,
+  valor                 AS maior_pix,
+  data_hora,
+  qtd_no_dia,
+  ROUND(soma_no_dia, 2) AS total_no_dia
+FROM pix_do_dia
+WHERE posicao = 1                       -- desduplicação: só o pico de cada conta
+ORDER BY maior_pix DESC, conta_origem;  -- maiores picos primeiro`,
+    colunaChave: 'conta_origem',
+    rotuloEntidade: { singular: 'conta', plural: 'contas' },
+    dicasDivergencia: {
+      excesso:
+        'Há linhas a mais: provavelmente mais de um PIX por conta. Filtre `posicao = 1` na consulta externa e garanta que o `PARTITION BY` é só `id_conta_origem`.',
+      falta:
+        'Faltam contas. Confira o recorte do dia (`>= 2026-08-18 00:00:00` e `< 2026-08-19 00:00:00`) e se nenhum filtro extra eliminou contas com um único PIX.',
+      valores:
+        'As contas estão certas, mas algum valor diverge. Se for `id_transacao`/`data_hora`, revise o desempate (`ORDER BY valor DESC, data_hora ASC`); se for `qtd_no_dia`/`total_no_dia`, use `COUNT`/`SUM` com `OVER (PARTITION BY id_conta_origem)` sobre todos os PIX do dia.',
+      ordenacao: 'Os dados estão corretos, mas a ordem não. Ordene por `maior_pix DESC, conta_origem`.',
+    },
+    resumirSucesso(gabarito) {
+      const contas = distinct(columnValues(gabarito, 'conta_origem'));
+      const qtd = columnValues(gabarito, 'qtd_no_dia').map(Number);
+      const rajadas = contas.flatMap((conta, i) => ((qtd[i] ?? 0) > 1 ? [`${conta} (${qtd[i]} PIX)`] : []));
+      return {
+        message: `Fila desduplicada! ${gabarito.values.length} contas, uma linha cada. ${rajadas.join(' e ')} enviaram vários PIX em poucos minutos, o que as coloca no topo da priorização.`,
+        entities: contas,
+        details: [
+          'Repare no empate da C031 (dois PIX de R$ 4.990,00): sem o desempate por `data_hora`, o ROW_NUMBER escolheria um deles de forma arbitrária, e o resultado mudaria de uma execução para outra.',
+        ],
+      };
+    },
+  },
+  {
+    id: 'conta-aquecida',
+    origem: 'base',
+    nivel: 4,
+    titulo: 'Conta "aquecida": PIX de teste seguido de salto abrupto (CTE)',
+    enquadramento: 'Circular Bacen 3.978/2020 (monitoramento) c/c Carta Circular 4.001/2020 · Mudança de padrão',
+    dossie:
+      'Uma tática comum de redes de laranjas é "aquecer" a conta: o titular faz um ou dois PIX de valor irrisório (padaria, ' +
+      'mercado) para simular uso normal e, poucos dias depois, passa a movimentar valores dezenas de vezes maiores. A área de ' +
+      'PLD quer uma regra que combine histórico curto, salto em relação ao próprio histórico e proximidade temporal.',
+    objetivo:
+      'Monte uma CTE `metricas` que calcule, para cada PIX: `intervalo_segundos` desde o PIX anterior da mesma origem (com `LAG`), ' +
+      '`media_historica` (média dos PIX ANTERIORES do remetente: `AVG(valor) OVER (... ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING)`) ' +
+      'e `qtd_historico` (quantos PIX anteriores existem). No `WHERE` externo, aplique as regras em conjunto: `qtd_historico` entre 1 e 3, ' +
+      '`valor >= 10 * media_historica`, `valor >= 5000` e intervalo de até 10 dias (`864000` s). Retorne `id_transacao`, `conta_origem`, ' +
+      '`titular`, `valor`, `data_hora`, `intervalo_horas` (`ROUND(intervalo_segundos / 3600.0, 1)`), `media_historica` (2 casas) e ' +
+      '`salto` (`ROUND(valor / media_historica, 2)`).',
+    colunasEsperadas: [
+      'id_transacao',
+      'conta_origem',
+      'titular',
+      'valor',
+      'data_hora',
+      'intervalo_horas',
+      'media_historica',
+      'salto',
+    ],
+    ordenacao: 'salto DESC, id_transacao',
+    dicaTexto:
+      'Calcule todas as métricas de janela na CTE (o WHERE não enxerga funções de janela do mesmo SELECT). O frame "ROWS BETWEEN ' +
+      'UNBOUNDED PRECEDING AND 1 PRECEDING" exclui o próprio PIX da média, então a primeira transação de cada conta fica com média NULL.',
+    dicaSql: `WITH metricas AS (
+  SELECT t.id_transacao, t.id_conta_origem AS conta_origem, c.titular, t.valor, t.data_hora,
+         unixepoch(t.data_hora)
+           - unixepoch(LAG(t.data_hora) OVER (PARTITION BY ... ORDER BY ...)) AS intervalo_segundos,
+         AVG(t.valor) OVER (
+           PARTITION BY ... ORDER BY ...
+           ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+         ) AS media_historica,
+         COUNT(*) OVER (...mesmo frame...) AS qtd_historico
+  FROM transacoes_pix t
+  JOIN contas c ON ...
+)
+SELECT ...
+FROM metricas
+WHERE qtd_historico BETWEEN ... AND ...
+  AND ...
+ORDER BY ...;`,
+    gabaritoSql: `-- Gabarito comentado · Conta "aquecida" (CTE + LAG + média histórica)
+WITH metricas AS (
+  SELECT
+    t.id_transacao,
+    t.id_conta_origem AS conta_origem,
+    c.titular,
+    t.valor,
+    t.data_hora,
+    -- Regra temporal: segundos desde o PIX anterior do MESMO remetente
+    unixepoch(t.data_hora) - unixepoch(LAG(t.data_hora) OVER (
+      PARTITION BY t.id_conta_origem ORDER BY t.data_hora
+    )) AS intervalo_segundos,
+    -- Linha de base: média só dos PIX ANTERIORES (o frame exclui a linha atual)
+    AVG(t.valor) OVER (
+      PARTITION BY t.id_conta_origem ORDER BY t.data_hora
+      ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+    ) AS media_historica,
+    -- Tamanho do histórico que sustenta essa média
+    COUNT(*) OVER (
+      PARTITION BY t.id_conta_origem ORDER BY t.data_hora
+      ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+    ) AS qtd_historico
+  FROM transacoes_pix AS t
+  JOIN contas AS c ON c.id_conta = t.id_conta_origem
+)
+SELECT
+  id_transacao,
+  conta_origem,
+  titular,
+  valor,
+  data_hora,
+  ROUND(intervalo_segundos / 3600.0, 1) AS intervalo_horas,  -- 3600.0 força divisão real
+  ROUND(media_historica, 2)             AS media_historica,
+  ROUND(valor / media_historica, 2)     AS salto
+FROM metricas
+WHERE qtd_historico BETWEEN 1 AND 3        -- histórico curto: conta recém-"aquecida"
+  AND valor >= 10 * media_historica        -- salto: 10x ou mais o padrão do próprio remetente
+  AND valor >= 5000                        -- relevância: ignora saltos de centavos para reais
+  AND intervalo_segundos <= 10 * 86400     -- proximidade: até 10 dias após o PIX anterior
+ORDER BY salto DESC, id_transacao;`,
+    colunaChave: 'id_transacao',
+    rotuloEntidade: { singular: 'transação', plural: 'transações' },
+    dicasDivergencia: {
+      excesso:
+        'Há transações a mais. Aplique TODAS as regras juntas (`AND`): histórico entre 1 e 3 PIX, `valor >= 10 * media_historica`, `valor >= 5000` e intervalo `<= 864000` s.',
+      falta:
+        'Faltam transações. A média deve considerar só os PIX ANTERIORES (`ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING`) e o `qtd_historico` usa o mesmo frame; confira também se os limites são inclusivos.',
+      valores:
+        'As transações estão certas, mas alguma métrica diverge. `intervalo_horas` = `ROUND(intervalo_segundos / 3600.0, 1)`; `media_historica` exclui o PIX atual; `salto` = `ROUND(valor / media_historica, 2)`.',
+      ordenacao: 'Os dados estão corretos, mas a ordem não. Ordene por `salto DESC, id_transacao`.',
+    },
+    resumirSucesso(gabarito) {
+      const titulares = distinct(columnValues(gabarito, 'titular'));
+      const saltos = columnValues(gabarito, 'salto').map(Number);
+      const pico = saltos.length > 0 ? Math.max(...saltos) : 0;
+      return {
+        message: `Regra composta certeira! ${gabarito.values.length} contas "aquecidas" saltaram até ${formatDecimal(pico)}x o próprio histórico, logo após PIX de teste de poucos reais.`,
+        entities: titulares,
+        details: [
+          'Relaxe o critério de histórico (por exemplo, `qtd_historico <= 10`) e veja surgir clientes com perfil legítimo, como um pagamento pontual de caução a uma imobiliária. Combinar regras é o que reduz falsos positivos.',
+        ],
+      };
+    },
+  },
 ];
+
+/** Catálogo base na ordem da trilha (a ordenação é estável dentro de cada nível). */
+export const SCENARIOS: readonly InvestigationScenario[] = [...CATALOG].sort((a, b) => a.nivel - b.nivel);

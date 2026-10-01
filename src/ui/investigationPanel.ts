@@ -5,7 +5,7 @@ import {
   onScenariosChange,
   removeGenerated,
 } from '../challenges/registry.ts';
-import type { InvestigationScenario, ScenarioId } from '../challenges/scenarios.ts';
+import { TRAIL_LEVELS, TRAIL_ORDER, type InvestigationScenario, type ScenarioId, type TrailLevel } from '../challenges/scenarios.ts';
 import type { ErrorHighlight } from '../challenges/sqlErrors.ts';
 import type { ValidationResult, ValidationStatus } from '../challenges/validator.ts';
 import { byId } from './dom.ts';
@@ -37,6 +37,17 @@ const block = (title: string, contentHtml: string): string => `
     <div class="px-3 py-2 text-xs leading-relaxed text-slate-300">${contentHtml}</div>
   </section>`;
 
+const levelLabel = (nivel: TrailLevel): string => `Nível ${nivel} — ${TRAIL_LEVELS[nivel].titulo}`;
+
+function renderLevelBadge(s: InvestigationScenario): string {
+  return `
+    <div class="flex items-center gap-2 text-[10px]">
+      <span class="rounded bg-sky-500/15 px-1.5 py-0.5 font-mono font-bold text-sky-300">N${s.nivel}</span>
+      <span class="font-semibold uppercase tracking-wider text-slate-400">${escapeHtml(TRAIL_LEVELS[s.nivel].titulo)}</span>
+      <span class="ml-auto truncate font-mono text-slate-500" title="Técnica-alvo">${escapeHtml(TRAIL_LEVELS[s.nivel].tecnica)}</span>
+    </div>`;
+}
+
 function renderOriginBadge(s: InvestigationScenario): string {
   if (s.origem === 'base') return '';
   const label = s.origem === 'ia' ? `✨ Gerado por IA${s.modelo ? ` · ${s.modelo}` : ''}` : '⚙ Gerado offline';
@@ -51,6 +62,7 @@ function renderOriginBadge(s: InvestigationScenario): string {
 
 function renderScenario(s: InvestigationScenario): string {
   return `
+    ${renderLevelBadge(s)}
     ${renderOriginBadge(s)}
     <span class="inline-block rounded border border-amber-700/60 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-300">${escapeHtml(s.enquadramento)}</span>
     <h3 class="text-sm font-semibold text-slate-100">${escapeHtml(s.titulo)}</h3>
@@ -114,13 +126,21 @@ export function initInvestigationPanel({ onLoadSolution, onScenarioChange }: Inv
   if (!firstScenario) throw new Error('Nenhum cenário investigativo cadastrado.');
 
   const renderOptions = (): void => {
-    const option = (s: InvestigationScenario, label: string): string =>
-      `<option value="${escapeHtml(s.id)}"${s.id === selected.id ? ' selected' : ''}>${escapeHtml(label)}</option>`;
-    const base = baseScenarios().map((s, i) => option(s, `${String(i + 1).padStart(2, '0')} · ${s.titulo}`));
-    const generated = generatedScenarios().map((s) => option(s, `${s.origem === 'ia' ? '✨' : '⚙'} ${s.titulo}`));
-    select.innerHTML =
-      `<optgroup label="Desafios base">${base.join('')}</optgroup>` +
-      (generated.length ? `<optgroup label="Gerados pelo agente (${generated.length})">${generated.join('')}</optgroup>` : '');
+    const all = [...baseScenarios(), ...generatedScenarios()];
+    select.innerHTML = TRAIL_ORDER.map((nivel) => {
+      const items = all.filter((s) => s.nivel === nivel);
+      const options = items.length
+        ? items
+            .map((s, i) => {
+              const marker = s.origem === 'base' ? '' : `${s.origem === 'ia' ? '✨' : '⚙'} `;
+              const label = `${nivel}.${i + 1} · ${marker}${s.titulo}`;
+              return `<option value="${escapeHtml(s.id)}"${s.id === selected.id ? ' selected' : ''}>${escapeHtml(label)}</option>`;
+            })
+            .join('')
+        : '<option disabled>Use “✨ Gerar Novo Desafio com IA” para abrir este nível</option>';
+      const count = nivel === 5 && items.length ? ` (${items.length})` : '';
+      return `<optgroup label="${escapeHtml(levelLabel(nivel))}${count}">${options}</optgroup>`;
+    }).join('');
   };
 
   let selected = firstScenario;
