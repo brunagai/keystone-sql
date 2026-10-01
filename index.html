@@ -1,13 +1,188 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="pt-BR" class="h-full">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>PLD Lab · SQL Analítico para Prevenção à Lavagem de Dinheiro</title>
+    <title>AML SQL Lab · SQLite In-Memory Engine</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+      * { scrollbar-width: thin; scrollbar-color: #334155 transparent; }
+      *::-webkit-scrollbar { width: 8px; height: 8px; }
+      *::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+      *::-webkit-scrollbar-thumb:hover { background: #475569; }
+      *::-webkit-scrollbar-corner { background: transparent; }
+      details > summary { list-style: none; }
+      details > summary::-webkit-details-marker { display: none; }
+    </style>
   </head>
-  <body class="min-h-screen bg-slate-950 text-slate-100 antialiased">
-    <div id="app"></div>
+  <body class="h-screen overflow-hidden bg-slate-950 text-[13px] text-slate-200 antialiased">
+    <div id="app" class="flex h-screen flex-col overflow-hidden">
+      <!-- Header -->
+      <header id="app-header" class="flex h-12 shrink-0 items-center gap-3 border-b border-slate-800 bg-zinc-950 px-4">
+        <div class="flex items-center gap-2">
+          <span class="rounded bg-emerald-500/15 px-1.5 py-0.5 font-mono text-[11px] font-bold text-emerald-400">AML</span>
+          <h1 class="text-sm font-semibold text-slate-100">
+            AML SQL Lab <span class="text-slate-600">|</span>
+            <span class="font-normal text-slate-400">SQLite In-Memory Engine</span>
+          </h1>
+        </div>
+
+        <div id="wasm-status" role="status" aria-live="polite" class="ml-2 flex items-center gap-2"></div>
+
+        <span class="hidden rounded border border-slate-700 bg-slate-900 px-2 py-0.5 text-[11px] text-slate-400 lg:inline">
+          Bacen Circular 3.978 / 4.001 &amp; Carta Circular 4.001
+        </span>
+
+        <div id="dataset-meta" class="ml-auto flex items-center gap-2"></div>
+
+        <button id="btn-ai-settings" type="button" aria-haspopup="dialog" aria-controls="ai-settings-dialog"
+          class="flex items-center gap-1.5 rounded border border-slate-700 px-2.5 py-1 text-xs text-slate-300 hover:border-violet-600 hover:bg-violet-950/40 hover:text-violet-200">
+          <span id="ai-key-indicator" aria-hidden="true" class="inline-block size-1.5 rounded-full bg-slate-500"></span>
+          <span aria-hidden="true">⚙</span>
+          Configurar IA <span class="text-slate-500">(Groq / OpenAI)</span>
+        </button>
+
+        <button id="btn-reset" type="button" disabled
+          class="rounded border border-slate-700 px-2.5 py-1 text-xs text-slate-300 hover:border-rose-700 hover:bg-rose-950/40 hover:text-rose-200 disabled:cursor-not-allowed disabled:opacity-40">
+          Resetar Banco
+        </button>
+      </header>
+
+      <main id="workspace" class="flex min-h-0 flex-1 overflow-hidden">
+        <!-- Painel 1: Dicionário de dados -->
+        <aside id="schema-panel" aria-labelledby="schema-panel-title"
+          class="flex w-80 shrink-0 flex-col border-r border-slate-800 bg-zinc-950">
+          <div class="flex h-9 shrink-0 items-center border-b border-slate-800 px-3">
+            <h2 id="schema-panel-title" class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+              Dicionário de Dados &amp; Metadados
+            </h2>
+          </div>
+          <div id="schema-tree" class="min-h-0 flex-1 space-y-2 overflow-y-auto p-2"></div>
+        </aside>
+
+        <!-- Painel 2: Editor + resultados -->
+        <section id="query-panel" aria-label="Editor SQL e console de resultados" class="flex min-w-0 flex-1 flex-col">
+          <div id="editor-pane" class="flex h-1/2 min-h-0 flex-col border-b border-slate-800">
+            <div class="flex h-9 shrink-0 items-center gap-3 border-b border-slate-800 bg-zinc-950 px-3">
+              <h2 class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Editor SQL</h2>
+              <kbd class="rounded border border-slate-700 bg-slate-900 px-1.5 font-mono text-[10px] text-slate-500">Ctrl+Enter para rodar</kbd>
+              <div class="ml-auto flex items-center gap-2">
+                <button id="btn-validate" type="button" disabled
+                  class="rounded border border-sky-700 px-2.5 py-1 text-xs font-medium text-sky-300 hover:bg-sky-950/50 disabled:cursor-not-allowed disabled:opacity-40">
+                  Validar Desafio
+                </button>
+                <button id="btn-run" type="button" disabled
+                  class="rounded bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40">
+                  ▶ Executar Query
+                </button>
+              </div>
+            </div>
+            <label for="sql-editor" class="sr-only">Editor SQL</label>
+            <textarea id="sql-editor" spellcheck="false" autocomplete="off" autocapitalize="off" autofocus
+              class="min-h-0 flex-1 resize-none bg-slate-950 p-4 font-mono text-[13px] leading-6 text-emerald-200 caret-emerald-400 outline-none placeholder:text-slate-600"
+              placeholder="-- Escreva sua consulta SQL aqui"></textarea>
+          </div>
+
+          <div id="output-pane" class="flex min-h-0 flex-1 flex-col">
+            <div class="flex h-8 shrink-0 items-center gap-3 border-b border-slate-800 bg-zinc-950 px-3">
+              <h2 class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Resultados</h2>
+              <div id="output-meta" class="ml-auto flex items-center gap-3 font-mono text-[11px] text-slate-500"></div>
+            </div>
+            <div id="output-body" class="min-h-0 flex-1 overflow-auto"></div>
+          </div>
+        </section>
+
+        <!-- Painel 3: Central de investigação -->
+        <aside id="investigation-panel" aria-labelledby="investigation-panel-title"
+          class="flex w-80 shrink-0 flex-col border-l border-slate-800 bg-zinc-950 xl:w-96">
+          <div class="flex h-9 shrink-0 items-center border-b border-slate-800 px-3">
+            <h2 id="investigation-panel-title" class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+              Investigação Regulatória (Bacen / COAF)
+            </h2>
+          </div>
+          <div class="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
+            <section id="agent-panel" aria-labelledby="agent-panel-title"
+              class="rounded border border-violet-800/60 bg-violet-950/20">
+              <div class="border-b border-violet-900/60 px-3 py-1.5">
+                <h3 id="agent-panel-title" class="text-[10px] font-semibold uppercase tracking-wider text-violet-300">✨ Agente Educador IA</h3>
+              </div>
+              <div class="space-y-2 p-3">
+                <p id="agent-provider-status" class="text-[11px] text-slate-500"></p>
+                <div class="grid grid-cols-2 gap-2">
+                  <label class="block">
+                    <span class="mb-0.5 block text-[10px] text-slate-500">Foco da tipologia</span>
+                    <select id="agent-focus" class="w-full rounded border border-slate-700 bg-slate-900 px-1.5 py-1 text-[11px] text-slate-200 outline-none focus:border-violet-600"></select>
+                  </label>
+                  <label class="block">
+                    <span class="mb-0.5 block text-[10px] text-slate-500">Dificuldade</span>
+                    <select id="agent-difficulty" class="w-full rounded border border-slate-700 bg-slate-900 px-1.5 py-1 text-[11px] text-slate-200 outline-none focus:border-violet-600"></select>
+                  </label>
+                </div>
+                <div class="flex gap-2">
+                  <button id="btn-generate" type="button" disabled
+                    class="flex-1 rounded bg-violet-600 px-2 py-2 text-xs font-semibold text-white shadow-lg shadow-violet-950/50 hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-40">
+                    ✨ Gerar Novo Desafio com IA
+                  </button>
+                  <button id="btn-generate-cancel" type="button" hidden
+                    class="rounded border border-slate-700 px-2 py-1.5 text-xs text-slate-300 hover:bg-slate-800">Cancelar</button>
+                </div>
+                <div id="agent-progress" aria-live="polite"></div>
+              </div>
+            </section>
+
+            <div>
+              <label for="scenario-select" class="mb-1 block text-[11px] font-medium text-slate-500">Cenário investigativo</label>
+              <select id="scenario-select"
+                class="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-200 outline-none focus:border-sky-600"></select>
+            </div>
+            <article id="scenario-card" class="space-y-3"></article>
+            <div id="validation-feedback" aria-live="polite"></div>
+            <section id="solution-panel" aria-label="Gabarito comentado" class="space-y-2"></section>
+          </div>
+        </aside>
+      </main>
+    </div>
+
+    <dialog id="ai-settings-dialog" aria-labelledby="ai-settings-title" aria-describedby="ai-settings-notice"
+      class="m-auto w-[28rem] max-w-[95vw] rounded-lg border border-slate-700 bg-zinc-950 p-0 text-slate-200 shadow-2xl backdrop:bg-black/70">
+      <form id="ai-settings-form" method="dialog" class="space-y-3 p-4">
+        <div class="flex items-center">
+          <h2 id="ai-settings-title" class="text-sm font-semibold">Configurar IA (Groq / OpenAI)</h2>
+          <button type="button" data-close-dialog aria-label="Fechar" class="ml-auto rounded px-2 text-slate-500 hover:bg-slate-800 hover:text-slate-200">✕</button>
+        </div>
+        <p id="ai-settings-notice" class="rounded border border-amber-500/40 bg-amber-950/30 px-2.5 py-2 text-[11px] leading-relaxed text-amber-200">
+          🔒 A chave fica armazenada apenas neste navegador (<code class="font-mono">localStorage</code>) e é enviada somente
+          ao provedor escolhido — nunca a servidores do AML SQL Lab. Sem chave, o agente usa o gerador offline.
+        </p>
+        <label class="block">
+          <span class="mb-1 block text-[11px] text-slate-400">Provedor</span>
+          <select id="ai-provider" class="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs outline-none focus:border-violet-600"></select>
+        </label>
+        <label class="block">
+          <span class="mb-1 block text-[11px] text-slate-400">Modelo</span>
+          <input id="ai-model" list="ai-model-options" autocomplete="off" spellcheck="false"
+            class="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1.5 font-mono text-xs outline-none focus:border-violet-600" />
+          <datalist id="ai-model-options"></datalist>
+        </label>
+        <label class="block">
+          <span class="mb-1 block text-[11px] text-slate-400">API Key</span>
+          <div class="flex gap-1">
+            <input id="ai-key" type="password" autocomplete="off" spellcheck="false"
+              class="min-w-0 flex-1 rounded border border-slate-700 bg-slate-900 px-2 py-1.5 font-mono text-xs outline-none focus:border-violet-600" />
+            <button id="ai-key-toggle" type="button" class="rounded border border-slate-700 px-2 text-[11px] text-slate-400 hover:bg-slate-800">Mostrar</button>
+          </div>
+        </label>
+        <div id="ai-settings-status" aria-live="polite" class="min-h-5 text-[11px]"></div>
+        <div class="flex flex-wrap items-center gap-2 border-t border-slate-800 pt-3">
+          <button id="ai-remove" type="button" class="rounded border border-rose-800/70 px-2.5 py-1 text-xs text-rose-300 hover:bg-rose-950/40">Remover chave</button>
+          <div class="ml-auto flex gap-2">
+            <button id="ai-test" type="button" class="rounded border border-slate-700 px-2.5 py-1 text-xs text-slate-300 hover:bg-slate-800">Testar conexão</button>
+            <button id="ai-save" type="submit" class="rounded bg-violet-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-violet-500">Salvar</button>
+          </div>
+        </div>
+      </form>
+    </dialog>
+
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

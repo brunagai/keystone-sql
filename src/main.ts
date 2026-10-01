@@ -1,136 +1,192 @@
 import type { Database } from 'sql.js';
-import { datasetMetadata, getDatabase, resetDatabase, runQuery } from './database/sqlite.ts';
-import { formatBRL, formatInteiro } from './ui/format.ts';
-import { renderError, renderResults } from './ui/resultTable.ts';
+import { AiServiceError, generateChallenge } from './agent/aiService.ts';
+import { loadAiSettings } from './agent/settingsStore.ts';
+import type { ChallengeDifficulty, ChallengeFocus } from './agent/types.ts';
+import { addGenerated, allScenarios } from './challenges/registry.ts';
+import { buildStarterTemplate } from './challenges/starterTemplate.ts';
+import { validateChallenge } from './challenges/validator.ts';
+import { executeTimedQuery, getDatabase, resetDatabase } from './database/sqlite.ts';
+import { initAgentPanel } from './ui/agentPanel.ts';
+import { initAiSettingsModal } from './ui/aiSettingsModal.ts';
+import { initEditor } from './ui/editor.ts';
+import { initHeader, type DatasetCounts } from './ui/header.ts';
+import { initInvestigationPanel } from './ui/investigationPanel.ts';
+import { initOutputPanel } from './ui/outputPanel.ts';
+import { initSchemaPanel } from './ui/schemaPanel.ts';
 
 const QUERY_INICIAL = `-- Maiores transações PIX do período
 SELECT t.data_hora,
        o.titular AS origem,
        d.titular AS destino,
+       t.canal,
        t.valor
 FROM transacoes_pix t
 JOIN contas o ON o.id_conta = t.id_conta_origem
 JOIN contas d ON d.id_conta = t.id_conta_destino
 ORDER BY t.valor DESC
-LIMIT 10;`;
+LIMIT 20;`;
 
-function requireElement<T extends HTMLElement>(selector: string): T {
-  const el = document.querySelector<T>(selector);
-  if (!el) throw new Error(`Elemento não encontrado: ${selector}`);
-  return el;
+const errorMessage = (error: unknown): string => (error instanceof Error ? error.message : String(error));
+
+function countRows(db: Database): DatasetCounts {
+  const count = (table: string): number => Number(db.exec(`SELECT COUNT(*) FROM ${table}`)[0]?.values[0]?.[0] ?? 0);
+  return { contas: count('contas'), transacoes: count('transacoes_pix') };
 }
 
-function renderLayout(root: HTMLElement): void {
-  const { periodo } = datasetMetadata;
-  root.innerHTML = `
-    <main class="mx-auto max-w-6xl px-6 py-10">
-      <header class="mb-8 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p class="text-xs font-semibold uppercase tracking-widest text-emerald-400">PLD / AML Lab</p>
-          <h1 class="mt-1 text-3xl font-bold">SQL Analítico para Prevenção à Lavagem de Dinheiro</h1>
-          <p class="mt-2 text-sm text-slate-400">
-            SQLite (sql.js + WebAssembly) rodando 100% no navegador · período ${periodo.inicio} a ${periodo.fim}
-          </p>
-        </div>
-        <span id="status" class="rounded-full bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-300">
-          Inicializando banco…
-        </span>
-      </header>
+let db: Database | null = null;
 
-      <section id="stats" class="mb-8 grid gap-4 sm:grid-cols-3"></section>
+let validating = false;
 
-      <section class="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
-        <label for="sql" class="mb-2 block text-sm font-medium text-slate-300">Console SQL</label>
-        <textarea id="sql" spellcheck="false"
-          class="h-48 w-full resize-y rounded-lg border border-slate-700 bg-slate-950 p-3 font-mono text-sm text-emerald-200 focus:border-emerald-500 focus:outline-none"></textarea>
-        <div class="mt-3 flex items-center gap-3">
-          <button id="run" disabled
-            class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40">
-            Executar (Ctrl+Enter)
-          </button>
-          <button id="reset" disabled
-            class="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40">
-            Recriar banco
-          </button>
-        </div>
-      </section>
+const output = initOutputPanel();
+const investigation = initInvestigationPanel({
+  onLoadSolution: (sql) => {
+    editor.setSql(sql);
+    editor.focus();
+  },
+});
+const schema = initSchemaPanel((column) => editor.insertAtCursor(column));
+const editor = initEditor({ onRun: runCurrentQuery, onValidate: () => void validateCurrentQuery() });
+const header = initHeader({
+  onReset: () => void handleReset(),
+  onOpenAiSettings: () => settingsModal.open(),
+});
 
-      <section id="results" class="mt-6"></section>
-    </main>
-  `;
+let aiSettings = loadAiSettings();
+let generation: AbortController | null = null;
+
+const settingsModal = initAiSettingsModal((settings) => {
+  aiSettings = settings;
+  agent.setSettings(settings);
+  header.setAiSettings(settings);
+});
+const agent = initAgentPanel({
+  onGenerate: (focus, difficulty) => void generateNewChallenge(focus, difficulty),
+  onCancel: () => generation?.abort(),
+});
+agent.setSettings(aiSettings);
+header.setAiSettings(aiSettings);
+
+async function generateNewChallenge(focus: ChallengeFocus, difficulty: ChallengeDifficulty): Promise<void> {
+  if (!db || generation) return;
+  generation = new AbortController();
+  agent.setBusy(true);
+  header.setResetEnabled(false);
+  try {
+    const outcome = await generateChallenge(
+      db,
+      { focus, difficulty, avoidTitles: allScenarios().map((s) => s.titulo) },
+      { settings: aiSettings, signal: generation.signal, onProgress: (message) => agent.showProgress(message) },
+    );
+    const scenario = addGenerated(outcome);
+    investigation.selectScenario(scenario.id);
+    editor.setSql(buildStarterTemplate(scenario));
+    editor.focus();
+
+    if (outcome.source === 'ia') {
+      const retries = outcome.attempts > 1 ? ` após ${outcome.attempts} tentativas de autocorreção` : '';
+      agent.showNotice('success', `Desafio gerado por \`${outcome.model ?? 'IA'}\` e gabarito verificado no SQLite${retries}.`);
+    } else if (aiSettings) {
+      agent.showNotice('warning', `IA indisponível; usei o gerador offline. Motivo: ${outcome.fallbackReason ?? 'desconhecido'}`);
+    } else {
+      agent.showNotice('success', 'Desafio gerado offline e verificado no SQLite. Configure uma API Key para desafios inéditos via LLM.');
+    }
+  } catch (error) {
+    if (error instanceof AiServiceError && error.kind === 'aborted') agent.showNotice('warning', 'Geração cancelada.');
+    else agent.showNotice('error', errorMessage(error));
+  } finally {
+    generation = null;
+    agent.setBusy(false);
+    header.setResetEnabled(db !== null);
+  }
 }
 
-function setStatus(text: string, tone: 'ok' | 'erro'): void {
-  const el = requireElement<HTMLSpanElement>('#status');
-  el.textContent = text;
-  el.className =
-    tone === 'ok'
-      ? 'rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300'
-      : 'rounded-full bg-rose-500/10 px-3 py-1 text-xs font-medium text-rose-300';
+function runCurrentQuery(): boolean {
+  if (!db) return false;
+  const sql = editor.getSql();
+  if (!sql.trim()) {
+    output.showMessage('O editor está vazio.');
+    return false;
+  }
+  const start = performance.now();
+  try {
+    const { results, elapsedMs } = executeTimedQuery(db, sql);
+    output.showResults(results, elapsedMs);
+    header.setDatasetCounts(countRows(db));
+    return true;
+  } catch (error) {
+    output.showError(errorMessage(error), performance.now() - start);
+    return false;
+  }
 }
 
-function scalar(db: Database, sql: string): number {
-  return Number(db.exec(sql)[0]?.values[0]?.[0] ?? 0);
+async function validateCurrentQuery(): Promise<void> {
+  if (!db || validating) return;
+  validating = true;
+  editor.setActionsEnabled(false);
+  investigation.showPending();
+  try {
+    const result = await validateChallenge(db, investigation.getSelectedScenario(), editor.getSql());
+    const run = result.studentRun;
+    if (run?.ok) output.showResults(run.results, run.elapsedMs);
+    else if (run) output.showError(run.error, run.elapsedMs);
+    investigation.showValidation(result);
+  } catch (error) {
+    investigation.showValidation({
+      status: 'error',
+      title: 'Falha interna na validação',
+      message: errorMessage(error),
+      details: [],
+      entities: [],
+      highlight: null,
+      studentRun: null,
+    });
+  } finally {
+    validating = false;
+    editor.setActionsEnabled(true);
+  }
 }
 
-function renderStats(db: Database): void {
-  const cards: Array<[string, string]> = [
-    ['Contas', formatInteiro(scalar(db, 'SELECT COUNT(*) FROM contas'))],
-    ['Transações PIX', formatInteiro(scalar(db, 'SELECT COUNT(*) FROM transacoes_pix'))],
-    ['Volume total', formatBRL(scalar(db, 'SELECT SUM(valor) FROM transacoes_pix'))],
-  ];
-  requireElement('#stats').innerHTML = cards
-    .map(
-      ([label, value]) => `
-        <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
-          <p class="text-xs uppercase tracking-wide text-slate-400">${label}</p>
-          <p class="mt-1 text-2xl font-semibold">${value}</p>
-        </div>`,
-    )
-    .join('');
+function applyDatabase(next: Database): void {
+  db = next;
+  schema.render(next);
+  header.setDatasetCounts(countRows(next));
+  header.setConnectionState('ready');
+  header.setResetEnabled(true);
+  editor.setActionsEnabled(true);
+  agent.setEnabled(true);
+}
+
+async function handleReset(): Promise<void> {
+  header.setResetEnabled(false);
+  editor.setActionsEnabled(false);
+  agent.setEnabled(false);
+  header.setConnectionState('loading');
+  try {
+    applyDatabase(await resetDatabase());
+    investigation.clearFeedback();
+    output.showMessage('Banco recriado a partir do dataset original.');
+  } catch (error) {
+    header.setConnectionState('error');
+    header.setResetEnabled(true);
+    output.showError(errorMessage(error));
+  }
+  editor.focus();
 }
 
 async function bootstrap(): Promise<void> {
-  renderLayout(requireElement('#app'));
+  header.setConnectionState('loading');
+  editor.setSql(QUERY_INICIAL);
+  editor.focus();
+  output.showMessage('Inicializando SQLite WebAssembly…');
 
-  const editor = requireElement<HTMLTextAreaElement>('#sql');
-  const runButton = requireElement<HTMLButtonElement>('#run');
-  const resetButton = requireElement<HTMLButtonElement>('#reset');
-  const results = requireElement('#results');
-  editor.value = QUERY_INICIAL;
-
-  let db = await getDatabase();
-  renderStats(db);
-  setStatus('Banco pronto', 'ok');
-  runButton.disabled = false;
-  resetButton.disabled = false;
-
-  const execute = (): void => {
-    try {
-      results.innerHTML = renderResults(runQuery(db, editor.value));
-    } catch (error) {
-      results.innerHTML = renderError(error instanceof Error ? error.message : String(error));
-    }
-  };
-
-  runButton.addEventListener('click', execute);
-  editor.addEventListener('keydown', (event) => {
-    if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
-      event.preventDefault();
-      execute();
-    }
-  });
-  resetButton.addEventListener('click', async () => {
-    db = await resetDatabase();
-    renderStats(db);
-    results.innerHTML = '<p class="text-sm text-slate-400">Banco recriado a partir do dataset.</p>';
-  });
-
-  execute();
+  try {
+    applyDatabase(await getDatabase());
+    runCurrentQuery();
+  } catch (error) {
+    console.error(error);
+    header.setConnectionState('error');
+    output.showError(errorMessage(error));
+  }
 }
 
-bootstrap().catch((error: unknown) => {
-  console.error(error);
-  setStatus('Falha na inicialização', 'erro');
-  requireElement('#results').innerHTML = renderError(error instanceof Error ? error.message : String(error));
-});
+void bootstrap();

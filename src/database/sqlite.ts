@@ -141,4 +141,15 @@ export function runQuery(db: Database, sql: string): QueryExecResult[] {
   return db.exec(sql);
 }
 
+export interface TimedQueryResult {
+  results: QueryExecResult[];
+  elapsedMs: number;
+}
+
+export function executeTimedQuery(db: Database, sql: string): TimedQueryResult {
+  const start = performance.now();
+  const results = db.exec(sql);
+  return { results, elapsedMs: performance.now() - start };
+}
+
 export const datasetMetadata = dataset.metadata;
