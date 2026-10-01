@@ -1,0 +1,272 @@
+# AML SQL Lab — Guia do Usuário
+
+Bem-vinda ao **AML SQL Lab**, um laboratório para praticar **SQL analítico aplicado à Prevenção à Lavagem de Dinheiro (PLD/AML)**. Você investiga transações PIX fictícias, escreve consultas SQL para encontrar indícios de lavagem e recebe feedback imediato, como numa área de compliance de verdade.
+
+Tudo roda **no seu navegador**: o banco de dados é criado na memória do computador, e nada do que você escreve é enviado para servidores (exceto, se você quiser, os pedidos de desafios ao provedor de IA que você configurar).
+
+---
+
+## Sumário
+
+1. [Como abrir o laboratório](#1-como-abrir-o-laboratório)
+2. [Conhecendo a tela](#2-conhecendo-a-tela)
+3. [Resolvendo seu primeiro desafio](#3-resolvendo-seu-primeiro-desafio)
+4. [Entendendo o feedback](#4-entendendo-o-feedback)
+5. [Gerando novos desafios com IA](#5-gerando-novos-desafios-com-ia)
+6. [Configurando a IA (Groq ou OpenAI)](#6-configurando-a-ia-groq-ou-openai)
+7. [Rascunhos: seu trabalho não se perde](#7-rascunhos-seu-trabalho-não-se-perde)
+8. [Histórico de execuções](#8-histórico-de-execuções)
+9. [Exportando o dossiê](#9-exportando-o-dossiê)
+10. [Atalhos de teclado](#10-atalhos-de-teclado)
+11. [Perguntas frequentes e problemas comuns](#11-perguntas-frequentes-e-problemas-comuns)
+12. [Glossário de PLD](#12-glossário-de-pld)
+
+---
+
+## 1. Como abrir o laboratório
+
+Você precisa do **Node.js** instalado (versão LTS recente) e de conexão com a internet na primeira abertura (os estilos visuais são carregados de uma CDN).
+
+No terminal, dentro da pasta do projeto:
+
+```bash
+npm install     # só na primeira vez
+npm run dev
+```
+
+Depois abra **http://localhost:5173** no navegador (Chrome, Edge ou Firefox atualizados).
+
+Quando o canto superior esquerdo mostrar **● WASM conectado** em verde, o banco está pronto. Ao lado aparecem os contadores: **38 contas** e **263 transações**.
+
+---
+
+## 2. Conhecendo a tela
+
+A tela é dividida em um cabeçalho e três painéis.
+
+### Cabeçalho
+
+- **WASM conectado / carregando / indisponível** — estado do banco de dados.
+- **contas / transações** — quantas linhas existem em cada tabela.
+- **⚙ Configurar IA (Groq / OpenAI)** — conecta o agente a uma IA. A bolinha fica **verde** quando há uma chave salva e **cinza** no modo offline.
+- **Resetar Banco** — recria o banco original. Use se você alterou ou apagou dados sem querer.
+
+### Painel 1 — Dicionário de Dados (esquerda)
+
+Mostra as duas tabelas do banco:
+
+- **`contas`** — o cadastro dos clientes (nome, PF/PJ, ocupação, **renda mensal declarada**, banco, chave PIX, cidade, data de abertura).
+- **`transacoes_pix`** — as transferências (conta de origem, conta de destino, **valor**, **data e hora**, canal: APP, INTERNET_BANKING ou API).
+
+Dicas:
+
+- **Clique no nome de uma coluna** para inseri-lo no editor, na posição do cursor.
+- Os selos indicam: **PK** (chave primária), **FK** (chave estrangeira, com a tabela de referência) e **NN** (não pode ser vazio).
+- Abra **▶ Pré-visualizar 3 primeiras linhas** para ver exemplos reais dos dados.
+
+### Painel 2 — Editor SQL e Resultados (centro)
+
+- No **editor**, você escreve as consultas.
+- **▶ Executar Query** (ou **Ctrl+Enter**) roda a consulta e mostra o resultado abaixo, com o tempo de execução e o número de linhas.
+- **Validar Desafio** compara seu resultado com o gabarito do desafio selecionado.
+- **🕘 Histórico** mostra as últimas consultas executadas.
+- **⤓ Exportar Dossiê** baixa sua evidência em Markdown ou CSV.
+
+Valores em reais aparecem formatados como **R$ 9.850,00** e datas como **dd/mm/aaaa hh:mm:ss**.
+
+### Painel 3 — Investigação Regulatória (direita)
+
+- **✨ Agente Educador IA** — cria novos desafios.
+- **Cenário investigativo** — escolha o caso a investigar.
+- Para cada caso você vê o **enquadramento regulatório** (selo âmbar), o **Contexto da Denúncia / Dossiê**, o **Objetivo da Análise SQL** (o que sua consulta deve retornar e em que ordem) e a **Dica de Sintaxe SQL** (abra só se precisar).
+- Abaixo aparecem o **feedback da validação** e, depois da primeira tentativa, o **Ver Gabarito Comentado**.
+
+---
+
+## 3. Resolvendo seu primeiro desafio
+
+1. No Painel 3, escolha um cenário — por exemplo, **01 · Smurfing para a receptora Aurora (C025)**.
+2. Leia o **Objetivo da Análise SQL** com atenção: ele diz quais **colunas** retornar e qual **ordenação** usar.
+3. Escreva sua consulta no editor. Use o Painel 1 para lembrar os nomes das colunas.
+4. Pressione **Ctrl+Enter** para conferir o resultado enquanto escreve.
+5. Quando achar que está certo, clique em **Validar Desafio**.
+6. Leia o feedback. Se errar, ajuste e valide de novo — não há limite de tentativas.
+7. Depois de tentar, você pode abrir **Ver Gabarito Comentado** para comparar com a solução de referência e clicar em **Abrir gabarito no editor** para estudá-la.
+
+> **Dica:** se você selecionar um trecho do editor, apenas esse trecho é executado. Útil para testar uma subconsulta isoladamente.
+
+### Os três casos base
+
+| Caso | O que investigar |
+| --- | --- |
+| **Smurfing** | Remetentes que enviaram várias transferências logo abaixo de R$ 10 mil para a mesma empresa, para fugir do limiar de comunicação |
+| **Burst / alta frequência** | Transferências feitas em sequência muito rápida (segundos de diferença) pela mesma conta |
+| **Incompatibilidade patrimonial** | Pessoas que movimentam valores muito acima da renda que declararam |
+
+---
+
+## 4. Entendendo o feedback
+
+O validador não exige que sua consulta seja igual ao gabarito, e sim que **o resultado** seja o mesmo.
+
+| Cor | Significado |
+| --- | --- |
+| 🟢 **Sucesso** | Seu resultado confere. Aparecem as entidades encontradas e, às vezes, dicas de boas práticas |
+| 🟡 **Parcial** | Quase lá: por exemplo, os dados estão certos mas a **ordem** não, ou alguma **métrica** calculada difere |
+| 🔴 **Inconsistência** | Algo essencial está diferente: filtro, colunas, entidades ou um erro de SQL |
+
+O que o validador **aceita**:
+
+- **Nomes de colunas diferentes** (aliases): se os valores conferem, está certo.
+- **Colunas em outra ordem**.
+- **Diferenças de arredondamento** de até **R$ 0,01**.
+- **Colunas extras** (com uma sugestão de removê-las).
+
+O que ele **aponta**:
+
+- Linhas a mais ou a menos, com a lista de contas que faltam ou sobram.
+- Colunas faltando.
+- Ordenação diferente da pedida.
+- **Erros de SQL** explicados em português, com a linha do problema destacada (coluna inexistente, erro de sintaxe, coluna ambígua etc.).
+
+> A validação aceita apenas consultas de leitura (`SELECT` / `WITH`). Para experimentar `INSERT`, `UPDATE` ou `DELETE`, use **Executar Query** e depois **Resetar Banco**.
+
+---
+
+## 5. Gerando novos desafios com IA
+
+1. No Painel 3, em **✨ Agente Educador IA**, escolha o **Foco da tipologia** (ou "Livre") e a **Dificuldade** (Iniciante, Intermediário ou Avançado).
+2. Clique em **✨ Gerar Novo Desafio com IA**.
+3. Acompanhe as mensagens: o agente analisa as tipologias do Bacen e o dataset, redige o caso e roda um **Sanity Check** — executa o gabarito no banco para garantir que ele funciona e encontra evidências.
+4. Quando terminar, o desafio aparece no grupo **"Gerados pelo agente"** do seletor, já selecionado, e o editor recebe um **template comentado** com o título, o objetivo, as colunas esperadas e a ordenação. É só começar a escrever depois do `SELECT`.
+
+Focos disponíveis: fracionamento/smurfing, alta frequência/burst, incompatibilidade patrimonial, conta de passagem, concentração/dispersão (fan-in/fan-out), horário e canal atípicos e valores redondos.
+
+**Sem chave de IA?** Tudo bem: o agente usa um **gerador offline** com modelos de desafios prontos e parâmetros variados. Com uma chave, os desafios ficam inéditos e mais variados.
+
+Outras informações:
+
+- Você pode **Cancelar** a geração a qualquer momento.
+- Se a IA falhar (sem internet, chave inválida, limite atingido), o agente avisa o motivo e usa o gerador offline.
+- Desafios gerados ficam salvos no navegador (até 20). Para apagar um, selecione-o e clique em **Remover desafio**.
+- Desafios gerados são validados exatamente como os casos base, inclusive com o gabarito comentado.
+
+---
+
+## 6. Configurando a IA (Groq ou OpenAI)
+
+1. Clique em **⚙ Configurar IA (Groq / OpenAI)** no cabeçalho.
+2. Escolha o **Provedor**:
+   - **Groq** — tem plano gratuito. Crie a chave em [console.groq.com/keys](https://console.groq.com/keys). Chaves começam com `gsk_`. Modelo padrão: `llama-3.3-70b-versatile`.
+   - **OpenAI** — pago por uso. Crie a chave em [platform.openai.com/api-keys](https://platform.openai.com/api-keys). Chaves começam com `sk-`. Modelo padrão: `gpt-4o-mini`.
+3. Cole a **API Key** (o campo fica oculto; use **Mostrar** para conferir).
+4. Clique em **Testar conexão** para verificar a chave e o modelo.
+5. Clique em **Salvar**. A bolinha do botão fica verde.
+
+Para voltar ao modo offline, abra o mesmo modal e clique em **Remover chave**.
+
+> 🔒 **Privacidade:** a chave fica guardada **somente neste navegador** e é enviada apenas ao provedor que você escolheu. Ela não vai para nenhum servidor do AML SQL Lab. Recomendamos configurar um limite de gastos na sua conta do provedor e não usar a ferramenta em computadores compartilhados com a chave salva.
+
+---
+
+## 7. Rascunhos: seu trabalho não se perde
+
+Cada desafio guarda **o seu próprio rascunho** automaticamente, enquanto você digita.
+
+- Ao **trocar de desafio** e voltar depois, sua consulta daquele desafio é restaurada.
+- Os rascunhos continuam lá mesmo se você **fechar e reabrir** o navegador.
+- Se você tiver uma consulta em andamento e abrir um desafio **ainda não iniciado** (ou gerar um novo), aparece um aviso no topo do editor:
+
+  > ⚠ Você tem uma query em andamento. Deseja carregar o template de "…"?
+  > **[Substituir]** **[Manter minha query]**
+
+  - **Substituir** — sua consulta fica guardada como rascunho do desafio anterior, e o editor recebe o template do novo desafio.
+  - **Manter minha query** — sua consulta continua no editor, agora associada ao novo desafio (útil para reaproveitar uma consulta). Pressionar **Esc** no aviso tem o mesmo efeito.
+
+Para começar um desafio do zero, apague o conteúdo do editor: o template volta na próxima vez que você abrir aquele desafio.
+
+---
+
+## 8. Histórico de execuções
+
+Clique em **🕘 Histórico** na barra do editor para ver as **últimas 10 consultas** executadas nesta sessão (incluindo as validadas).
+
+Cada item mostra o início da consulta, o horário, se deu certo (✓ e o número de linhas) ou errado (✕), o tempo e o desafio em que foi executada.
+
+- **Clique** em um item (ou use as **setas** e **Enter**) para carregá-lo no editor.
+- Mudou de ideia? **Ctrl+Z** desfaz e traz de volta o que estava antes.
+- O histórico é apagado quando você recarrega a página. Os rascunhos, não.
+
+---
+
+## 9. Exportando o dossiê
+
+Depois de executar ou validar uma consulta **com sucesso**, clique em **⤓ Exportar Dossiê (CSV / Markdown)** na barra de resultados e escolha o formato:
+
+- **Markdown (.md)** — relatório legível, ótimo para guardar anotações ou compartilhar (abre no VS Code, Obsidian, GitHub, Notion…).
+- **CSV (.csv)** — para abrir em planilhas (Excel, Google Sheets, LibreOffice).
+
+O arquivo contém o **ID do caso**, o **enquadramento regulatório BACEN**, a origem do desafio, a data e hora, a **consulta SQL executada** e a **tabela com as linhas de evidência**.
+
+> **Excel em português:** se as colunas aparecerem todas juntas numa só, abra pelo menu **Dados → De Texto/CSV** e escolha **vírgula** como separador. A célula da consulta pode começar com um apóstrofo (`'`); ele é proposital e impede que o Excel interprete o texto como fórmula.
+
+O botão fica desabilitado enquanto não houver um resultado válido (por exemplo, logo após um erro de SQL), para que você não exporte uma evidência antiga por engano.
+
+---
+
+## 10. Atalhos de teclado
+
+| Atalho | Onde | Ação |
+| --- | --- | --- |
+| **Ctrl+Enter** | Editor | Executa a consulta (ou só o trecho selecionado) |
+| **Tab** | Editor | Indenta com 2 espaços |
+| **Ctrl+Z** | Editor | Desfaz (inclusive após carregar do histórico ou o gabarito) |
+| **Esc** | Histórico, exportação, aviso do editor, modal de IA | Fecha / mantém sua query |
+| **↑ / ↓** e **Enter** | Histórico | Navega e escolhe uma consulta |
+
+---
+
+## 11. Perguntas frequentes e problemas comuns
+
+**Aparece "WASM indisponível".**
+O arquivo do banco não foi encontrado. Pare o servidor, rode `npm install` (ou `node scripts/copy-wasm.mjs`) e depois `npm run dev` de novo.
+
+**A tela aparece sem cores/estilo.**
+Os estilos vêm da internet. Verifique a conexão e recarregue a página.
+
+**Apaguei ou alterei dados sem querer.**
+Clique em **Resetar Banco**. O banco volta ao estado original (seus rascunhos são mantidos).
+
+**Minha consulta está certa, mas aparece "ordenação divergente".**
+Confira o `ORDER BY` pedido no objetivo, incluindo o critério de desempate (por exemplo, `ORDER BY valor_total DESC, conta_origem`).
+
+**Deu "Divergência nas métricas calculadas".**
+As linhas estão certas, mas algum cálculo não. Verifique `SUM`/`COUNT`, o `ROUND(..., 2)` e se o filtro do `WHERE` está antes da agregação.
+
+**A IA não gera o desafio.**
+Use **Testar conexão** no modal. Mensagens comuns: chave recusada (confira se copiou inteira e se o provedor está certo), limite de requisições (aguarde um pouco) ou falta de internet. Em todos os casos, o agente entrega um desafio offline.
+
+**Posso usar sem internet?**
+Depois que a página estiver aberta, sim — exceto a geração com IA, que cai automaticamente no modo offline.
+
+**Os dados são reais?**
+Não. Todos os nomes, documentos e transações são **fictícios**, criados para fins educacionais.
+
+---
+
+## 12. Glossário de PLD
+
+| Termo | Significado |
+| --- | --- |
+| **PLD/FT** | Prevenção à Lavagem de Dinheiro e ao Financiamento do Terrorismo |
+| **COAF** | Conselho de Controle de Atividades Financeiras, que recebe as comunicações de operações suspeitas |
+| **Circular Bacen 3.978/2020** | Norma que define a política de PLD/FT das instituições, a abordagem baseada em risco e o conhecimento do cliente |
+| **Carta Circular Bacen 4.001/2020** | Lista exemplos de operações e situações que podem indicar lavagem de dinheiro |
+| **KYC** | *Know Your Customer*: conhecer o cliente, incluindo renda e atividade declaradas |
+| **Smurfing / fracionamento** | Dividir um valor alto em várias operações menores, logo abaixo de limites de monitoramento |
+| **Burst / alta frequência** | Muitas operações em intervalo muito curto, típico de automação ou de tentativa de dispersar recursos |
+| **Layering (camadas)** | Passar o dinheiro por várias contas para dificultar o rastreamento da origem |
+| **Conta de passagem** | Conta que recebe e repassa quase tudo rapidamente, sem reter saldo |
+| **Fan-in / fan-out** | Muitas origens concentrando em uma conta (fan-in) ou uma conta dispersando para muitas (fan-out) |
+| **Incompatibilidade patrimonial** | Movimentação incompatível com a renda, o faturamento ou a ocupação declarados |
+| **Laranja** | Pessoa cuja conta é usada para movimentar recursos de terceiros |
