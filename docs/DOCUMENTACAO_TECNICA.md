@@ -66,7 +66,7 @@ src/
   main.ts                  Composição: inicializa os módulos e liga os eventos
   types/                   Tipos de domínio (Conta, TransacaoPix, Dataset) e d.ts do sql.js
   data/
-    dataset.json           38 contas + 263 transações PIX (agosto/2026)
+    dataset.json           38 contas + transações PIX (agosto/2026); regenerar com npm run generate:dataset após mudar o gerador
     dictionary.ts          Descrições de tabelas/colunas exibidas no Painel 1
   database/
     schema.ts              DDL (CREATE TABLE/INDEX)
@@ -76,11 +76,11 @@ src/
     cteInspector.ts        Completa um WITH sem SELECT externo para inspecionar a CTE
     sqlText.ts             Utilitários de texto SQL (remover comentários, comparar)
   challenges/
-    scenarios.ts           Interface InvestigationScenario, níveis da trilha e 5 cenários base
+    scenarios.ts           Interface InvestigationScenario, níveis da trilha e 7 cenários base
     twoPhase.ts            Decomposição pedagógica WITH → WHERE (N3, N4 e gerados)
     registry.ts            Catálogo único: cenários base + gerados (persistidos)
     validator.ts           Motor de validação semântica (orquestra compare + sqlErrors)
-    compare.ts             Comparação com tolerância + mensagens de esteira de risco (FN/FP/fila)
+    compare.ts             Comparação com tolerância + esteira (FN/FP/fila) + banner de conformidade
     sqlErrors.ts           Erros do SQLite em vocabulário didático (prioridade: janela no WHERE)
     starterTemplate.ts     Template comentado inicial de cada desafio
     drafts.ts              Rascunhos por desafio
@@ -178,19 +178,20 @@ Duas tabelas (ver `src/database/schema.ts`):
 - **`contas`** — cadastro KYC: `id_conta` (PK, formato `C001`), `titular`, `tipo_pessoa` (`PF`/`PJ`), `documento` (único), `ocupacao`, `renda_mensal_declarada` (renda da PF ou faturamento da PJ), dados bancários (`banco_ispb`, `banco_nome`, `agencia`, `numero_conta`), chave PIX (`tipo_chave_pix`, `chave_pix`), `cidade`, `uf`, `data_abertura`, **`eh_pep`** (0/1) e **`cargo_pep`**. PEP plantado de forma determinística: **C013** (Deputado Estadual) e **C004** (Prefeito).
 - **`transacoes_pix`** — liquidações: `id_transacao` (PK), `id_conta_origem`/`id_conta_destino` (FK → `contas`), `valor` (> 0), `data_hora` (`TEXT 'YYYY-MM-DD HH:MM:SS'`, horário de Brasília), `tipo_chave_destino`, `chave_pix_destino`, `descricao`, `canal` (`APP`, `INTERNET_BANKING`, `API`).
 
-`CHECK` constraints garantem domínios válidos e impedem origem = destino. Há índices por `data_hora`, `(id_conta_origem, data_hora)` e `(id_conta_destino, data_hora)`. `PRAGMA foreign_keys = ON` é aplicado na criação.
+`CHECK` constraints garantem domínios válidos, impedem origem = destino e amarram PEP: `eh_pep IN (0, 1)` e, se `eh_pep = 0`, então `cargo_pep` é NULL; se `eh_pep = 1`, `cargo_pep` é obrigatório. Há índices por `data_hora`, `(id_conta_origem, data_hora)` e `(id_conta_destino, data_hora)`. `PRAGMA foreign_keys = ON` é aplicado na criação.
 
 ### 5.2 Dataset sintético
 
-`src/data/dataset.json` é gerado por `scripts/generate-dataset.mjs` com PRNG `mulberry32` e semente fixa (`20260801`), portanto **é determinístico**: rodar o script de novo produz o mesmo arquivo. Período: 01 a 31/08/2026; limiar regulatório de referência: R$ 10.000. CPFs/CNPJs têm dígitos verificadores válidos, mas são aleatórios.
+`src/data/dataset.json` (versão de metadados **1.2.0**) é gerado por `scripts/generate-dataset.mjs` com PRNG `mulberry32` e semente fixa (`20260801`), portanto **é determinístico**: rodar o script de novo produz o mesmo arquivo. Período: 01 a 31/08/2026; limiar regulatório de referência: R$ 10.000. CPFs/CNPJs têm dígitos verificadores válidos, mas são aleatórios. O status PEP **não** consome o PRNG (mapa fixo `CARGO_PEP`). A escalada de C013 é gravada **depois** dos laços aleatórios, com `ts(...)` fixos e **sem** `rand()`, para não alterar a sequência das tipologias já plantadas.
 
-Além do "ruído" de transações legítimas, três tipologias estão plantadas:
+Além do "ruído" de transações legítimas, as tipologias plantadas são:
 
 | Tipologia | Contas | Padrão |
 | --- | --- | --- |
 | Smurfing | C025–C030, C038 | Contas recém-abertas enviam PIX entre R$ 9.700 e R$ 9.990 para uma PJ de baixo faturamento (C025), que repassa R$ 150 mil a uma holding |
 | Burst | C031–C034 | Repasses via API, de madrugada, com intervalos < 60 s entre o mesmo par de contas (layering com retorno parcial) |
-| Incompatibilidade patrimonial | C035, C036, … | Estudante, aposentada e MEI movimentam centenas de milhares de reais, muito acima da renda declarada |
+| Incompatibilidade patrimonial | C035, C036, C037, C038 | Estudante, aposentada e MEI movimentam centenas de milhares de reais, muito acima da renda declarada |
+| PEP (KYC + escalada) | C013, C004 | Pessoa Exposta Politicamente: Deputado Estadual (C013, Brasília) e Prefeito (C004, Curitiba). C013 origina, em **27/08**, três PIX a C022 (R$ 7.200, R$ 7.500 e R$ 6.800) após histórico compatível; a soma móvel das 3 supera R$ 20 mil e fica abaixo de R$ 25 mil (não entra no gabarito 4.2). |
 
 ### 5.3 Ciclo de vida
 
@@ -254,6 +255,8 @@ Mensagens de auditoria (funções `describeFalseNegatives`, `describeFalsePositi
 
 Se faltam **e** sobram entidades, as duas explicações são concatenadas.
 
+No **sucesso**, `computeComplianceMetrics(X, X, 0)` alimenta `formatComplianceBanner`: recall 100%, zero falsos positivos, eficiência 100%. O `ValidationResult` leva `compliance` (capturados, esperados, FP, percentuais) para o Painel 3 desenhar os chips **Alertas / Falsos + / Eficiência**. `resumirSucesso` continua sendo a narrativa pedagógica em `message` (o que o resultado revela).
+
 ### 7.3 Erros didáticos (`sqlErrors.ts`)
 
 `describeSqlError(error, sql)` classifica a mensagem do SQLite. **Antes** das regras genéricas, intercepta janela no filtro:
@@ -283,7 +286,7 @@ Todo desafio — base ou gerado — implementa `InvestigationScenario` (`src/cha
 | `gabaritoSql` | Referência da validação e gabarito comentado |
 | `colunaChave`, `rotuloEntidade` | Diferença de entidades nas mensagens de esteira |
 | `dicasDivergencia` | Dicas SQL em `details` (excesso, falta, valores, ordenação); o título/`message` da divergência de volume vem de `compare.ts` |
-| `resumirSucesso(gabarito)` | Mensagem e entidades exibidas no sucesso |
+| `resumirSucesso(gabarito)` | Narrativa e entidades no sucesso; o **título** verde vem de `formatComplianceBanner` |
 
 ### 8.2 Trilha pedagógica por níveis
 
@@ -294,7 +297,7 @@ Todo cenário tem `nivel: TrailLevel` (`1 | 2 | 3 | 4 | 5`). `TRAIL_LEVELS` guar
 | 1 | Fundamentos de Agregação | `GROUP BY`, `HAVING`, `JOIN` e limiares |
 | 2 | Janelas e Classificação | `ROW_NUMBER() OVER (PARTITION BY …)` |
 | 3 | Análise Temporal e Mudança de Padrão | `LAG` / `LEAD` |
-| 4 | Composição Analítica com CTEs | `WITH` + janelas + regras combinadas |
+| 4 | Composição Analítica com CTEs | `WITH` + janelas, `LAG` e `ROWS BETWEEN` |
 | 5 | Laboratório Aberto (Agente IA) | Desafios gerados (LLM ou offline); o adaptador atribui `nivel: 5` |
 
 ### 8.3 Cenários base
@@ -307,12 +310,14 @@ Todo cenário tem `nivel: TrailLevel` (`1 | 2 | 3 | 4 | 5`). `TRAIL_LEVELS` guar
 | 3 | `burst` | Burst / alta frequência em janela curta | `id_transacao, conta_origem, conta_destino, valor, data_hora, intervalo_segundos` | `conta_origem ASC, data_hora ASC` |
 | 4 | `conta-aquecida` | Conta "aquecida": PIX de teste seguido de salto abrupto (CTE) | `id_transacao, conta_origem, titular, valor, data_hora, intervalo_horas, media_historica, salto` | `salto DESC, id_transacao` |
 | 4 | `janela-movel` | Acúmulo móvel: soma das últimas 3 originações (ROWS BETWEEN) | `id_transacao, conta_origem, titular, valor, data_hora, acumulado_movel_3` | `acumulado_movel_3 DESC, id_transacao` |
+| 4 | `pep-escalada` | Nível 4.3 — Escalada Rápida em PEP (Escrutínio Reforçado) | `id_transacao, conta_origem, titular, cargo_pep, valor, data_hora, acumulado_movel_pep` | `acumulado_movel_pep DESC, id_transacao ASC` |
 
 Notas de desenho:
 
 - **`pico-diario`** usa o dia de rajada (18/08), em que C031 e C032 enviam 9 e 7 PIX. C031 tem dois PIX empatados em R$ 4.990, então o desempate `data_hora ASC` é obrigatório para o resultado ser determinístico. `COUNT`/`SUM` com `OVER (PARTITION BY …)` mostram que janelas agregam sem colapsar linhas.
 - **`conta-aquecida`** combina quatro regras no `WHERE` externo: 1 a 3 PIX anteriores, `valor >= 10 × média histórica` (frame `ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING`), `valor >= 5000` e intervalo de até 10 dias desde o PIX anterior (`LAG`). O resultado são as quatro contas laranja que fazem PIX de teste (C026, C027, C035, C036). Relaxar o critério de histórico faz aparecer falsos positivos legítimos (C006, C016).
-- **`janela-movel`** carimba `SUM(valor) OVER (PARTITION BY id_conta_origem ORDER BY data_hora ROWS BETWEEN 2 PRECEDING AND CURRENT ROW)` e corta `acumulado_movel_3 >= 25000` no `WHERE` externo (marcadores FASE 1 / FASE 2).
+- **`janela-movel`** carimba `SUM(valor) OVER (PARTITION BY id_conta_origem ORDER BY data_hora ROWS BETWEEN 2 PRECEDING AND CURRENT ROW)` e corta `acumulado_movel_3 >= 25000` no `WHERE` externo (marcadores FASE 1 / FASE 2). No dataset atual o gabarito devolve **18 linhas** (estruturação C026–C029, circuito C035–C038, PIX isolados altos como C025/C021/C023).
+- **`pep-escalada`** faz `JOIN` `transacoes_pix`/`contas` no envelope, carimba a mesma janela de 3 PIX como `acumulado_movel_pep` e no inspetor exige `eh_pep = 1` e `acumulado_movel_pep > 20000`. O recorte plantado é C013 (Deputado Estadual) em 27/08; valores individuais < R$ 10 mil e soma móvel < R$ 25 mil para não colidir com smurfing, burst, incompatibilidade, conta-aquecida nem 4.2.
 
 ### 8.4 Adicionar um cenário base
 
@@ -370,7 +375,7 @@ flowchart TD
   OFF --> R
 ```
 
-- **Prompt** (`prompt.ts` + `difficultyToolkit.ts`): `buildSystemPrompt(db, difficulty)` **exige** o nível (`iniciante` | `intermediario` | `avancado`) e injeta o toolkit correspondente como **PRIORIDADE MÁXIMA** (os outros níveis aparecem só como “não usar”). Colunas reais (`id_conta_origem`, `renda_mensal_declarada`, …) e dialeto SQLite (`strftime`, `unixepoch`) entram no contexto. Regras de ferramental:
+- **Prompt** (`prompt.ts` + `difficultyToolkit.ts`): `buildSystemPrompt(db, difficulty)` **exige** o nível (`iniciante` | `intermediario` | `avancado`) e injeta o toolkit correspondente como **PRIORIDADE MÁXIMA** (os outros níveis aparecem só como “não usar”). Colunas reais (`id_conta_origem`, `renda_mensal_declarada`, `eh_pep`, `cargo_pep`, …) e dialeto SQLite (`strftime`, `unixepoch`) entram no contexto; o perfil do dataset lista a contagem PEP. Regras de ferramental:
 
   | Nível | Obrigatório | Proibido | Foco |
   | --- | --- | --- | --- |
@@ -397,7 +402,7 @@ flowchart TD
 - **Header**: status do WASM, contadores do dataset, **Configurar IA (Groq / OpenAI)** com indicador de chave (verde = salva, cinza = offline) e **Resetar Banco**.
 - **Painel 1 — Dicionário de dados**: tabelas, colunas com PK/FK/NN e tipos, descrições, pré-visualização das 3 primeiras linhas; clicar numa coluna insere o nome no cursor do editor.
 - **Painel 2 — Editor + resultados**: editor (Tab indenta, Ctrl+Enter executa a seleção ou a consulta; **Testar Seleção / CTE** completa um `WITH` sem `SELECT` externo com `SELECT * FROM <cte>`), histórico, banner de confirmação e console de resultados com exportação.
-- **Painel 3 — Investigação**: Agente Educador, seletor de cenários, dossiê do caso, **Decomposição em 2 Fases** (N3, N4 e gerados: envelope `WITH` vs. `WHERE` externo), dica, feedback da validação no vocabulário de **esteira de risco** (alertas perdidos, ruído, fila de priorização; erros de janela no `WHERE` explicam a ordem do compilador) e gabarito comentado (liberado após a primeira tentativa).
+- **Painel 3 — Investigação**: Agente Educador, seletor de cenários, dossiê do caso, **Decomposição em 2 Fases** (N3, N4 e gerados: envelope `WITH` vs. `WHERE` externo), dica, feedback da validação no vocabulário de **esteira de risco** (alertas perdidos, ruído, fila de priorização; no sucesso, banner de conformidade + chips Alertas/FP/Eficiência; erros de janela no `WHERE` explicam a ordem do compilador) e gabarito comentado (liberado após a primeira tentativa).
 
 ### 10.2 Sessão do editor e rascunhos (`editorSession.ts`, `drafts.ts`)
 
@@ -419,7 +424,7 @@ flowchart TD
 ### 10.4 Exportação do dossiê (`export/dossier.ts`, `ui/dossierExport.ts`)
 
 - Habilitada somente após uma execução/validação **bem-sucedida**; um erro desabilita (evita exportar evidência antiga).
-- **Markdown**: tabela de metadados (ID do caso, título, enquadramento BACEN, origem, data, tempo, linhas), objetivo, query em bloco `sql` e tabela de evidências.
+- **Markdown**: tabela de metadados (ID do caso, título, enquadramento BACEN, origem, data, tempo, linhas), objetivo, query em bloco `sql`, tabela de evidências e, no rodapé, a seção editável **Parecer do Analista de Compliance** (arquivar vs. comunicar ao COAF + justificativa).
 - **CSV** (RFC 4180): BOM UTF-8, metadados em pares `campo,valor`, a query e as tabelas. Textos iniciados por `= + - @` recebem apóstrofo (proteção contra *CSV injection*).
 - Nome do arquivo: `dossie-<id-do-caso>-<AAAAMMDD-HHmm>.md|csv`.
 

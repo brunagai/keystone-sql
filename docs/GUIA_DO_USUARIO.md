@@ -11,7 +11,7 @@ Tudo roda **no seu navegador**: o banco de dados é criado na memória do comput
 1. [Como abrir o laboratório](#1-como-abrir-o-laboratório)
 2. [Conhecendo a tela](#2-conhecendo-a-tela)
 3. [Resolvendo seu primeiro desafio](#3-resolvendo-seu-primeiro-desafio)
-4. [Entendendo o feedback](#4-entendendo-o-feedback)
+4. [Entendendo o feedback](#4-entendendo-o-feedback-modo-investigador--esteira-de-risco)
 5. [Gerando novos desafios com IA](#5-gerando-novos-desafios-com-ia)
 6. [Configurando a IA (Groq ou OpenAI)](#6-configurando-a-ia-groq-ou-openai)
 7. [Rascunhos: seu trabalho não se perde](#7-rascunhos-seu-trabalho-não-se-perde)
@@ -36,7 +36,9 @@ npm run dev
 
 Depois abra **http://localhost:5173** no navegador (Chrome, Edge ou Firefox atualizados).
 
-Quando o canto superior esquerdo mostrar **● WASM conectado** em verde, o banco está pronto. Ao lado aparecem os contadores: **38 contas** e **263 transações**.
+Quando o canto superior esquerdo mostrar **● WASM conectado** em verde, o banco está pronto. Ao lado aparecem os contadores de contas e transações.
+
+Se você atualizou o gerador (por exemplo, para o desafio 4.3 de PEP), rode **`npm run generate:dataset`** e recarregue a página (ou **Resetar Banco**) para o SQLite em memória refletir o JSON novo.
 
 ---
 
@@ -55,7 +57,7 @@ A tela é dividida em um cabeçalho e três painéis.
 
 Mostra as duas tabelas do banco:
 
-- **`contas`** — o cadastro dos clientes (nome, PF/PJ, ocupação, **renda mensal declarada**, banco, chave PIX, cidade, data de abertura).
+- **`contas`** — o cadastro KYC (nome, PF/PJ, ocupação, **renda mensal declarada**, banco, chave PIX, cidade, data de abertura, indicador **PEP** `eh_pep` e **`cargo_pep`**). Duas contas são PEP de exemplo: **C013** (Deputado Estadual) e **C004** (Prefeito).
 - **`transacoes_pix`** — as transferências (conta de origem, conta de destino, **valor**, **data e hora**, canal: APP, INTERNET_BANKING ou API).
 
 Dicas:
@@ -81,7 +83,7 @@ Valores em reais aparecem formatados como **R$ 9.850,00** e datas como **dd/mm/a
 - **Cenário investigativo** — escolha o caso a investigar.
 - Para cada caso você vê o **enquadramento regulatório** (selo âmbar), o **Contexto da Denúncia / Dossiê**, o **Objetivo da Análise SQL** (o que sua consulta deve retornar e em que ordem) e a **Dica de Sintaxe SQL** (abra só se precisar).
 - Nos níveis 3, 4 e nos desafios gerados, o card **Decomposição em 2 Fases (Esteira Analítica)** mostra o raciocínio: (1) o envelope `WITH` que carimba métricas linha a linha e (2) o `WHERE` externo que aplica o corte regulatório.
-- Abaixo aparecem o **feedback da validação** (vocabulário de esteira: falsos negativos, ruído, ordem do compilador) e, depois da primeira tentativa, o **Ver Gabarito Comentado**.
+- Abaixo aparecem o **feedback da validação** (vocabulário de esteira: falsos negativos, ruído, ordem do compilador; no acerto, **Esteira Aprovada em Conformidade** com chips de alertas, falsos positivos e eficiência) e, depois da primeira tentativa, o **Ver Gabarito Comentado**.
 
 ---
 
@@ -109,6 +111,7 @@ Os desafios estão organizados em **níveis progressivos**: cada nível introduz
 | **3 — Análise Temporal** | `LAG` / `LEAD` | **3.1 Burst / alta frequência** | Transferências feitas com segundos de diferença pela mesma conta |
 | **4 — Composição com CTEs** | `WITH` + janelas | **4.1 Conta "aquecida"** | Contas que fazem PIX de teste de poucos reais e, dias depois, movimentam valores dezenas de vezes maiores |
 | | `ROWS BETWEEN` | **4.2 Acúmulo móvel (3 PIX)** | Soma móvel das últimas 3 originações ≥ R$ 25 mil (estruturação em janela) |
+| | PEP + janela | **4.3 Escalada rápida em PEP** | Titular PEP (`eh_pep = 1`) cuja soma móvel das últimas 3 originações supera R$ 20 mil |
 | **5 — Laboratório Aberto** | Livre | Desafios gerados pelo agente | Casos inéditos criados pela IA (ou pelo gerador offline) |
 
 ---
@@ -119,7 +122,7 @@ O validador não exige que sua consulta seja **igual** ao gabarito: compara o **
 
 | Cor | Significado |
 | --- | --- |
-| 🟢 **Sucesso** | A esteira capturou os mesmos alertas do gabarito. Aparecem as entidades encontradas e, às vezes, dicas de boas práticas |
+| 🟢 **Esteira em conformidade** | A esteira capturou os mesmos alertas do gabarito. O título mostra **Alertas Capturados: X/X (100%)**, **Falsos Positivos: 0** e **Eficiência: 100%**, com três chips iguais abaixo. Também há a narrativa do caso e, às vezes, dicas de boas práticas |
 | 🟡 **Parcial** | Quase lá: por exemplo, os registros estão certos mas a **fila de priorização** (`ORDER BY`) não, ou alguma **métrica** calculada difere; também aparece se a esteira voltou **vazia** (filtros restritivos demais) |
 | 🔴 **Inconsistência** | Filtro, colunas, entidades diferentes do gabarito, ou um **erro de SQL** (incluindo Window Function no lugar errado) |
 
@@ -141,6 +144,18 @@ Quando a **quantidade de linhas** (ou as contas/IDs) não bate:
 | Faltaram e sobraram | Os dois textos juntos | O recorte pegou um conjunto diferente do gabarito |
 
 A dica SQL específica do desafio (por exemplo, “particionar só por origem”) continua aparecendo **abaixo** dessa explicação.
+
+### Esteira aprovada (métricas de conformidade)
+
+Quando o resultado **bate** com o gabarito, o card verde resume a esteira como em um relatório de monitoramento:
+
+> 🟢 Esteira Aprovada em Conformidade \| Alertas Capturados: X/X (100%) \| Falsos Positivos: 0 \| Eficiência: 100%
+
+- **Alertas capturados** — quantos registros do gabarito sua consulta devolveu (no sucesso, todos).
+- **Falsos positivos** — linhas a mais que o corte do cenário não pedia (no sucesso, zero).
+- **Eficiência** — proporção de acertos entre o que a esteira emitiu (no sucesso, 100%).
+
+Abaixo dos chips continua a explicação do caso (contas, tipologias) e eventuais dicas de aliases ou colunas extras.
 
 ### Fila de priorização
 
@@ -232,7 +247,7 @@ Cada item mostra o início da consulta, o horário, se deu certo (✓ e o númer
 
 Depois de executar ou validar uma consulta **com sucesso**, clique em **⤓ Exportar Dossiê (CSV / Markdown)** na barra de resultados e escolha o formato:
 
-- **Markdown (.md)** — relatório legível, ótimo para guardar anotações ou compartilhar (abre no VS Code, Obsidian, GitHub, Notion…).
+- **Markdown (.md)** — relatório legível, ótimo para guardar anotações ou compartilhar (abre no VS Code, Obsidian, GitHub, Notion…). No **final** do arquivo há a seção **Parecer do Analista de Compliance**, com caixas para marcar Arquivar (falso positivo) ou Encaminhar comunicação ao COAF e um campo de justificativa técnica — preencha à mão depois de exportar.
 - **CSV (.csv)** — para abrir em planilhas (Excel, Google Sheets, LibreOffice).
 
 O arquivo contém o **ID do caso**, o **enquadramento regulatório BACEN**, a origem do desafio, a data e hora, a **consulta SQL executada** e a **tabela com as linhas de evidência**.
@@ -281,6 +296,9 @@ Você tentou usar `LAG`, `ROW_NUMBER` ou `OVER (...)` no `WHERE` (ou no `HAVING`
 **Deu "Divergência nas métricas calculadas".**
 As linhas estão certas, mas algum cálculo não. Verifique `SUM`/`COUNT`, o `ROUND(..., 2)` e se o filtro do `WHERE` está antes da agregação.
 
+**O card verde fala em eficiência 100%.**
+Sua consulta devolveu exatamente o conjunto do gabarito (mesmos alertas, nenhum ruído). Os chips **Alertas / Falsos + / Eficiência** só aparecem nesse caso.
+
 **A IA não gera o desafio.**
 Use **Testar conexão** no modal. Mensagens comuns: chave recusada (confira se copiou inteira e se o provedor está certo), limite de requisições (aguarde um pouco) ou falta de internet. Em todos os casos, o agente entrega um desafio offline.
 
@@ -308,6 +326,7 @@ Não. Todos os nomes, documentos e transações são **fictícios**, criados par
 | **Fan-in / fan-out** | Muitas origens concentrando em uma conta (fan-in) ou uma conta dispersando para muitas (fan-out) |
 | **Incompatibilidade patrimonial** | Movimentação incompatível com a renda, o faturamento ou a ocupação declarados |
 | **Laranja** | Pessoa cuja conta é usada para movimentar recursos de terceiros |
+| **PEP** | Pessoa Exposta Politicamente: titular com cargo público relevante (`eh_pep = 1`, `cargo_pep`). Exige monitoramento KYC reforçado |
 | **Esteira de risco** | Fila de monitoramento: primeiro carimbar métricas (envelope), depois cortar o que vira alerta (inspetor) |
 | **Falso negativo** | Alerta legítimo que a esteira **não** capturou |
 | **Falso positivo / ruído** | Transação que **não** deveria virar alerta e mesmo assim entrou na fila |

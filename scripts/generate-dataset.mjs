@@ -341,6 +341,18 @@ for (let i = 0; i < 62; i++) {
   addTxNormal(origem, destino, valorRedondoOuQuebrado(15, 1800), { descricao: pick(DESCRICOES_P2P) });
 }
 
+// --- Tipologia 4: Escalada rápida em PEP (C013) — timestamps fixos, sem rand() ---
+// Histórico compatível (evita disparar conta-aquecida: 10× a média) e três originações
+// em 27/08 cuja soma móvel de 3 PIX fica acima de R$ 20.000 e abaixo de R$ 25.000
+// (não altera o gabarito de janela-movel). Destino C022, fora da rede de smurfing.
+addTx('C013', 'C019', 2800, ts(2, 10, 15, 0), { descricao: 'Padaria', canal: 'APP' });
+addTx('C013', 'C019', 2800, ts(5, 11, 40, 0), { descricao: 'Padaria', canal: 'APP' });
+addTx('C013', 'C020', 3100, ts(9, 16, 5, 0), { descricao: 'Mercado', canal: 'APP' });
+addTx('C013', 'C022', 2900, ts(14, 9, 20, 0), { descricao: 'Aluguel complementar', canal: 'APP' });
+addTx('C013', 'C022', 7200, ts(27, 9, 10, 0), { descricao: 'Doação campanha', canal: 'INTERNET_BANKING' });
+addTx('C013', 'C022', 7500, ts(27, 11, 25, 0), { descricao: 'Doação campanha', canal: 'INTERNET_BANKING' });
+addTx('C013', 'C022', 6800, ts(27, 13, 40, 0), { descricao: 'Doação campanha', canal: 'INTERNET_BANKING' });
+
 // ---------------------------------------------------------------------------
 // Montagem final
 // ---------------------------------------------------------------------------
@@ -367,7 +379,7 @@ const pad = (n) => String(n).padStart(2, '0');
 
 const dataset = {
   metadata: {
-    versao: '1.1.0',
+    versao: '1.2.0',
     gerado_em: '2026-09-30 21:00:00',
     moeda: 'BRL',
     fuso_horario: 'America/Sao_Paulo',
@@ -397,7 +409,7 @@ const dataset = {
       {
         tipologia: 'PEP',
         descricao:
-          'Duas contas PF marcadas como Pessoa Exposta Politicamente (PEP) no cadastro KYC, com cargo declarado (Deputado Estadual e Prefeito), para monitoramento reforçado.',
+          'Duas contas PF marcadas como Pessoa Exposta Politicamente (PEP) no cadastro KYC (C013 Deputado Estadual, C004 Prefeito). C013 origina, em 27/08, três PIX consecutivos a C022 cuja soma móvel das últimas 3 operações supera R$ 20 mil (escrutínio reforçado).',
         contas_envolvidas: ['C013', 'C004'],
       },
     ],

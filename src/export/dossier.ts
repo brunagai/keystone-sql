@@ -102,6 +102,12 @@ function buildMarkdown(d: DossierData): string {
     evidence,
     '',
     '---',
+    '',
+    '### Parecer do Analista de Compliance',
+    '- **Decisão:** [ ] Arquivar (Falso Positivo) | [ ] Encaminhar Comunicação ao COAF',
+    '- **Justificativa Técnica:** _____________________________',
+    '',
+    '---',
     '_Gerado pelo AML SQL Lab com dados sintéticos, para fins educacionais._',
     '',
   ].join('\n');

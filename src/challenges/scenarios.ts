@@ -605,6 +605,122 @@ ORDER BY acumulado_movel_3 DESC, id_transacao;`,
       };
     },
   },
+  {
+    id: 'pep-escalada',
+    origem: 'base',
+    nivel: 4,
+    titulo: 'Nível 4.3 — Escalada Rápida em PEP (Escrutínio Reforçado)',
+    enquadramento:
+      'Circular Bacen 3.978/2020 c/c Carta Circular 4.001/2020 (Escrutínio Reforçado em Pessoas Expostas Politicamente)',
+    dossie:
+      'Titulares PEP exigem monitoramento reforçado: o mesmo volume que em um cliente comum pode ser apenas ruído vira ' +
+      'alerta quando o cargo público está no cadastro KYC. A denúncia aponta originações em sequência curta na conta de um ' +
+      'deputado estadual (C013), cada PIX isolado abaixo de R$ 10 mil. A esteira deve cruzar `eh_pep` com a soma móvel das ' +
+      'últimas três operações e só então aplicar o corte de escrutínio.',
+    objetivo:
+      'Identifique transações de titulares PEP (`c.eh_pep = 1`) cujo acumulado móvel das últimas 3 originações ' +
+      '(`SUM(valor) OVER (PARTITION BY id_conta_origem ORDER BY data_hora ROWS BETWEEN 2 PRECEDING AND CURRENT ROW)`) ' +
+      'supere R$ 20.000,00. Retorne `id_transacao`, `conta_origem`, `titular`, `cargo_pep`, `valor`, `data_hora` e ' +
+      '`acumulado_movel_pep` (2 casas). Ordene por `acumulado_movel_pep DESC, id_transacao ASC`.',
+    colunasEsperadas: [
+      'id_transacao',
+      'conta_origem',
+      'titular',
+      'cargo_pep',
+      'valor',
+      'data_hora',
+      'acumulado_movel_pep',
+    ],
+    ordenacao: 'acumulado_movel_pep DESC, id_transacao ASC',
+    dicaTexto:
+      'Faça o JOIN de `transacoes_pix` com `contas` no envelope para carimbar a janela e o cargo. O corte `eh_pep = 1` e ' +
+      '`acumulado_movel_pep > 20000` vai no `WHERE` externo — Window Function não entra no `WHERE` do mesmo `SELECT`.',
+    dicaSql: `-- FASE 1
+WITH envelope_metricas AS (
+  SELECT t.id_transacao, t.id_conta_origem AS conta_origem, c.titular, c.eh_pep, c.cargo_pep,
+         t.valor, t.data_hora,
+         SUM(t.valor) OVER (
+           PARTITION BY t.id_conta_origem ORDER BY t.data_hora
+           ROWS BETWEEN 2 PRECEDING AND CURRENT ROW
+         ) AS acumulado_movel_pep
+  FROM transacoes_pix t
+  JOIN contas c ON c.id_conta = t.id_conta_origem
+)
+-- FASE 2
+SELECT ...
+FROM envelope_metricas
+WHERE eh_pep = 1 AND acumulado_movel_pep > ...
+ORDER BY ...;`,
+    decomposicao: {
+      fase1: {
+        titulo: 'Fase 1 — O envelope `WITH`',
+        texto:
+          'Faça o `JOIN` entre `transacoes_pix` e `contas` e carimbe `SUM(valor) OVER (PARTITION BY id_conta_origem ORDER BY data_hora ROWS BETWEEN 2 PRECEDING AND CURRENT ROW)` mais `eh_pep` e `cargo_pep`. A janela considera todas as originações da conta, não só as de PEP. Selecione o `WITH` e use Testar Seleção / CTE.',
+      },
+      fase2: {
+        titulo: 'Fase 2 — O filtro do `WHERE` externo',
+        texto:
+          'No `SELECT` externo aplique o escrutínio reforçado: `eh_pep = 1` e `acumulado_movel_pep > 20000`. O Prefeito (C004) só entra se a soma móvel dele também romper o limiar; o recorte plantado é o Deputado (C013) em 27/08.',
+      },
+    },
+    gabaritoSql: `-- FASE 1: O ENVELOPE ANALÍTICO (Criação da linha do tempo e carimbo de métricas linha a linha)
+WITH envelope_metricas AS (
+  SELECT
+    t.id_transacao,
+    t.id_conta_origem AS conta_origem,
+    c.titular,
+    c.eh_pep,
+    c.cargo_pep,
+    t.valor,
+    t.data_hora,
+    -- Soma móvel das últimas 3 originações (linha atual + 2 anteriores)
+    ROUND(SUM(t.valor) OVER (
+      PARTITION BY t.id_conta_origem
+      ORDER BY t.data_hora
+      ROWS BETWEEN 2 PRECEDING AND CURRENT ROW
+    ), 2) AS acumulado_movel_pep
+  FROM transacoes_pix AS t
+  JOIN contas AS c ON c.id_conta = t.id_conta_origem
+)
+-- FASE 2: O INSPETOR DE RISCO (Corte regulatório e enriquecimento sobre os dados já carimbados)
+SELECT
+  id_transacao,
+  conta_origem,
+  titular,
+  cargo_pep,
+  valor,
+  data_hora,
+  acumulado_movel_pep
+FROM envelope_metricas
+WHERE eh_pep = 1                    -- escrutínio reforçado: só PEP
+  AND acumulado_movel_pep > 20000   -- corte: janela de 3 PIX acima de R$ 20 mil
+ORDER BY acumulado_movel_pep DESC, id_transacao ASC;`,
+    colunaChave: 'id_transacao',
+    rotuloEntidade: { singular: 'transação', plural: 'transações' },
+    dicasDivergencia: {
+      excesso:
+        'Há transações a mais. Filtre `eh_pep = 1` e `acumulado_movel_pep > 20000` (estrito) no WHERE externo. Não use o limiar de R$ 25 mil do desafio 4.2.',
+      falta:
+        'Faltam transações. Confira o JOIN com `contas`, o frame `ROWS BETWEEN 2 PRECEDING AND CURRENT ROW` e o corte `> 20000` (a terceira originação de C013 em 27/08 deve entrar).',
+      valores:
+        'As transações estão certas, mas `acumulado_movel_pep` ou `cargo_pep` divergem. Projeté `cargo_pep` do cadastro e `ROUND(SUM(valor) OVER (...), 2)`.',
+      ordenacao: 'Os dados estão corretos, mas a ordem não. Ordene por `acumulado_movel_pep DESC, id_transacao ASC`.',
+    },
+    resumirSucesso(gabarito) {
+      const titulares = distinct(columnValues(gabarito, 'titular'));
+      const cargos = distinct(columnValues(gabarito, 'cargo_pep'));
+      const picos = columnValues(gabarito, 'acumulado_movel_pep').map(Number);
+      const pico = picos.length > 0 ? Math.max(...picos) : 0;
+      return {
+        message:
+          `Escrutínio reforçado: ${gabarito.values.length} originação(ões) PEP com janela móvel acima de R$ 20 mil (pico ${formatBRL(pico)}; cargos: ${cargos.join(', ')}).`,
+        entities: titulares,
+        details: [
+          'Compare o 4.2 (`>= 25000`, qualquer titular) com este corte (`> 20000` só em `eh_pep = 1`): o limiar cai porque o risco do cargo público justifica alerta mais cedo.',
+        ],
+      };
+    },
+  },
 ];
 
 /** Catálogo base na ordem da trilha (a ordenação é estável dentro de cada nível). */
