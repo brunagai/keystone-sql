@@ -109,6 +109,7 @@ Os desafios estão organizados em **níveis progressivos**: cada nível introduz
 | | | **1.2 Incompatibilidade patrimonial** | Transferências de valor muito acima da renda declarada do titular |
 | **2 — Janelas e Classificação** | `ROW_NUMBER()` | **2.1 Pico individual por conta** | O maior PIX de cada conta no dia 18/08, com quantas operações e quanto cada uma movimentou no dia (atenção ao empate!) |
 | **3 — Análise Temporal** | `LAG` / `LEAD` | **3.1 Burst / alta frequência** | Transferências feitas com segundos de diferença pela mesma conta |
+| | `strftime` hora | **3.2 Transferência noturna sob coação** | PIX ≥ R$ 5 mil entre 20h e 5h59 (Res. BCB 142 / sequestro relâmpago) |
 | **4 — Composição com CTEs** | `WITH` + janelas | **4.1 Conta "aquecida"** | Contas que fazem PIX de teste de poucos reais e, dias depois, movimentam valores dezenas de vezes maiores |
 | | `ROWS BETWEEN` | **4.2 Acúmulo móvel (3 PIX)** | Soma móvel das últimas 3 originações ≥ R$ 25 mil (estruturação em janela) |
 | | PEP + janela | **4.3 Escalada rápida em PEP** | Titular PEP (`eh_pep = 1`) cuja soma móvel das últimas 3 originações supera R$ 20 mil |
@@ -184,9 +185,9 @@ Isso é o mesmo raciocínio do card **Decomposição em 2 Fases** nos níveis 3,
 3. Acompanhe as mensagens: o agente analisa as tipologias do Bacen e o dataset, redige o caso e roda um **Sanity Check** — executa o gabarito no banco para garantir que ele funciona e encontra evidências.
 4. Quando terminar, o desafio aparece no grupo **"Nível 5 — Laboratório Aberto (Agente IA)"** do seletor, já selecionado, e o editor recebe um **template comentado** com o título, o objetivo, as colunas esperadas e a ordenação. É só começar a escrever depois do `SELECT`.
 
-Focos disponíveis: fracionamento/smurfing, alta frequência/burst, incompatibilidade patrimonial, conta de passagem, concentração/dispersão (fan-in/fan-out), horário e canal atípicos e valores redondos.
+Focos disponíveis: os clássicos (fracionamento, burst, incompatibilidade, conta de passagem, fan-in/fan-out, horário atípico, valores redondos) e os **quatro blocos avançados** — (A) coação física/furto/PIX forçado, (B) invasão digital e engenharia social, (C) laranjas e mulas, (D) Carta Circular 4.001 avançada. O agente escolhe **uma** das **15 tipologias** do catálogo e aplica o corte SQL correspondente (hora noturna, micro-PIX + salto, fan-out, round-tripping, etc.).
 
-**Sem chave de IA?** Tudo bem: o agente usa um **gerador offline** com modelos de desafios prontos e parâmetros variados. Com uma chave, os desafios ficam inéditos e mais variados.
+**Sem chave de IA?** Tudo bem: o agente usa um **gerador offline** com modelos dos focos clássicos. Os blocos A–D ficam mais fiéis com uma chave (Groq/OpenAI).
 
 Outras informações:
 

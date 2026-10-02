@@ -6,7 +6,7 @@ import {
   DIFFICULTY_TOOLKIT,
   formatToolkitForPrompt,
 } from './difficultyToolkit.ts';
-import { DIFFICULTY_LABELS, FOCUS_LABELS, type ChallengeDifficulty, type GenerationRequest } from './types.ts';
+import { DIFFICULTY_LABELS, FOCUS_LABELS, FOCUS_TYPOLOGY_GUIDE, ADVANCED_TYPOLOGY_CATALOG, type ChallengeDifficulty, type GenerationRequest } from './types.ts';
 
 const REGULATORY_GUIDELINES = `
 - Circular Bacen 3.978/2020: política de PLD/FT com abordagem baseada em risco; conhecimento do cliente (KYC),
@@ -109,6 +109,8 @@ ${buildDatasetProfile(db)}
 ## Diretrizes regulatórias (Bacen)
 ${REGULATORY_GUIDELINES}
 
+${ADVANCED_TYPOLOGY_CATALOG}
+
 ${compilerSection(difficulty)}
 
 ## Regras obrigatórias para "solutionQuery"
@@ -125,8 +127,9 @@ ${compilerSection(difficulty)}
 - "contexto": dossiê/denúncia fictícia (2 a 4 frases), coerente com o dataset.
 - "objetivo": o que a query deve retornar, citando colunas esperadas, a ordenação e a técnica do nível (${kit.resumo}).
 - "dicaSql": esqueleto parcial da técnica, SEM entregar a resposta completa.
-- "badgeEnquadramento": cite a norma (ex.: "Carta Circular 4.001/2020 · Conta de passagem"). Não invente números de
+- "badgeEnquadramento": cite a norma (ex.: "Carta Circular 4.001/2020 · Conta de passagem" ou "Res. BCB 142/2021 · Limite noturno PIX"). Não invente números de
   artigos ou incisos dos quais não tenha certeza.
+- "tipologiaBacen": nomeie UMA das 15 tipologias do catálogo (não invente um 16º padrão).
 - "criteriosValidacao.descricaoSucesso": mensagem de parabéns explicando o que o resultado revela.
 
 Responda SOMENTE com um objeto JSON com as chaves: id, titulo, tipologiaBacen, badgeEnquadramento, contexto, objetivo,
@@ -137,6 +140,7 @@ export function buildUserPrompt({ focus, difficulty, avoidTitles }: GenerationRe
   const avoid = avoidTitles.length ? `\nNão repita estes desafios já existentes: ${avoidTitles.map((t) => `"${t}"`).join(', ')}.` : '';
   return `Gere um novo desafio.
 - Foco da tipologia: ${FOCUS_LABELS[focus]}.
+- Alinhamento ao catálogo de 15 padrões: ${FOCUS_TYPOLOGY_GUIDE[focus]}
 - Dificuldade: ${DIFFICULTY_LABELS[difficulty]} (${difficulty}).
 ${formatToolkitForPrompt(difficulty)}${avoid}`;
 }

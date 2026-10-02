@@ -76,7 +76,7 @@ src/
     cteInspector.ts        Completa um WITH sem SELECT externo para inspecionar a CTE
     sqlText.ts             Utilitários de texto SQL (remover comentários, comparar)
   challenges/
-    scenarios.ts           Interface InvestigationScenario, níveis da trilha e 7 cenários base
+    scenarios.ts           Interface InvestigationScenario, níveis da trilha e 8 cenários base
     twoPhase.ts            Decomposição pedagógica WITH → WHERE (N3, N4 e gerados)
     registry.ts            Catálogo único: cenários base + gerados (persistidos)
     validator.ts           Motor de validação semântica (orquestra compare + sqlErrors)
@@ -85,7 +85,7 @@ src/
     starterTemplate.ts     Template comentado inicial de cada desafio
     drafts.ts              Rascunhos por desafio
   agent/
-    types.ts               GeneratedChallenge, AiSettings, foco/dificuldade
+    types.ts               GeneratedChallenge, AiSettings, focos (incl. blocos A–D) e catálogo de 15 tipologias
     settingsStore.ts       Provedores (Groq/OpenAI) e persistência da chave
     prompt.ts              System/user prompt (DDL + perfil + normas Bacen + amarração por nível)
     difficultyToolkit.ts   Amarração Iniciante/Intermediário/Avançado + checagem do gabarito
@@ -182,7 +182,7 @@ Duas tabelas (ver `src/database/schema.ts`):
 
 ### 5.2 Dataset sintético
 
-`src/data/dataset.json` (versão de metadados **1.2.0**) é gerado por `scripts/generate-dataset.mjs` com PRNG `mulberry32` e semente fixa (`20260801`), portanto **é determinístico**: rodar o script de novo produz o mesmo arquivo. Período: 01 a 31/08/2026; limiar regulatório de referência: R$ 10.000. CPFs/CNPJs têm dígitos verificadores válidos, mas são aleatórios. O status PEP **não** consome o PRNG (mapa fixo `CARGO_PEP`). A escalada de C013 é gravada **depois** dos laços aleatórios, com `ts(...)` fixos e **sem** `rand()`, para não alterar a sequência das tipologias já plantadas.
+`src/data/dataset.json` (versão de metadados **1.3.0**) é gerado por `scripts/generate-dataset.mjs` com PRNG `mulberry32` e semente fixa (`20260801`), portanto **é determinístico**: rodar o script de novo produz o mesmo arquivo. Período: 01 a 31/08/2026; limiar regulatório de referência: R$ 10.000. CPFs/CNPJs têm dígitos verificadores válidos, mas são aleatórios. O status PEP **não** consome o PRNG (mapa fixo `CARGO_PEP`). Escalada PEP, coação noturna, ATO e valores redondos são gravados **depois** dos laços aleatórios, com `ts(...)` fixos e **sem** `rand()`, para não alterar a sequência das tipologias já homologadas.
 
 Além do "ruído" de transações legítimas, as tipologias plantadas são:
 
@@ -192,6 +192,9 @@ Além do "ruído" de transações legítimas, as tipologias plantadas são:
 | Burst | C031–C034 | Repasses via API, de madrugada, com intervalos < 60 s entre o mesmo par de contas (layering com retorno parcial) |
 | Incompatibilidade patrimonial | C035, C036, C037, C038 | Estudante, aposentada e MEI movimentam centenas de milhares de reais, muito acima da renda declarada |
 | PEP (KYC + escalada) | C013, C004 | Pessoa Exposta Politicamente: Deputado Estadual (C013, Brasília) e Prefeito (C004, Curitiba). C013 origina, em **27/08**, três PIX a C022 (R$ 7.200, R$ 7.500 e R$ 6.800) após histórico compatível; a soma móvel das 3 supera R$ 20 mil e fica abaixo de R$ 25 mil (não entra no gabarito 4.2). |
+| Coação noturna | C005, C032 | Advogada (rotina diurna) envia R$ 8.500 (23:42) e R$ 9.200 (01:50) à intermediadora C032 |
+| Account takeover | C001, C034 | Micro-PIX de R$ 1,50 e R$ 2,00 e, 4 min depois, R$ 15.000 via API |
+| Valores redondos | C009, C007, C010, C001 | Múltiplos de R$ 5.000 (R$ 20.000, R$ 10.000, R$ 5.000 e o ATO de R$ 15.000), cada um abaixo do corte da janela móvel (R$ 25 mil) |
 
 ### 5.3 Ciclo de vida
 
@@ -296,7 +299,7 @@ Todo cenário tem `nivel: TrailLevel` (`1 | 2 | 3 | 4 | 5`). `TRAIL_LEVELS` guar
 | --- | --- | --- |
 | 1 | Fundamentos de Agregação | `GROUP BY`, `HAVING`, `JOIN` e limiares |
 | 2 | Janelas e Classificação | `ROW_NUMBER() OVER (PARTITION BY …)` |
-| 3 | Análise Temporal e Mudança de Padrão | `LAG` / `LEAD` |
+| 3 | Análise Temporal e Mudança de Padrão | `LAG` / `LEAD` e recorte horário (`strftime`) |
 | 4 | Composição Analítica com CTEs | `WITH` + janelas, `LAG` e `ROWS BETWEEN` |
 | 5 | Laboratório Aberto (Agente IA) | Desafios gerados (LLM ou offline); o adaptador atribui `nivel: 5` |
 
@@ -308,6 +311,7 @@ Todo cenário tem `nivel: TrailLevel` (`1 | 2 | 3 | 4 | 5`). `TRAIL_LEVELS` guar
 | 1 | `incompatibilidade` | Incompatibilidade patrimonial bruta | `id_transacao, conta_origem, titular, renda_mensal, valor, fator_incompatibilidade` | `fator_incompatibilidade DESC` |
 | 2 | `pico-diario` | Pico individual por conta no dia 18/08 (ROW_NUMBER) | `conta_origem, id_transacao, maior_pix, data_hora, qtd_no_dia, total_no_dia` | `maior_pix DESC, conta_origem` |
 | 3 | `burst` | Burst / alta frequência em janela curta | `id_transacao, conta_origem, conta_destino, valor, data_hora, intervalo_segundos` | `conta_origem ASC, data_hora ASC` |
+| 3 | `noturno-coacao` | Nível 3.2 — Transferência Noturna Sob Coação (Sequestro / Madrugada) | `id_transacao, conta_origem, conta_destino, valor, data_hora, hora_transacao` | `valor DESC, data_hora ASC` |
 | 4 | `conta-aquecida` | Conta "aquecida": PIX de teste seguido de salto abrupto (CTE) | `id_transacao, conta_origem, titular, valor, data_hora, intervalo_horas, media_historica, salto` | `salto DESC, id_transacao` |
 | 4 | `janela-movel` | Acúmulo móvel: soma das últimas 3 originações (ROWS BETWEEN) | `id_transacao, conta_origem, titular, valor, data_hora, acumulado_movel_3` | `acumulado_movel_3 DESC, id_transacao` |
 | 4 | `pep-escalada` | Nível 4.3 — Escalada Rápida em PEP (Escrutínio Reforçado) | `id_transacao, conta_origem, titular, cargo_pep, valor, data_hora, acumulado_movel_pep` | `acumulado_movel_pep DESC, id_transacao ASC` |
@@ -318,6 +322,7 @@ Notas de desenho:
 - **`conta-aquecida`** combina quatro regras no `WHERE` externo: 1 a 3 PIX anteriores, `valor >= 10 × média histórica` (frame `ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING`), `valor >= 5000` e intervalo de até 10 dias desde o PIX anterior (`LAG`). O resultado são as quatro contas laranja que fazem PIX de teste (C026, C027, C035, C036). Relaxar o critério de histórico faz aparecer falsos positivos legítimos (C006, C016).
 - **`janela-movel`** carimba `SUM(valor) OVER (PARTITION BY id_conta_origem ORDER BY data_hora ROWS BETWEEN 2 PRECEDING AND CURRENT ROW)` e corta `acumulado_movel_3 >= 25000` no `WHERE` externo (marcadores FASE 1 / FASE 2). No dataset atual o gabarito devolve **18 linhas** (estruturação C026–C029, circuito C035–C038, PIX isolados altos como C025/C021/C023).
 - **`pep-escalada`** faz `JOIN` `transacoes_pix`/`contas` no envelope, carimba a mesma janela de 3 PIX como `acumulado_movel_pep` e no inspetor exige `eh_pep = 1` e `acumulado_movel_pep > 20000`. O recorte plantado é C013 (Deputado Estadual) em 27/08; valores individuais < R$ 10 mil e soma móvel < R$ 25 mil para não colidir com smurfing, burst, incompatibilidade, conta-aquecida nem 4.2.
+- **`noturno-coacao`** carimba `hora_transacao` com `CAST(strftime('%H', data_hora) AS INTEGER)` e corta `valor >= 5000` e `(hora >= 20 OR hora < 6)`. Inclui C005→C032 (R$ 8.500 / R$ 9.200) e originações noturnas ≥ R$ 5 mil da cadeia burst (C032).
 
 ### 8.4 Adicionar um cenário base
 
@@ -362,7 +367,7 @@ interface GeneratedChallenge {
 flowchart TD
   A[Pedido: foco + dificuldade + títulos a evitar] --> B{Há chave?}
   B -- não --> OFF[Gerador offline]
-  B -- sim --> P[System prompt: DDL + perfil + Bacen + toolkit do nível]
+  B -- sim --> P[System prompt: DDL + perfil + Bacen + 15 tipologias + toolkit]
   P --> C[POST /chat/completions]
   C -- erro HTTP/rede/timeout --> OFF
   C --> D[parseGeneratedChallenge]
@@ -375,7 +380,7 @@ flowchart TD
   OFF --> R
 ```
 
-- **Prompt** (`prompt.ts` + `difficultyToolkit.ts`): `buildSystemPrompt(db, difficulty)` **exige** o nível (`iniciante` | `intermediario` | `avancado`) e injeta o toolkit correspondente como **PRIORIDADE MÁXIMA** (os outros níveis aparecem só como “não usar”). Colunas reais (`id_conta_origem`, `renda_mensal_declarada`, `eh_pep`, `cargo_pep`, …) e dialeto SQLite (`strftime`, `unixepoch`) entram no contexto; o perfil do dataset lista a contagem PEP. Regras de ferramental:
+- **Prompt** (`prompt.ts` + `difficultyToolkit.ts` + `types.ts`): `buildSystemPrompt(db, difficulty)` **exige** o nível e injeta o toolkit como **PRIORIDADE MÁXIMA**. O system prompt inclui o **catálogo de 15 tipologias** (`ADVANCED_TYPOLOGY_CATALOG`: blocos A coação/furto, B invasão digital, C laranjas/mulas, D Carta Circular 4.001) com cláusulas SQL de corte. O user prompt injeta `FOCUS_TYPOLOGY_GUIDE[focus]`. Colunas reais (`eh_pep`, `cargo_pep`, …) e dialeto SQLite entram no contexto. Regras de ferramental:
 
   | Nível | Obrigatório | Proibido | Foco |
   | --- | --- | --- | --- |
@@ -387,7 +392,7 @@ flowchart TD
 - **Sanity Check** (`challengeVerifier.ts`): somente leitura, `ORDER BY` externo, `checkDifficultyToolkit` **quando** `difficulty` é passado (pipeline LLM em `aiService`; o gerador offline **não** passa o nível, para os templates sem marcadores FASE 1/2 continuarem válidos). Executa em `runIsolated`, 1–150 linhas, mesmas colunas que `colunasEsperadas`. Nomes reais substituem os declarados. A razão da falha volta ao modelo como correção.
 - **Autocorreção**: até 3 tentativas; a conversa acumula a resposta anterior e o erro do SQLite.
 - **Timeout** de 60 s por requisição (`AbortSignal.timeout`) combinado com o cancelamento da usuária (`AbortSignal.any`). Cancelar **não** cai no offline.
-- **Fallback offline** (`offlineGenerator.ts`): 8 templates parametrizados (horário atípico, fan-in em conta nova, conta de passagem, valores redondos, fracionamento, rajadas por hora, recebimentos vs. renda de PF, maior PIX vs. faturamento de PJ com `ROW_NUMBER`). Os parâmetros são sorteados e o resultado passa pelo Sanity Check **sem** `checkDifficultyToolkit` (os templates não trazem os marcadores FASE 1/2).
+- **Fallback offline** (`offlineGenerator.ts`): 8 templates dos **focos clássicos**. Os blocos A–D (`coacao_fisica`, `invasao_digital`, `laranjas_mulas`, `bacen_avancado`) são cobertos pela LLM; offline nesses focos pode não achar template.
 
 ### 9.4 Integração com o validador
 

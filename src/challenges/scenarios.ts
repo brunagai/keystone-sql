@@ -17,7 +17,7 @@ export interface TrailLevelInfo {
 export const TRAIL_LEVELS: Record<TrailLevel, TrailLevelInfo> = {
   1: { titulo: 'Fundamentos de Agregação', tecnica: 'GROUP BY, HAVING, JOIN e limiares' },
   2: { titulo: 'Janelas e Classificação', tecnica: 'ROW_NUMBER() OVER (PARTITION BY …)' },
-  3: { titulo: 'Análise Temporal e Mudança de Padrão', tecnica: 'LAG / LEAD' },
+  3: { titulo: 'Análise Temporal e Mudança de Padrão', tecnica: 'LAG / LEAD e recorte horário (strftime)' },
   4: { titulo: 'Composição Analítica com CTEs', tecnica: 'WITH + janelas, LAG e ROWS BETWEEN' },
   5: { titulo: 'Laboratório Aberto (Agente IA)', tecnica: 'Desafios gerados por LLM ou offline' },
 };
@@ -233,6 +233,100 @@ ORDER BY conta_origem ASC, data_hora ASC;`,
         entities: contas,
         details: [
           'Repare que nem todo alerta é suspeito: pagamentos de folha e repasses de aluguel em lote (PJs C021 e C022) também caem na janela. A diligência do analista separa automação legítima de layering.',
+        ],
+      };
+    },
+  },
+  {
+    id: 'noturno-coacao',
+    origem: 'base',
+    nivel: 3,
+    titulo: 'Nível 3.2 — Transferência Noturna Sob Coação (Sequestro / Madrugada)',
+    enquadramento:
+      'Carta Circular Bacen 4.001/2020 c/c Resolução BCB 142/2021 (Regulamentação de Limite Noturno do PIX)',
+    dossie:
+      'A Resolução BCB 142/2021 restringe o PIX noturno precisamente porque sequestro relâmpago, furto de celular e ' +
+      'transferência forçada concentram-se entre o fim da noite e a madrugada, quando o titular não opera o aplicativo ' +
+      'por rotina comercial. A área de PLD quer a esteira listando originações de valor relevante nesse fuso, inclusive ' +
+      'a advogada C005 (perfil estritamente diurno) que passou a enviar PIX elevados a uma intermediadora (C032) após 23h30.',
+    objetivo:
+      'Identifique transações com `valor >= 5000` realizadas no período noturno/madrugada, com ' +
+      "`CAST(strftime('%H', data_hora) AS INTEGER)` em `hora_transacao` e corte `hora_transacao >= 20 OR hora_transacao < 6`. " +
+      'Retorne `id_transacao`, `conta_origem`, `conta_destino`, `valor`, `data_hora` e `hora_transacao`. ' +
+      'Ordene por `valor DESC, data_hora ASC`.',
+    colunasEsperadas: ['id_transacao', 'conta_origem', 'conta_destino', 'valor', 'data_hora', 'hora_transacao'],
+    ordenacao: 'valor DESC, data_hora ASC',
+    dicaTexto:
+      "Carimbe a hora no envelope com `CAST(strftime('%H', data_hora) AS INTEGER)`. O `WHERE` do SQLite não aceita alias da mesma projeção: " +
+      'use a CTE (FASE 1) e filtre `hora_transacao` e `valor` no SELECT externo (FASE 2).',
+    dicaSql: `-- FASE 1
+WITH envelope_metricas AS (
+  SELECT t.id_transacao, t.id_conta_origem AS conta_origem, t.id_conta_destino AS conta_destino,
+         t.valor, t.data_hora,
+         CAST(strftime('%H', t.data_hora) AS INTEGER) AS hora_transacao
+  FROM transacoes_pix t
+)
+-- FASE 2
+SELECT ...
+FROM envelope_metricas
+WHERE valor >= ...
+  AND (hora_transacao >= 20 OR hora_transacao < 6)
+ORDER BY ...;`,
+    decomposicao: {
+      fase1: {
+        titulo: 'Fase 1 — O envelope `WITH`',
+        texto:
+          "Na CTE, projete as colunas de evidência e carimbe `hora_transacao` com `CAST(strftime('%H', data_hora) AS INTEGER)`. Não aplique o recorte noturno nem o limiar de valor aqui — o compilador precisa da coluna já materializada.",
+      },
+      fase2: {
+        titulo: 'Fase 2 — O filtro do `WHERE` externo',
+        texto:
+          'No inspetor, corte `valor >= 5000` e `(hora_transacao >= 20 OR hora_transacao < 6)` (20h–5h59, horário de Brasília). A Res. BCB 142 trata esse fuso como de risco elevado para PIX forçado.',
+      },
+    },
+    gabaritoSql: `-- FASE 1: O ENVELOPE ANALÍTICO (Criação da linha do tempo e carimbo de métricas linha a linha)
+WITH envelope_metricas AS (
+  SELECT
+    t.id_transacao,
+    t.id_conta_origem  AS conta_origem,
+    t.id_conta_destino AS conta_destino,
+    t.valor,
+    t.data_hora,
+    -- Hora cheia 0–23 (Brasília); o alias só existe depois desta CTE
+    CAST(strftime('%H', t.data_hora) AS INTEGER) AS hora_transacao
+  FROM transacoes_pix AS t
+)
+-- FASE 2: O INSPETOR DE RISCO (Corte regulatório e enriquecimento sobre os dados já carimbados)
+SELECT
+  id_transacao,
+  conta_origem,
+  conta_destino,
+  valor,
+  data_hora,
+  hora_transacao
+FROM envelope_metricas
+WHERE valor >= 5000
+  AND (hora_transacao >= 20 OR hora_transacao < 6)  -- noturno / madrugada (Res. BCB 142)
+ORDER BY valor DESC, data_hora ASC;`,
+    colunaChave: 'id_transacao',
+    rotuloEntidade: { singular: 'transação', plural: 'transações' },
+    dicasDivergencia: {
+      excesso:
+        'Há transações a mais. Confira `valor >= 5000` e o recorte `(hora >= 20 OR hora < 6)`. `strftime(\'%H\')` devolve texto; faça o `CAST` no envelope.',
+      falta:
+        'Faltam transações. Inclua 20h–23h e 00h–05h (`hora < 6`). C005→C032 após 23h30 e rajadas noturnas da C032 com valor ≥ R$ 5 mil devem entrar.',
+      valores:
+        'As transações estão certas, mas `hora_transacao` diverge. Use `CAST(strftime(\'%H\', data_hora) AS INTEGER)` (0 a 23), sem fuso extra.',
+      ordenacao: 'Os dados estão corretos, mas a ordem não. Ordene por `valor DESC, data_hora ASC`.',
+    },
+    resumirSucesso(gabarito) {
+      const origens = distinct(columnValues(gabarito, 'conta_origem'));
+      const total = sum(columnValues(gabarito, 'valor'));
+      return {
+        message: `Recorte noturno da Res. BCB 142: ${gabarito.values.length} PIX ≥ R$ 5 mil entre 20h e 5h59 (${origens.length} origens; volume ${formatBRL(total)}).`,
+        entities: origens,
+        details: [
+          'Compare com o perfil diurno da C005: honorários e rotina comercial não explicam PIX de R$ 8.500 e R$ 9.200 à C032 depois das 23h30 — típico de coação ou drible de limite noturno.',
         ],
       };
     },

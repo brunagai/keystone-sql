@@ -4,10 +4,10 @@ Laboratório local para praticar **SQL analítico aplicado à Prevenção à Lav
 
 ## Destaques
 
-- **SQLite no navegador** (sql.js): banco em memória com 38 contas e transações PIX fictícias, com smurfing, burst, incompatibilidade patrimonial e cadastro **PEP** (`eh_pep` / `cargo_pep` em C013 e C004; C013 com escalada de originações em 27/08).
-- **Trilha de 7 desafios base**: agregação, `ROW_NUMBER`, `LAG`, conta aquecida (CTE), **acúmulo móvel** (`ROWS BETWEEN`) e **escalada rápida em PEP** (escrutínio reforçado).
+- **SQLite no navegador** (sql.js): banco em memória com 38 contas e transações PIX fictícias (smurfing, burst, incompatibilidade, PEP, coação noturna C005→C032, account takeover e valores redondos).
+- **Trilha de 8 desafios base**, incluindo **3.2 Transferência noturna sob coação** (`strftime` / Res. BCB 142).
 - **Validação semântica (esteira de risco)**: compara o *resultado* com o gabarito (aliases, ordem de colunas e ± R$ 0,01). Divergências viram auditoria (falsos negativos, ruído, fila de priorização). No acerto, o card mostra **Alertas Capturados / Falsos Positivos / Eficiência**. Window Function no `WHERE` explica a **ordem do compilador SQL**.
-- **Agente Educador IA (BYOK)**: gera desafios inéditos com Groq ou OpenAI, com ferramental SQL amarrado ao nível (Iniciante sem `WITH`/janelas; Intermediário `ROW_NUMBER`/`RANK`; Avançado `LAG`/`LEAD` em CTE). Todo gabarito da IA passa por Sanity Check no SQLite. Sem chave, um gerador offline assume.
+- **Agente Educador IA (BYOK)**: 15 tipologias em 4 blocos (coação/furto, invasão digital, laranjas/mulas, Carta Circular 4.001), com corte SQL por padrão e ferramental amarrado ao nível. Sem chave, gerador offline nos focos clássicos.
 - **Experiência de estudo**: rascunho salvo por desafio, histórico das últimas execuções, gabarito comentado e exportação do dossiê em Markdown (com **parecer do analista** para COAF/arquivo) ou CSV.
 - **Privacidade**: sem backend. A chave de API fica só no `localStorage` do navegador.
 

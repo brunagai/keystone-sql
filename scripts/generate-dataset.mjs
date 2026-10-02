@@ -353,6 +353,41 @@ addTx('C013', 'C022', 7200, ts(27, 9, 10, 0), { descricao: 'Doação campanha', 
 addTx('C013', 'C022', 7500, ts(27, 11, 25, 0), { descricao: 'Doação campanha', canal: 'INTERNET_BANKING' });
 addTx('C013', 'C022', 6800, ts(27, 13, 40, 0), { descricao: 'Doação campanha', canal: 'INTERNET_BANKING' });
 
+// --- Catálogo avançado (fraude grave + PLD) — timestamps fixos, sem rand() ---
+// Histórico diurno da C005 (advogada) para não disparar conta-aquecida (10× a média).
+addTx('C005', 'C021', 2200, ts(4, 10, 12, 0), { descricao: 'Honorários consultoria', canal: 'INTERNET_BANKING' });
+addTx('C005', 'C021', 2200, ts(8, 10, 18, 0), { descricao: 'Honorários consultoria', canal: 'INTERNET_BANKING' });
+addTx('C005', 'C021', 2200, ts(11, 15, 5, 0), { descricao: 'Honorários consultoria', canal: 'INTERNET_BANKING' });
+addTx('C005', 'C021', 2200, ts(16, 9, 40, 0), { descricao: 'Honorários consultoria', canal: 'INTERNET_BANKING' });
+// a) Sequestro / drible de limite noturno: C005 (perfil diurno) → C032 entre 23h30 e 02h15.
+addTx('C005', 'C032', 8500, ts(23, 23, 42, 0), { descricao: 'PIX', canal: 'APP' });
+addTx('C005', 'C032', 9200, ts(24, 1, 50, 0), { descricao: 'PIX', canal: 'APP' });
+// b) Account Takeover: micro-PIX de teste e, 4 min depois, R$ 15.000 via API (intervalo > 60 s entre os testes).
+addTx('C001', 'C019', 45, ts(3, 8, 0, 0), { descricao: 'Padaria', canal: 'APP' });
+addTx('C001', 'C019', 32, ts(7, 8, 10, 0), { descricao: 'Padaria', canal: 'APP' });
+addTx('C001', 'C020', 80, ts(12, 12, 0, 0), { descricao: 'Mercado', canal: 'APP' });
+addTx('C001', 'C019', 22, ts(17, 9, 0, 0), { descricao: 'Padaria', canal: 'APP' });
+addTx('C001', 'C034', 1.5, ts(21, 14, 10, 0), { descricao: 'teste', canal: 'APP' });
+addTx('C001', 'C034', 2.0, ts(21, 14, 11, 30), { descricao: 'teste', canal: 'APP' });
+addTx('C001', 'C034', 15000, ts(21, 14, 15, 30), { descricao: 'TED', canal: 'API' });
+// c) Valores exatamente redondos (múltiplos de R$ 5.000) — origens sem PIX alto prévio e não PEP
+// (não infla janela-movel nem pep-escalada). Histórico diurno evita conta-aquecida (10× a média).
+addTx('C009', 'C020', 2400, ts(4, 11, 0, 0), { descricao: 'Compras', canal: 'APP' });
+addTx('C009', 'C020', 2400, ts(8, 11, 10, 0), { descricao: 'Compras', canal: 'APP' });
+addTx('C009', 'C019', 2400, ts(12, 11, 20, 0), { descricao: 'Compras', canal: 'APP' });
+addTx('C009', 'C020', 2400, ts(14, 11, 30, 0), { descricao: 'Compras', canal: 'APP' });
+addTx('C009', 'C024', 20000, ts(15, 10, 22, 0), { descricao: 'Aporte comercial', canal: 'INTERNET_BANKING' });
+addTx('C007', 'C019', 3600, ts(4, 12, 0, 0), { descricao: 'Insumos', canal: 'APP' });
+addTx('C007', 'C019', 3600, ts(9, 12, 10, 0), { descricao: 'Insumos', canal: 'APP' });
+addTx('C007', 'C020', 3600, ts(13, 12, 20, 0), { descricao: 'Insumos', canal: 'APP' });
+addTx('C007', 'C019', 3600, ts(16, 12, 30, 0), { descricao: 'Insumos', canal: 'APP' });
+addTx('C007', 'C023', 10000, ts(19, 11, 8, 0), { descricao: 'Aquisição equipamento', canal: 'INTERNET_BANKING' });
+addTx('C010', 'C019', 50, ts(3, 13, 0, 0), { descricao: 'Padaria', canal: 'APP' });
+addTx('C010', 'C019', 50, ts(6, 13, 10, 0), { descricao: 'Padaria', canal: 'APP' });
+addTx('C010', 'C019', 50, ts(10, 13, 20, 0), { descricao: 'Padaria', canal: 'APP' });
+addTx('C010', 'C019', 50, ts(14, 13, 30, 0), { descricao: 'Padaria', canal: 'APP' });
+addTx('C010', 'C019', 5000, ts(26, 14, 0, 0), { descricao: 'Mensalidade extra', canal: 'INTERNET_BANKING' });
+
 // ---------------------------------------------------------------------------
 // Montagem final
 // ---------------------------------------------------------------------------
@@ -379,7 +414,7 @@ const pad = (n) => String(n).padStart(2, '0');
 
 const dataset = {
   metadata: {
-    versao: '1.2.0',
+    versao: '1.3.0',
     gerado_em: '2026-09-30 21:00:00',
     moeda: 'BRL',
     fuso_horario: 'America/Sao_Paulo',
@@ -411,6 +446,24 @@ const dataset = {
         descricao:
           'Duas contas PF marcadas como Pessoa Exposta Politicamente (PEP) no cadastro KYC (C013 Deputado Estadual, C004 Prefeito). C013 origina, em 27/08, três PIX consecutivos a C022 cuja soma móvel das últimas 3 operações supera R$ 20 mil (escrutínio reforçado).',
         contas_envolvidas: ['C013', 'C004'],
+      },
+      {
+        tipologia: 'COACAO_NOTURNA',
+        descricao:
+          'C005 (advogada, rotina diurna) origina PIX de R$ 8.500 (23:42) e R$ 9.200 (01:50) à intermediadora C032, típico de sequestro relâmpago / drible de limite noturno (Res. BCB 142/2021).',
+        contas_envolvidas: ['C005', 'C032'],
+      },
+      {
+        tipologia: 'ACCOUNT_TAKEOVER',
+        descricao:
+          'C001 envia micro-PIX de teste (R$ 1,50 e R$ 2,00) à C034 e, 4 minutos depois, R$ 15.000 via API (aquecimento de credencial / troca de canal).',
+        contas_envolvidas: ['C001', 'C034'],
+      },
+      {
+        tipologia: 'VALORES_REDONDOS',
+        descricao:
+          'Aportes exatamente múltiplos de R$ 5.000 (R$ 20.000, R$ 10.000 e R$ 5.000), além do R$ 15.000 do ATO; valores isolados abaixo de R$ 25 mil para não alterar o gabarito da janela móvel.',
+        contas_envolvidas: ['C009', 'C024', 'C007', 'C023', 'C010', 'C019', 'C001'],
       },
     ],
   },
