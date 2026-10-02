@@ -5,7 +5,7 @@ export interface TableDictionary {
 
 export const DATA_DICTIONARY: Record<string, TableDictionary> = {
   contas: {
-    descricao: 'Cadastro KYC das contas de pagamento (PF e PJ) com renda/faturamento declarado.',
+    descricao: 'Cadastro KYC das contas de pagamento (PF e PJ) com renda/faturamento declarado e indicador de Pessoa Exposta Politicamente (PEP).',
     colunas: {
       id_conta: 'Identificador interno da conta.',
       titular: 'Nome do titular ou razão social.',
@@ -22,6 +22,8 @@ export const DATA_DICTIONARY: Record<string, TableDictionary> = {
       cidade: 'Município do cadastro.',
       uf: 'Unidade federativa (2 letras).',
       data_abertura: 'Data de abertura da conta (YYYY-MM-DD).',
+      eh_pep: 'Indicador KYC de Pessoa Exposta Politicamente (1 = PEP, 0 = não).',
+      cargo_pep: 'Cargo ou função que motiva o enquadramento PEP (NULL se eh_pep = 0).',
     },
   },
   transacoes_pix: {

@@ -5,8 +5,8 @@ Laboratório local para praticar **SQL analítico aplicado à Prevenção à Lav
 ## Destaques
 
 - **SQLite no navegador** (sql.js): banco em memória com 38 contas e 263 transações PIX fictícias, com casos plantados de smurfing, burst e incompatibilidade patrimonial.
-- **Validação semântica**: compara o *resultado* da sua consulta com o gabarito, aceitando aliases, colunas em outra ordem e arredondamentos de até R$ 0,01. Os erros de SQL são explicados em português.
-- **Agente Educador IA (BYOK)**: gera desafios inéditos com Groq ou OpenAI, com enquadramento na Circular Bacen 3.978/2020 e na Carta Circular 4.001/2020. Todo gabarito passa por um Sanity Check no SQLite. Sem chave, um gerador offline assume.
+- **Validação semântica (esteira de risco)**: compara o *resultado* da sua consulta com o gabarito (aliases, ordem de colunas e ± R$ 0,01). Divergências viram linguagem de auditoria (falsos negativos, ruído, fila de priorização). Window Function no `WHERE` explica a **ordem do compilador SQL**.
+- **Agente Educador IA (BYOK)**: gera desafios inéditos com Groq ou OpenAI, com ferramental SQL amarrado ao nível (Iniciante sem `WITH`/janelas; Intermediário `ROW_NUMBER`/`RANK`; Avançado `LAG`/`LEAD` em CTE). Todo gabarito da IA passa por Sanity Check no SQLite. Sem chave, um gerador offline assume.
 - **Experiência de estudo**: rascunho salvo por desafio, histórico das últimas execuções, gabarito comentado e exportação do dossiê em Markdown ou CSV.
 - **Privacidade**: sem backend. A chave de API fica só no `localStorage` do navegador.
 

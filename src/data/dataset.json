@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "versao": "1.0.0",
+    "versao": "1.1.0",
     "gerado_em": "2026-09-30 21:00:00",
     "moeda": "BRL",
     "fuso_horario": "America/Sao_Paulo",
@@ -43,6 +43,14 @@
           "C037",
           "C038"
         ]
+      },
+      {
+        "tipologia": "PEP",
+        "descricao": "Duas contas PF marcadas como Pessoa Exposta Politicamente (PEP) no cadastro KYC, com cargo declarado (Deputado Estadual e Prefeito), para monitoramento reforçado.",
+        "contas_envolvidas": [
+          "C013",
+          "C004"
+        ]
       }
     ]
   },
@@ -62,7 +70,9 @@
       "chave_pix": "ana.carvalho@uol.com.br",
       "cidade": "São Paulo",
       "uf": "SP",
-      "data_abertura": "2015-03-12"
+      "data_abertura": "2015-03-12",
+      "eh_pep": 0,
+      "cargo_pep": null
     },
     {
       "id_conta": "C002",
@@ -79,7 +89,9 @@
       "chave_pix": "67916909332",
       "cidade": "Rio de Janeiro",
       "uf": "RJ",
-      "data_abertura": "2019-08-21"
+      "data_abertura": "2019-08-21",
+      "eh_pep": 0,
+      "cargo_pep": null
     },
     {
       "id_conta": "C003",
@@ -96,7 +108,9 @@
       "chave_pix": "b3cceeac-244f-497e-af06-3e1feb1d2d7b",
       "cidade": "Belo Horizonte",
       "uf": "MG",
-      "data_abertura": "2013-05-02"
+      "data_abertura": "2013-05-02",
+      "eh_pep": 0,
+      "cargo_pep": null
     },
     {
       "id_conta": "C004",
@@ -113,7 +127,9 @@
       "chave_pix": "21605765732",
       "cidade": "Curitiba",
       "uf": "PR",
-      "data_abertura": "2011-02-14"
+      "data_abertura": "2011-02-14",
+      "eh_pep": 1,
+      "cargo_pep": "Prefeito"
     },
     {
       "id_conta": "C005",
@@ -130,7 +146,9 @@
       "chave_pix": "eduarda.rocha@hotmail.com",
       "cidade": "Porto Alegre",
       "uf": "RS",
-      "data_abertura": "2014-09-30"
+      "data_abertura": "2014-09-30",
+      "eh_pep": 0,
+      "cargo_pep": null
     },
     {
       "id_conta": "C006",
@@ -147,7 +165,9 @@
       "chave_pix": "90506975002",
       "cidade": "Campinas",
       "uf": "SP",
-      "data_abertura": "2012-07-19"
+      "data_abertura": "2012-07-19",
+      "eh_pep": 0,
+      "cargo_pep": null
     },
     {
       "id_conta": "C007",
@@ -164,7 +184,9 @@
       "chave_pix": "5e873b71-73e2-4b4a-bff0-4ef17ad3765f",
       "cidade": "Florianópolis",
       "uf": "SC",
-      "data_abertura": "2020-01-08"
+      "data_abertura": "2020-01-08",
+      "eh_pep": 0,
+      "cargo_pep": null
     },
     {
       "id_conta": "C008",
@@ -181,7 +203,9 @@
       "chave_pix": "henrique.oliveira@gmail.com",
       "cidade": "Recife",
       "uf": "PE",
-      "data_abertura": "2010-11-23"
+      "data_abertura": "2010-11-23",
+      "eh_pep": 0,
+      "cargo_pep": null
     },
     {
       "id_conta": "C009",
@@ -198,7 +222,9 @@
       "chave_pix": "96718590118",
       "cidade": "Salvador",
       "uf": "BA",
-      "data_abertura": "2018-04-17"
+      "data_abertura": "2018-04-17",
+      "eh_pep": 0,
+      "cargo_pep": null
     },
     {
       "id_conta": "C010",
@@ -215,7 +241,9 @@
       "chave_pix": "102c99e4-867e-422b-ae86-8e4a84811c01",
       "cidade": "Fortaleza",
       "uf": "CE",
-      "data_abertura": "2022-02-25"
+      "data_abertura": "2022-02-25",
+      "eh_pep": 0,
+      "cargo_pep": null
     },
     {
       "id_conta": "C011",
@@ -232,7 +260,9 @@
       "chave_pix": "larissa.teixeira@outlook.com",
       "cidade": "Goiânia",
       "uf": "GO",
-      "data_abertura": "2016-06-06"
+      "data_abertura": "2016-06-06",
+      "eh_pep": 0,
+      "cargo_pep": null
     },
     {
       "id_conta": "C012",
@@ -249,7 +279,9 @@
       "chave_pix": "42319547045",
       "cidade": "Manaus",
       "uf": "AM",
-      "data_abertura": "2017-10-11"
+      "data_abertura": "2017-10-11",
+      "eh_pep": 0,
+      "cargo_pep": null
     },
     {
       "id_conta": "C013",
@@ -266,7 +298,9 @@
       "chave_pix": "67832185112",
       "cidade": "Brasília",
       "uf": "DF",
-      "data_abertura": "2009-03-03"
+      "data_abertura": "2009-03-03",
+      "eh_pep": 1,
+      "cargo_pep": "Deputado Estadual"
     },
     {
       "id_conta": "C014",
@@ -283,7 +317,9 @@
       "chave_pix": "ddeeb2fc-8b67-4765-8ee5-4ef2979ce77d",
       "cidade": "Belém",
       "uf": "PA",
-      "data_abertura": "2021-05-28"
+      "data_abertura": "2021-05-28",
+      "eh_pep": 0,
+      "cargo_pep": null
     },
     {
       "id_conta": "C015",
@@ -300,7 +336,9 @@
       "chave_pix": "renata.castro@outlook.com",
       "cidade": "Vitória",
       "uf": "ES",
-      "data_abertura": "2015-12-01"
+      "data_abertura": "2015-12-01",
+      "eh_pep": 0,
+      "cargo_pep": null
     },
     {
       "id_conta": "C016",
@@ -317,7 +355,9 @@
       "chave_pix": "99925327695",
       "cidade": "São Paulo",
       "uf": "SP",
-      "data_abertura": "2013-08-15"
+      "data_abertura": "2013-08-15",
+      "eh_pep": 0,
+      "cargo_pep": null
     },
     {
       "id_conta": "C017",
@@ -334,7 +374,9 @@
       "chave_pix": "f142ce2b-9f92-4411-a750-263469d1c0d5",
       "cidade": "Natal",
       "uf": "RN",
-      "data_abertura": "2021-09-09"
+      "data_abertura": "2021-09-09",
+      "eh_pep": 0,
+      "cargo_pep": null
     },
     {
       "id_conta": "C018",
@@ -351,7 +393,9 @@
       "chave_pix": "04211940732",
       "cidade": "Santos",
       "uf": "SP",
-      "data_abertura": "2004-01-20"
+      "data_abertura": "2004-01-20",
+      "eh_pep": 0,
+      "cargo_pep": null
     },
     {
       "id_conta": "C019",
@@ -368,7 +412,9 @@
       "chave_pix": "05706442000171",
       "cidade": "São Paulo",
       "uf": "SP",
-      "data_abertura": "2014-04-10"
+      "data_abertura": "2014-04-10",
+      "eh_pep": 0,
+      "cargo_pep": null
     },
     {
       "id_conta": "C020",
@@ -385,7 +431,9 @@
       "chave_pix": "81475882000143",
       "cidade": "Rio de Janeiro",
       "uf": "RJ",
-      "data_abertura": "2016-11-03"
+      "data_abertura": "2016-11-03",
+      "eh_pep": 0,
+      "cargo_pep": null
     },
     {
       "id_conta": "C021",
@@ -402,7 +450,9 @@
       "chave_pix": "94736754000158",
       "cidade": "Belo Horizonte",
       "uf": "MG",
-      "data_abertura": "2012-02-27"
+      "data_abertura": "2012-02-27",
+      "eh_pep": 0,
+      "cargo_pep": null
     },
     {
       "id_conta": "C022",
@@ -419,7 +469,9 @@
       "chave_pix": "financeiro@imobiliariahorizonte.com.br",
       "cidade": "Curitiba",
       "uf": "PR",
-      "data_abertura": "2010-08-16"
+      "data_abertura": "2010-08-16",
+      "eh_pep": 0,
+      "cargo_pep": null
     },
     {
       "id_conta": "C023",
@@ -436,7 +488,9 @@
       "chave_pix": "04192202000133",
       "cidade": "Porto Alegre",
       "uf": "RS",
-      "data_abertura": "2011-06-01"
+      "data_abertura": "2011-06-01",
+      "eh_pep": 0,
+      "cargo_pep": null
     },
     {
       "id_conta": "C024",
@@ -453,7 +507,9 @@
       "chave_pix": "33326378000139",
       "cidade": "Campinas",
       "uf": "SP",
-      "data_abertura": "2017-03-22"
+      "data_abertura": "2017-03-22",
+      "eh_pep": 0,
+      "cargo_pep": null
     },
     {
       "id_conta": "C025",
@@ -470,7 +526,9 @@
       "chave_pix": "10592463000143",
       "cidade": "São Paulo",
       "uf": "SP",
-      "data_abertura": "2026-06-15"
+      "data_abertura": "2026-06-15",
+      "eh_pep": 0,
+      "cargo_pep": null
     },
     {
       "id_conta": "C026",
@@ -487,7 +545,9 @@
       "chave_pix": "43405253241",
       "cidade": "Guarulhos",
       "uf": "SP",
-      "data_abertura": "2026-07-02"
+      "data_abertura": "2026-07-02",
+      "eh_pep": 0,
+      "cargo_pep": null
     },
     {
       "id_conta": "C027",
@@ -504,7 +564,9 @@
       "chave_pix": "b237dfca-67a4-45e9-a906-063f8fae6a25",
       "cidade": "Osasco",
       "uf": "SP",
-      "data_abertura": "2026-07-05"
+      "data_abertura": "2026-07-05",
+      "eh_pep": 0,
+      "cargo_pep": null
     },
     {
       "id_conta": "C028",
@@ -521,7 +583,9 @@
       "chave_pix": "84700213035",
       "cidade": "São Bernardo do Campo",
       "uf": "SP",
-      "data_abertura": "2026-07-09"
+      "data_abertura": "2026-07-09",
+      "eh_pep": 0,
+      "cargo_pep": null
     },
     {
       "id_conta": "C029",
@@ -538,7 +602,9 @@
       "chave_pix": "katia.sales@hotmail.com",
       "cidade": "Santo André",
       "uf": "SP",
-      "data_abertura": "2026-07-11"
+      "data_abertura": "2026-07-11",
+      "eh_pep": 0,
+      "cargo_pep": null
     },
     {
       "id_conta": "C030",
@@ -555,7 +621,9 @@
       "chave_pix": "54a541c4-2cd2-463c-b7d5-91576609210f",
       "cidade": "Carapicuíba",
       "uf": "SP",
-      "data_abertura": "2026-07-14"
+      "data_abertura": "2026-07-14",
+      "eh_pep": 0,
+      "cargo_pep": null
     },
     {
       "id_conta": "C031",
@@ -572,7 +640,9 @@
       "chave_pix": "juliana.vasconcelos@uol.com.br",
       "cidade": "Rio de Janeiro",
       "uf": "RJ",
-      "data_abertura": "2024-03-18"
+      "data_abertura": "2024-03-18",
+      "eh_pep": 0,
+      "cargo_pep": null
     },
     {
       "id_conta": "C032",
@@ -589,7 +659,9 @@
       "chave_pix": "7209683a-7032-4cd8-8b5a-3a48790d7412",
       "cidade": "Barueri",
       "uf": "SP",
-      "data_abertura": "2025-11-03"
+      "data_abertura": "2025-11-03",
+      "eh_pep": 0,
+      "cargo_pep": null
     },
     {
       "id_conta": "C033",
@@ -606,7 +678,9 @@
       "chave_pix": "73385571014",
       "cidade": "Duque de Caxias",
       "uf": "RJ",
-      "data_abertura": "2026-02-10"
+      "data_abertura": "2026-02-10",
+      "eh_pep": 0,
+      "cargo_pep": null
     },
     {
       "id_conta": "C034",
@@ -623,7 +697,9 @@
       "chave_pix": "f24fb69d-ce45-4a92-8cec-5993c25fce63",
       "cidade": "Nova Iguaçu",
       "uf": "RJ",
-      "data_abertura": "2026-07-30"
+      "data_abertura": "2026-07-30",
+      "eh_pep": 0,
+      "cargo_pep": null
     },
     {
       "id_conta": "C035",
@@ -640,7 +716,9 @@
       "chave_pix": "ce7ad2e0-1d3a-4d19-b7e5-bb9e591d29aa",
       "cidade": "Campo Grande",
       "uf": "MS",
-      "data_abertura": "2026-07-28"
+      "data_abertura": "2026-07-28",
+      "eh_pep": 0,
+      "cargo_pep": null
     },
     {
       "id_conta": "C036",
@@ -657,7 +735,9 @@
       "chave_pix": "91317380797",
       "cidade": "João Pessoa",
       "uf": "PB",
-      "data_abertura": "2009-10-05"
+      "data_abertura": "2009-10-05",
+      "eh_pep": 0,
+      "cargo_pep": null
     },
     {
       "id_conta": "C037",
@@ -674,7 +754,9 @@
       "chave_pix": "53542374000103",
       "cidade": "Cuiabá",
       "uf": "MT",
-      "data_abertura": "2026-05-20"
+      "data_abertura": "2026-05-20",
+      "eh_pep": 0,
+      "cargo_pep": null
     },
     {
       "id_conta": "C038",
@@ -691,7 +773,9 @@
       "chave_pix": "36664249000149",
       "cidade": "São Paulo",
       "uf": "SP",
-      "data_abertura": "2025-12-01"
+      "data_abertura": "2025-12-01",
+      "eh_pep": 0,
+      "cargo_pep": null
     }
   ],
   "transacoes_pix": [

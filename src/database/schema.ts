@@ -14,7 +14,10 @@ export const SCHEMA_SQL = /* sql */ `
     chave_pix              TEXT NOT NULL UNIQUE,
     cidade                 TEXT NOT NULL,
     uf                     TEXT NOT NULL CHECK (length(uf) = 2),
-    data_abertura          TEXT NOT NULL
+    data_abertura          TEXT NOT NULL,
+    eh_pep                 INTEGER NOT NULL DEFAULT 0 CHECK (eh_pep IN (0, 1)),
+    cargo_pep              TEXT,
+    CHECK ((eh_pep = 0 AND cargo_pep IS NULL) OR (eh_pep = 1 AND cargo_pep IS NOT NULL))
   );
 
   CREATE TABLE IF NOT EXISTS transacoes_pix (

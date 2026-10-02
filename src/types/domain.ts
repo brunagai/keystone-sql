@@ -29,6 +29,10 @@ export interface Conta {
   cidade: string;
   uf: string;
   data_abertura: DataIso;
+  /** 1 = Pessoa Exposta Politicamente; 0 = demais. */
+  eh_pep: 0 | 1;
+  /** Cargo PEP; nulo quando `eh_pep` é 0. */
+  cargo_pep: string | null;
 }
 
 export interface TransacaoPix {

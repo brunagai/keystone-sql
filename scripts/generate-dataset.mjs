@@ -160,6 +160,12 @@ const DEFINICOES_CONTAS = [
   ['C038', 'Vértice Holding Participações Ltda', 'PJ', 'Holding de Instituições Não Financeiras', 35000, 'São Paulo', 'SP', 'CNPJ', 'SANTANDER', '2025-12-01'],
 ];
 
+/** PEP determinístico (sem consumir o PRNG): KYC de Pessoa Exposta Politicamente. */
+const CARGO_PEP = {
+  C013: 'Deputado Estadual',
+  C004: 'Prefeito',
+};
+
 function construirConta([id, titular, tipo, ocupacao, renda, cidade, uf, tipoChave, bancoKey, abertura, emailPj]) {
   const banco = BANCOS[bancoKey];
   const documento = tipo === 'PF' ? gerarCpf() : gerarCnpj();
@@ -186,6 +192,8 @@ function construirConta([id, titular, tipo, ocupacao, renda, cidade, uf, tipoCha
     cidade,
     uf,
     data_abertura: abertura,
+    eh_pep: CARGO_PEP[id] ? 1 : 0,
+    cargo_pep: CARGO_PEP[id] ?? null,
   };
 }
 
@@ -359,7 +367,7 @@ const pad = (n) => String(n).padStart(2, '0');
 
 const dataset = {
   metadata: {
-    versao: '1.0.0',
+    versao: '1.1.0',
     gerado_em: '2026-09-30 21:00:00',
     moeda: 'BRL',
     fuso_horario: 'America/Sao_Paulo',
@@ -385,6 +393,12 @@ const dataset = {
         descricao:
           'Estudante, aposentada e MEI movimentam centenas de milhares de reais, muito acima da renda/faturamento declarados, em circuito fechado com a holding.',
         contas_envolvidas: ['C035', 'C036', 'C037', 'C038'],
+      },
+      {
+        tipologia: 'PEP',
+        descricao:
+          'Duas contas PF marcadas como Pessoa Exposta Politicamente (PEP) no cadastro KYC, com cargo declarado (Deputado Estadual e Prefeito), para monitoramento reforçado.',
+        contas_envolvidas: ['C013', 'C004'],
       },
     ],
   },

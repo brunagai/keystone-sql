@@ -27,7 +27,7 @@ export interface InvestigationPanelHandlers {
 }
 
 const STATUS_STYLE: Record<ValidationStatus, { box: string; title: string; icon: string; label: string }> = {
-  success: { box: 'bg-emerald-950/40 border-emerald-500/50', title: 'text-emerald-300', icon: '✓', label: 'Sucesso' },
+  success: { box: 'bg-emerald-950/40 border-emerald-500/50', title: 'text-emerald-300', icon: '✓', label: 'Esteira em conformidade' },
   error: { box: 'bg-rose-950/40 border-rose-500/50', title: 'text-rose-300', icon: '✕', label: 'Inconsistência' },
   warning: { box: 'bg-amber-950/40 border-amber-500/50', title: 'text-amber-300', icon: '!', label: 'Parcial' },
 };
@@ -269,14 +269,33 @@ export function initInvestigationPanel({ onLoadSolution, onScenarioChange }: Inv
             .join('')}</div>`
         : '';
 
+      const metrics =
+        result.status === 'success' && result.compliance
+          ? `<div class="mt-2 grid grid-cols-3 gap-1 font-mono text-[10px] leading-tight">
+              <div class="rounded border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-1">
+                <p class="text-[9px] uppercase tracking-wider text-emerald-400/80">Alertas</p>
+                <p class="font-semibold text-emerald-200">${result.compliance.captured}/${result.compliance.expected} (${result.compliance.recallPct}%)</p>
+              </div>
+              <div class="rounded border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-1">
+                <p class="text-[9px] uppercase tracking-wider text-emerald-400/80">Falsos +</p>
+                <p class="font-semibold text-emerald-200">${result.compliance.falsePositives}</p>
+              </div>
+              <div class="rounded border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-1">
+                <p class="text-[9px] uppercase tracking-wider text-emerald-400/80">Eficiência</p>
+                <p class="font-semibold text-emerald-200">${result.compliance.efficiencyPct}%</p>
+              </div>
+            </div>`
+          : '';
+
       feedback.innerHTML = `
         <div role="alert" class="rounded border px-3 py-2.5 ${style.box}">
           <div class="flex items-start gap-2">
             <span class="mt-px flex size-4 shrink-0 items-center justify-center rounded-full border border-current text-[9px] font-bold ${style.title}">${style.icon}</span>
             <div class="min-w-0 flex-1">
               <p class="text-[10px] font-semibold uppercase tracking-wider ${style.title} opacity-70">${style.label}</p>
-              <p class="text-xs font-semibold ${style.title}">${escapeHtml(result.title)}</p>
+              <p class="text-xs font-semibold leading-snug ${style.title}">${escapeHtml(result.title)}</p>
               <p class="mt-1 text-[11px] leading-relaxed text-slate-200">${formatInline(result.message)}</p>
+              ${metrics}
               ${result.highlight ? renderHighlight(result.highlight) : ''}
               ${entities}
               ${details}

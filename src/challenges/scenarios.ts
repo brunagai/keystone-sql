@@ -18,7 +18,7 @@ export const TRAIL_LEVELS: Record<TrailLevel, TrailLevelInfo> = {
   1: { titulo: 'Fundamentos de Agregação', tecnica: 'GROUP BY, HAVING, JOIN e limiares' },
   2: { titulo: 'Janelas e Classificação', tecnica: 'ROW_NUMBER() OVER (PARTITION BY …)' },
   3: { titulo: 'Análise Temporal e Mudança de Padrão', tecnica: 'LAG / LEAD' },
-  4: { titulo: 'Composição Analítica com CTEs', tecnica: 'WITH + janelas + regras combinadas' },
+  4: { titulo: 'Composição Analítica com CTEs', tecnica: 'WITH + janelas, LAG e ROWS BETWEEN' },
   5: { titulo: 'Laboratório Aberto (Agente IA)', tecnica: 'Desafios gerados por LLM ou offline' },
 };
 
@@ -502,6 +502,105 @@ ORDER BY salto DESC, id_transacao;`,
         entities: titulares,
         details: [
           'Relaxe o critério de histórico (por exemplo, `qtd_historico <= 10`) e veja surgir clientes com perfil legítimo, como um pagamento pontual de caução a uma imobiliária. Combinar regras é o que reduz falsos positivos.',
+        ],
+      };
+    },
+  },
+  {
+    id: 'janela-movel',
+    origem: 'base',
+    nivel: 4,
+    titulo: 'Acúmulo móvel: soma das últimas 3 originações (ROWS BETWEEN)',
+    enquadramento: 'Carta Circular Bacen 4.001/2020 · Fracionamento / estruturação em janela curta',
+    dossie:
+      'Além do fracionamento clássico (várias operações isoladas abaixo de R$ 10 mil), redes estruturam volume em ' +
+      'rajadas de três PIX consecutivos da mesma origem. Cada transferência isolada pode parecer rotineira; a soma móvel ' +
+      'das últimas três originações revela o acúmulo. A esteira deve carimbar essa métrica linha a linha e só então aplicar o corte.',
+    objetivo:
+      'Na CTE `envelope_metricas`, calcule `acumulado_movel_3` com `SUM(valor) OVER (PARTITION BY id_conta_origem ORDER BY data_hora ROWS BETWEEN 2 PRECEDING AND CURRENT ROW)`. ' +
+      'No `WHERE` externo, mantenha apenas linhas com `acumulado_movel_3 >= 25000`. Retorne `id_transacao`, `conta_origem`, `titular`, `valor`, `data_hora` e `acumulado_movel_3` (2 casas), ' +
+      'ordenando por `acumulado_movel_3 DESC, id_transacao`.',
+    colunasEsperadas: ['id_transacao', 'conta_origem', 'titular', 'valor', 'data_hora', 'acumulado_movel_3'],
+    ordenacao: 'acumulado_movel_3 DESC, id_transacao',
+    dicaTexto:
+      'O frame `ROWS BETWEEN 2 PRECEDING AND CURRENT ROW` inclui a linha atual e as duas anteriores da mesma partição. ' +
+      'Nas primeiras linhas de cada conta a janela fica menor (1 ou 2 PIX) — o `SUM` ainda é válido. Não filtre a janela no mesmo `SELECT`.',
+    dicaSql: `-- FASE 1
+WITH envelope_metricas AS (
+  SELECT t.id_transacao, t.id_conta_origem AS conta_origem, c.titular, t.valor, t.data_hora,
+         SUM(t.valor) OVER (
+           PARTITION BY t.id_conta_origem ORDER BY t.data_hora
+           ROWS BETWEEN 2 PRECEDING AND CURRENT ROW
+         ) AS acumulado_movel_3
+  FROM transacoes_pix t
+  JOIN contas c ON c.id_conta = t.id_conta_origem
+)
+-- FASE 2
+SELECT ...
+FROM envelope_metricas
+WHERE acumulado_movel_3 >= ...
+ORDER BY ...;`,
+    decomposicao: {
+      fase1: {
+        titulo: 'Fase 1 — O envelope `WITH`',
+        texto:
+          'Na CTE `envelope_metricas`, carimbe cada originação com `SUM(valor) OVER (... ROWS BETWEEN 2 PRECEDING AND CURRENT ROW)` — a soma móvel das últimas 3 transações da mesma `id_conta_origem`. Selecione o `WITH` e use Testar Seleção / CTE para ver o acumulado ainda sem corte.',
+      },
+      fase2: {
+        titulo: 'Fase 2 — O filtro do `WHERE` externo',
+        texto:
+          'No `SELECT` externo, isole as linhas já carimbadas com `acumulado_movel_3 >= 25000`. Esse é o corte regulatório: volume estruturado em janela de três PIX, mesmo que cada operação isolada fique abaixo de R$ 10 mil.',
+      },
+    },
+    gabaritoSql: `-- FASE 1: O ENVELOPE ANALÍTICO (Criação da linha do tempo e carimbo de métricas linha a linha)
+WITH envelope_metricas AS (
+  SELECT
+    t.id_transacao,
+    t.id_conta_origem AS conta_origem,
+    c.titular,
+    t.valor,
+    t.data_hora,
+    -- Soma móvel: linha atual + 2 PIX anteriores da mesma origem
+    ROUND(SUM(t.valor) OVER (
+      PARTITION BY t.id_conta_origem
+      ORDER BY t.data_hora
+      ROWS BETWEEN 2 PRECEDING AND CURRENT ROW
+    ), 2) AS acumulado_movel_3
+  FROM transacoes_pix AS t
+  JOIN contas AS c ON c.id_conta = t.id_conta_origem
+)
+-- FASE 2: O INSPETOR DE RISCO (Corte regulatório e enriquecimento sobre os dados já carimbados)
+SELECT
+  id_transacao,
+  conta_origem,
+  titular,
+  valor,
+  data_hora,
+  acumulado_movel_3
+FROM envelope_metricas
+WHERE acumulado_movel_3 >= 25000   -- corte: acúmulo móvel de 3 originações
+ORDER BY acumulado_movel_3 DESC, id_transacao;`,
+    colunaChave: 'id_transacao',
+    rotuloEntidade: { singular: 'transação', plural: 'transações' },
+    dicasDivergencia: {
+      excesso:
+        'Há transações a mais. Confira o frame `ROWS BETWEEN 2 PRECEDING AND CURRENT ROW` (não use UNBOUNDED) e o corte `acumulado_movel_3 >= 25000` no WHERE externo.',
+      falta:
+        'Faltam transações. A janela inclui a linha atual; um único PIX de R$ 25 mil ou mais também entra. Confira `>= 25000` (inclusivo) e o `PARTITION BY id_conta_origem`.',
+      valores:
+        'As transações estão certas, mas `acumulado_movel_3` diverge. Use `ROUND(SUM(valor) OVER (...), 2)` com `ORDER BY data_hora` na partição da origem.',
+      ordenacao: 'Os dados estão corretos, mas a ordem não. Ordene por `acumulado_movel_3 DESC, id_transacao`.',
+    },
+    resumirSucesso(gabarito) {
+      const contas = distinct(columnValues(gabarito, 'conta_origem'));
+      const picos = columnValues(gabarito, 'acumulado_movel_3').map(Number);
+      const pico = picos.length > 0 ? Math.max(...picos) : 0;
+      return {
+        message:
+          `Janela móvel de 3 PIX identificou ${gabarito.values.length} alerta(s) em ${contas.length} conta(s); o maior acumulado foi ${formatBRL(pico)}.`,
+        entities: contas,
+        details: [
+          'Compare com um `SUM` / `GROUP BY` no dia inteiro: a janela `ROWS BETWEEN` pega estruturação que cruza viradas de dia e ignora o PIX isolado “limpo” no meio de uma sequência.',
         ],
       };
     },

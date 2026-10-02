@@ -37,11 +37,11 @@ function insertContas(db: Database, contas: readonly Conta[]): void {
     INSERT INTO contas (
       id_conta, titular, tipo_pessoa, documento, ocupacao, renda_mensal_declarada,
       banco_ispb, banco_nome, agencia, numero_conta, tipo_chave_pix, chave_pix,
-      cidade, uf, data_abertura
+      cidade, uf, data_abertura, eh_pep, cargo_pep
     ) VALUES (
       $id_conta, $titular, $tipo_pessoa, $documento, $ocupacao, $renda_mensal_declarada,
       $banco_ispb, $banco_nome, $agencia, $numero_conta, $tipo_chave_pix, $chave_pix,
-      $cidade, $uf, $data_abertura
+      $cidade, $uf, $data_abertura, $eh_pep, $cargo_pep
     )
   `);
   try {
@@ -62,6 +62,8 @@ function insertContas(db: Database, contas: readonly Conta[]): void {
         $cidade: c.cidade,
         $uf: c.uf,
         $data_abertura: c.data_abertura,
+        $eh_pep: c.eh_pep,
+        $cargo_pep: c.cargo_pep,
       });
     }
   } finally {

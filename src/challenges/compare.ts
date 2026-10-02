@@ -169,3 +169,37 @@ export function describePrioritizationMismatch(ordenacao: string): AuditFeedback
       `Aplique a ordenação esperada: \`ORDER BY ${ordenacao}\`.`,
   };
 }
+
+export interface ComplianceMetrics {
+  captured: number;
+  expected: number;
+  falsePositives: number;
+  recallPct: number;
+  efficiencyPct: number;
+}
+
+/** Recall e precisão da esteira quando o gabarito é a verdade de campo. */
+export function computeComplianceMetrics(
+  capturedTruePositives: number,
+  expected: number,
+  falsePositives: number,
+): ComplianceMetrics {
+  const recallPct = expected <= 0 ? 100 : Math.round((capturedTruePositives / expected) * 100);
+  const denom = capturedTruePositives + falsePositives;
+  const efficiencyPct = denom <= 0 ? 100 : Math.round((capturedTruePositives / denom) * 100);
+  return {
+    captured: capturedTruePositives,
+    expected,
+    falsePositives,
+    recallPct,
+    efficiencyPct,
+  };
+}
+
+/** Linha de conformidade exibida no card verde de sucesso. */
+export function formatComplianceBanner(metrics: ComplianceMetrics): string {
+  return (
+    `🟢 Esteira Aprovada em Conformidade | Alertas Capturados: ${metrics.captured}/${metrics.expected} (${metrics.recallPct}%)` +
+    ` | Falsos Positivos: ${metrics.falsePositives} | Eficiência: ${metrics.efficiencyPct}%`
+  );
+}

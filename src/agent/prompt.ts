@@ -46,6 +46,8 @@ export function buildDatasetProfile(db: Database): string {
 - canal (canal | qtd):
   ${rows(db, 'SELECT canal, COUNT(*) FROM transacoes_pix GROUP BY canal ORDER BY 2 DESC')}
 - contas: ${String(nContas)} linhas; data_abertura de ${String(aberturaMin)} a ${String(aberturaMax)}. IDs no formato 'C001'.
+- PEP (eh_pep | qtd | cargos):
+  ${rows(db, `SELECT eh_pep, COUNT(*), COALESCE(GROUP_CONCAT(DISTINCT cargo_pep), '—') FROM contas GROUP BY eh_pep ORDER BY 1`)}
 - Perfil de renda (tipo_pessoa | qtd | renda mín | renda máx):
   ${rows(db, 'SELECT tipo_pessoa, COUNT(*), MIN(renda_mensal_declarada), MAX(renda_mensal_declarada) FROM contas GROUP BY 1')}
 - Exemplo de linha de transacoes_pix:
@@ -53,9 +55,9 @@ export function buildDatasetProfile(db: Database): string {
 }
 
 const COLUMN_CONTEXT = `Colunas reais (não invente nomes): contas.id_conta, titular, tipo_pessoa, documento, ocupacao,
-renda_mensal_declarada, banco_ispb, banco_nome, agencia, numero_conta, tipo_chave_pix, chave_pix, cidade, uf, data_abertura;
-transacoes_pix.id_transacao, id_conta_origem, id_conta_destino, valor, data_hora, tipo_chave_destino, chave_pix_destino,
-descricao, canal.`;
+renda_mensal_declarada, banco_ispb, banco_nome, agencia, numero_conta, tipo_chave_pix, chave_pix, cidade, uf, data_abertura,
+eh_pep (0/1), cargo_pep; transacoes_pix.id_transacao, id_conta_origem, id_conta_destino, valor, data_hora, tipo_chave_destino,
+chave_pix_destino, descricao, canal.`;
 
 function compilerSection(difficulty: ChallengeDifficulty): string {
   if (difficulty === 'iniciante') {

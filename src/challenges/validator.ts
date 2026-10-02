@@ -4,9 +4,12 @@ import {
   describePrioritizationMismatch,
   describeRowAudit,
   findKeyColumn,
+  formatComplianceBanner,
+  computeComplianceMetrics,
   mapColumns,
   normalizeColumnName,
   rowsMatchIgnoringOrder,
+  type ComplianceMetrics,
 } from './compare.ts';
 import type { InvestigationScenario } from './scenarios.ts';
 import { describeSqlError, type ErrorHighlight } from './sqlErrors.ts';
@@ -25,6 +28,8 @@ export interface ValidationResult {
   details: string[];
   entities: string[];
   highlight: ErrorHighlight | null;
+  /** Métricas da esteira no card verde (sucesso). */
+  compliance?: ComplianceMetrics;
   /** Execução da query do aluno, para exibição no painel de resultados. */
   studentRun: StudentRun | null;
 }
@@ -91,7 +96,7 @@ function compareResults(
   expected: QueryExecResult,
   student: QueryExecResult,
 ): Omit<ValidationResult, 'studentRun' | 'highlight'> {
-  const { singular, plural } = scenario.rotuloEntidade;
+  const { plural } = scenario.rotuloEntidade;
   const hints = scenario.dicasDivergencia;
   const expectedCols = expected.columns.join(', ');
   const diff = diffEntities(scenario, expected, student);
@@ -182,12 +187,15 @@ function compareResults(
   const reordered = mapping.some((k, j) => k !== j);
   if (reordered) details.unshift('As colunas estão em ordem diferente da sugerida, mas o conteúdo confere.');
 
+  const captured = expected.values.length;
+  const compliance = computeComplianceMetrics(captured, captured, 0);
   return {
     status: 'success',
-    title: `Desafio concluído: ${expected.values.length} ${expected.values.length === 1 ? singular : plural}`,
+    title: formatComplianceBanner(compliance),
     message: summary.message,
     details,
     entities: summary.entities,
+    compliance,
   };
 }
 

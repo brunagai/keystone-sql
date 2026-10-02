@@ -1,6 +1,6 @@
 # AML SQL Lab — Guia do Usuário
 
-Bem-vinda ao **AML SQL Lab**, um laboratório para praticar **SQL analítico aplicado à Prevenção à Lavagem de Dinheiro (PLD/AML)**. Você investiga transações PIX fictícias, escreve consultas SQL para encontrar indícios de lavagem e recebe feedback imediato, como numa área de compliance de verdade.
+Bem-vinda ao **AML SQL Lab**, um laboratório para praticar **SQL analítico aplicado à Prevenção à Lavagem de Dinheiro (PLD/AML)**. Você investiga transações PIX fictícias, escreve consultas SQL para encontrar indícios de lavagem e recebe feedback de **esteira de risco** (alertas perdidos, ruído operacional, fila de priorização), como numa área de compliance de verdade.
 
 Tudo roda **no seu navegador**: o banco de dados é criado na memória do computador, e nada do que você escreve é enviado para servidores (exceto, se você quiser, os pedidos de desafios ao provedor de IA que você configurar).
 
@@ -81,7 +81,7 @@ Valores em reais aparecem formatados como **R$ 9.850,00** e datas como **dd/mm/a
 - **Cenário investigativo** — escolha o caso a investigar.
 - Para cada caso você vê o **enquadramento regulatório** (selo âmbar), o **Contexto da Denúncia / Dossiê**, o **Objetivo da Análise SQL** (o que sua consulta deve retornar e em que ordem) e a **Dica de Sintaxe SQL** (abra só se precisar).
 - Nos níveis 3, 4 e nos desafios gerados, o card **Decomposição em 2 Fases (Esteira Analítica)** mostra o raciocínio: (1) o envelope `WITH` que carimba métricas linha a linha e (2) o `WHERE` externo que aplica o corte regulatório.
-- Abaixo aparecem o **feedback da validação** e, depois da primeira tentativa, o **Ver Gabarito Comentado**.
+- Abaixo aparecem o **feedback da validação** (vocabulário de esteira: falsos negativos, ruído, ordem do compilador) e, depois da primeira tentativa, o **Ver Gabarito Comentado**.
 
 ---
 
@@ -108,19 +108,20 @@ Os desafios estão organizados em **níveis progressivos**: cada nível introduz
 | **2 — Janelas e Classificação** | `ROW_NUMBER()` | **2.1 Pico individual por conta** | O maior PIX de cada conta no dia 18/08, com quantas operações e quanto cada uma movimentou no dia (atenção ao empate!) |
 | **3 — Análise Temporal** | `LAG` / `LEAD` | **3.1 Burst / alta frequência** | Transferências feitas com segundos de diferença pela mesma conta |
 | **4 — Composição com CTEs** | `WITH` + janelas | **4.1 Conta "aquecida"** | Contas que fazem PIX de teste de poucos reais e, dias depois, movimentam valores dezenas de vezes maiores |
+| | `ROWS BETWEEN` | **4.2 Acúmulo móvel (3 PIX)** | Soma móvel das últimas 3 originações ≥ R$ 25 mil (estruturação em janela) |
 | **5 — Laboratório Aberto** | Livre | Desafios gerados pelo agente | Casos inéditos criados pela IA (ou pelo gerador offline) |
 
 ---
 
-## 4. Entendendo o feedback
+## 4. Entendendo o feedback (modo Investigador / esteira de risco)
 
-O validador não exige que sua consulta seja igual ao gabarito, e sim que **o resultado** seja o mesmo.
+O validador não exige que sua consulta seja **igual** ao gabarito: compara o **resultado**. As mensagens falam a língua de uma **esteira de monitoramento PLD** — o analista que decide o que entra na fila de alertas.
 
 | Cor | Significado |
 | --- | --- |
-| 🟢 **Sucesso** | Seu resultado confere. Aparecem as entidades encontradas e, às vezes, dicas de boas práticas |
-| 🟡 **Parcial** | Quase lá: por exemplo, os dados estão certos mas a **ordem** não, ou alguma **métrica** calculada difere |
-| 🔴 **Inconsistência** | Algo essencial está diferente: filtro, colunas, entidades ou um erro de SQL |
+| 🟢 **Sucesso** | A esteira capturou os mesmos alertas do gabarito. Aparecem as entidades encontradas e, às vezes, dicas de boas práticas |
+| 🟡 **Parcial** | Quase lá: por exemplo, os registros estão certos mas a **fila de priorização** (`ORDER BY`) não, ou alguma **métrica** calculada difere; também aparece se a esteira voltou **vazia** (filtros restritivos demais) |
+| 🔴 **Inconsistência** | Filtro, colunas, entidades diferentes do gabarito, ou um **erro de SQL** (incluindo Window Function no lugar errado) |
 
 O que o validador **aceita**:
 
@@ -129,12 +130,30 @@ O que o validador **aceita**:
 - **Diferenças de arredondamento** de até **R$ 0,01**.
 - **Colunas extras** (com uma sugestão de removê-las).
 
-O que ele **aponta**:
+### Alertas perdidos e ruído operacional
 
-- Linhas a mais ou a menos, com a lista de contas que faltam ou sobram.
-- Colunas faltando.
-- Ordenação diferente da pedida.
-- **Erros de SQL** explicados em português, com a linha do problema destacada (coluna inexistente, erro de sintaxe, coluna ambígua etc.).
+Quando a **quantidade de linhas** (ou as contas/IDs) não bate:
+
+| O que aconteceu | Como o Lab descreve | O que revisar |
+| --- | --- | --- |
+| Faltaram linhas do gabarito | **Falsos negativos** — a esteira capturou X transações, mas deixou escapar Y alerta(s) regulatório(s) (ex.: `C031`) | Filtros de **data**, **intervalo em segundos** ou **limiar de valor** restritivos demais (`>=` vs `>`, `BETWEEN` inclusivo) |
+| Vieram linhas a mais | **Falsos positivos** — ruído de monitoramento: transações que não passam no corte do cenário | Faltou filtro no **`WHERE` externo** (depois do `WITH`) ou a **janela temporal** está larga demais |
+| Faltaram e sobraram | Os dois textos juntos | O recorte pegou um conjunto diferente do gabarito |
+
+A dica SQL específica do desafio (por exemplo, “particionar só por origem”) continua aparecendo **abaixo** dessa explicação.
+
+### Fila de priorização
+
+Se os **mesmos** registros estão lá, mas em outra ordem, o Lab avisa que a **fila de priorização da esteira está desalinhada**. Em PLD, a ordem importa: os casos mais graves devem aparecer primeiro. Ajuste o `ORDER BY` exatamente como o objetivo pede (incluindo o desempate).
+
+### Ordem do compilador SQL (Window Functions)
+
+O SQLite **não deixa** filtrar `LAG()`, `ROW_NUMBER()` ou qualquer `OVER (...)` direto no `WHERE` do mesmo `SELECT` — o `WHERE` corre **antes** de o `SELECT` calcular a janela. Se você tentar, o feedback destaca:
+
+> **⚠️ Ordem de Execução do Compilador SQL**  
+> Envelope o cálculo em `WITH envelope_metricas AS (...)` (**Fase 1**) e aplique o corte regulatório no `WHERE` **externo** (**Fase 2**).
+
+Isso é o mesmo raciocínio do card **Decomposição em 2 Fases** nos níveis 3, 4 e nos desafios gerados. Use **Testar Seleção / CTE** para inspecionar o envelope antes do corte.
 
 > A validação aceita apenas consultas de leitura (`SELECT` / `WITH`). Para experimentar `INSERT`, `UPDATE` ou `DELETE`, use **Executar Query** e depois **Resetar Banco**.
 
@@ -144,8 +163,8 @@ O que ele **aponta**:
 
 1. No Painel 3, em **✨ Agente Educador IA**, escolha o **Foco da tipologia** (ou "Livre") e a **Dificuldade**:
    - **Iniciante** — `GROUP BY`, `HAVING` e `WHERE` (sem `WITH` e sem funções de janela).
-   - **Intermediário** — `WITH` + `ROW_NUMBER()` / `RANK()` para ranquear e cortar (maior PIX, top-N).
-   - **Avançado** — `WITH` + `LAG()`/`LEAD()` (burst, intervalo entre PIX) e corte no `WHERE` externo.
+   - **Intermediário** — `WITH` + `ROW_NUMBER()` / `RANK()` para ranquear e cortar (maior PIX, top-N). O gabarito da IA vem comentado em **Fase 1 (envelope)** e **Fase 2 (inspetor)**.
+   - **Avançado** — `WITH` + `LAG()`/`LEAD()` (burst, intervalo entre PIX) e corte no `WHERE` externo, no mesmo esquema de duas fases.
 2. Clique em **✨ Gerar Novo Desafio com IA**.
 3. Acompanhe as mensagens: o agente analisa as tipologias do Bacen e o dataset, redige o caso e roda um **Sanity Check** — executa o gabarito no banco para garantir que ele funciona e encontra evidências.
 4. Quando terminar, o desafio aparece no grupo **"Nível 5 — Laboratório Aberto (Agente IA)"** do seletor, já selecionado, e o editor recebe um **template comentado** com o título, o objetivo, as colunas esperadas e a ordenação. É só começar a escrever depois do `SELECT`.
@@ -247,8 +266,17 @@ Os estilos vêm da internet. Verifique a conexão e recarregue a página.
 **Apaguei ou alterei dados sem querer.**
 Clique em **Resetar Banco**. O banco volta ao estado original (seus rascunhos são mantidos).
 
-**Minha consulta está certa, mas aparece "ordenação divergente".**
-Confira o `ORDER BY` pedido no objetivo, incluindo o critério de desempate (por exemplo, `ORDER BY valor_total DESC, conta_origem`).
+**Minha consulta está certa, mas a fila de priorização está desalinhada (antes: "ordenação divergente").**
+Os registros batem com o gabarito; falta só o `ORDER BY` do objetivo, inclusive o desempate (por exemplo, `ORDER BY valor_total DESC, conta_origem`).
+
+**Apareceu "falsos negativos" ou "deixou escapar alertas".**
+Sua esteira filtrou demais. Confira datas inclusivas, `>=` / `<=` e se o `HAVING` ou o `WHERE` externo não está mais apertado que o enunciado. O feedback lista contas ou IDs que faltaram (ex.: `C031`).
+
+**Apareceu "falsos positivos" ou "ruído de monitoramento".**
+Sua esteira filtrou de menos. Falta um corte no `WHERE` externo (posição, intervalo, limiar) ou a janela temporal está larga. O feedback lista o que entrou a mais.
+
+**Deu "⚠️ Ordem de Execução do Compilador SQL".**
+Você tentou usar `LAG`, `ROW_NUMBER` ou `OVER (...)` no `WHERE` (ou no `HAVING`) do mesmo `SELECT`. Calcule a métrica numa CTE (`WITH envelope_metricas AS (...)`) e filtre no `SELECT` de fora. Nos níveis 3 e 4, o card **Decomposição em 2 Fases** descreve exatamente isso.
 
 **Deu "Divergência nas métricas calculadas".**
 As linhas estão certas, mas algum cálculo não. Verifique `SUM`/`COUNT`, o `ROUND(..., 2)` e se o filtro do `WHERE` está antes da agregação.
@@ -280,3 +308,6 @@ Não. Todos os nomes, documentos e transações são **fictícios**, criados par
 | **Fan-in / fan-out** | Muitas origens concentrando em uma conta (fan-in) ou uma conta dispersando para muitas (fan-out) |
 | **Incompatibilidade patrimonial** | Movimentação incompatível com a renda, o faturamento ou a ocupação declarados |
 | **Laranja** | Pessoa cuja conta é usada para movimentar recursos de terceiros |
+| **Esteira de risco** | Fila de monitoramento: primeiro carimbar métricas (envelope), depois cortar o que vira alerta (inspetor) |
+| **Falso negativo** | Alerta legítimo que a esteira **não** capturou |
+| **Falso positivo / ruído** | Transação que **não** deveria virar alerta e mesmo assim entrou na fila |

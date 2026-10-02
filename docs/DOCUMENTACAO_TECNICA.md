@@ -79,9 +79,9 @@ src/
     scenarios.ts           Interface InvestigationScenario, níveis da trilha e 5 cenários base
     twoPhase.ts            Decomposição pedagógica WITH → WHERE (N3, N4 e gerados)
     registry.ts            Catálogo único: cenários base + gerados (persistidos)
-    validator.ts           Motor de validação semântica
-    compare.ts             Comparação de células/colunas/linhas com tolerância
-    sqlErrors.ts           Tradução de erros do SQLite para mensagens didáticas
+    validator.ts           Motor de validação semântica (orquestra compare + sqlErrors)
+    compare.ts             Comparação com tolerância + mensagens de esteira de risco (FN/FP/fila)
+    sqlErrors.ts           Erros do SQLite em vocabulário didático (prioridade: janela no WHERE)
     starterTemplate.ts     Template comentado inicial de cada desafio
     drafts.ts              Rascunhos por desafio
   agent/
@@ -175,7 +175,7 @@ sequenceDiagram
 
 Duas tabelas (ver `src/database/schema.ts`):
 
-- **`contas`** — cadastro KYC: `id_conta` (PK, formato `C001`), `titular`, `tipo_pessoa` (`PF`/`PJ`), `documento` (único), `ocupacao`, `renda_mensal_declarada` (renda da PF ou faturamento da PJ), dados bancários (`banco_ispb`, `banco_nome`, `agencia`, `numero_conta`), chave PIX (`tipo_chave_pix`, `chave_pix`), `cidade`, `uf`, `data_abertura`.
+- **`contas`** — cadastro KYC: `id_conta` (PK, formato `C001`), `titular`, `tipo_pessoa` (`PF`/`PJ`), `documento` (único), `ocupacao`, `renda_mensal_declarada` (renda da PF ou faturamento da PJ), dados bancários (`banco_ispb`, `banco_nome`, `agencia`, `numero_conta`), chave PIX (`tipo_chave_pix`, `chave_pix`), `cidade`, `uf`, `data_abertura`, **`eh_pep`** (0/1) e **`cargo_pep`**. PEP plantado de forma determinística: **C013** (Deputado Estadual) e **C004** (Prefeito).
 - **`transacoes_pix`** — liquidações: `id_transacao` (PK), `id_conta_origem`/`id_conta_destino` (FK → `contas`), `valor` (> 0), `data_hora` (`TEXT 'YYYY-MM-DD HH:MM:SS'`, horário de Brasília), `tipo_chave_destino`, `chave_pix_destino`, `descricao`, `canal` (`APP`, `INTERNET_BANKING`, `API`).
 
 `CHECK` constraints garantem domínios válidos e impedem origem = destino. Há índices por `data_hora`, `(id_conta_origem, data_hora)` e `(id_conta_destino, data_hora)`. `PRAGMA foreign_keys = ON` é aplicado na criação.
@@ -225,26 +225,45 @@ Existem dois caminhos com regras diferentes:
 
 1. Editor vazio → erro.
 2. Comando proibido → erro "Apenas consultas de leitura".
-3. Erro do SQLite → mensagem didática (`sqlErrors.ts`) com a linha e o token destacados.
-4. Zero linhas → **aviso** "Nenhuma evidência encontrada".
+3. Erro do SQLite → mensagem didática (`sqlErrors.ts`) com a linha e o token destacados. **Prioridade:** Window Function no `WHERE`/`HAVING` (ver 7.3).
+4. Zero linhas → **aviso** de falsos negativos / alertas não capturados (`describeRowAudit` em `compare.ts`).
 5. Menos colunas que o gabarito → erro "Colunas faltando".
-6. Quantidade de linhas diferente → erro "Inconsistência no filtro", listando entidades ausentes/excedentes pela `colunaChave`.
+6. Quantidade de linhas diferente → vocabulário de **esteira de risco** (falsos negativos, falsos positivos ou ambos), com IDs/contas da `colunaChave`. As `dicasDivergencia` do cenário vão em `details` (dica SQL específica).
 7. Alguma coluna do gabarito sem correspondente:
-   - se as linhas batem ignorando a ordem → **aviso** "ordenação divergente";
-   - se as entidades diferem → erro "Entidades divergentes";
+   - se as linhas batem ignorando a ordem → **aviso** "Fila de priorização desalinhada";
+   - se as entidades diferem → erro de esteira (FN+FP) quando a chave foi identificada; senão "Entidades divergentes";
    - senão → **aviso** "Divergência nas métricas calculadas".
-8. Tudo confere → **sucesso**, com observações de boas práticas (colunas extras, aliases diferentes, colunas em outra ordem).
+8. Tudo confere → **sucesso**, com título `🟢 Esteira Aprovada em Conformidade | Alertas Capturados: X/X (100%) | Falsos Positivos: 0 | Eficiência: 100%` (`formatComplianceBanner` em `compare.ts`), chips de métrica no Painel 3 e observações de boas práticas.
 
-### 7.2 Regras de comparação (`compare.ts`)
+### 7.2 Comparação e modo Investigador (`compare.ts`)
+
+Comparação de células:
 
 - **Tolerância numérica** de `0.01` (`NUMERIC_TOLERANCE`): valores monetários e razões com 2 casas não reprovam por arredondamento. Strings numéricas (`'10.50'`) são comparadas como números.
 - **Mapeamento de colunas por conteúdo**: para cada coluna do gabarito, procura a coluna da aluna com os mesmos valores, priorizando a mesma posição, depois o mesmo nome (case-insensitive), depois qualquer coluna livre. Por isso **aliases diferentes são aceitos**.
 - **Ordem das linhas** importa no caminho principal (o gabarito tem `ORDER BY`); `rowsMatchIgnoringOrder` serve para distinguir "dados certos, ordem errada" de "dados errados".
 - `findKeyColumn` localiza a coluna-chave da aluna pelo nome ou pela maior sobreposição de valores.
 
+Mensagens de auditoria (funções `describeFalseNegatives`, `describeFalsePositives`, `describeRowAudit`, `describePrioritizationMismatch`):
+
+| Situação | Vocabulário | Conteúdo |
+| --- | --- | --- |
+| Linhas a menos (e/ou chaves do gabarito ausentes) | Falsos negativos / alertas não capturados | Quantas transações a esteira capturou, quantos alertas legítimos escaparam, exemplos (`C031`, `id_transacao`…) e convite a revisar data, intervalo em segundos e limiares de valor |
+| Linhas a mais (e/ou chaves extras) | Falsos positivos / ruído operacional | Quantos ruídos, exemplos das entidades excedentes, convite a completar o `WHERE` externo ou a janela temporal |
+| Mesmo conjunto, ordem errada | Fila de priorização desalinhada | Explica que no PLD a ordem prioriza os casos mais graves e cita `ORDER BY` esperado (`scenario.ordenacao`) |
+
+Se faltam **e** sobram entidades, as duas explicações são concatenadas.
+
 ### 7.3 Erros didáticos (`sqlErrors.ts`)
 
-Mensagens do SQLite são classificadas em: erro de sintaxe, coluna inexistente, tabela inexistente, função não suportada, coluna ambígua, uso indevido de agregação/janela e SQL incompleto. Cada regra gera uma explicação e o destaque do token na linha correspondente.
+`describeSqlError(error, sql)` classifica a mensagem do SQLite. **Antes** das regras genéricas, intercepta janela no filtro:
+
+- texto do SQLite: `misuse of window function`, `window functions not allowed in WHERE` (e variantes com `HAVING`);
+- **ou** a query, após `maskSql`, contém `WHERE`/`HAVING` seguido de `OVER (`, `LAG(`, `LEAD(`, `ROW_NUMBER(`, `RANK(`, `DENSE_RANK(`, `NTILE(`.
+
+Nesses casos o título é **⚠️ Ordem de Execução do Compilador SQL**: o `WHERE` corre **antes** de o `SELECT` materializar Window Functions; a métrica deve ir no `WITH envelope_metricas AS (...)` (Fase 1) e o corte no `WHERE` externo (Fase 2). O destaque aponta o token (`LAG`, `OVER`, etc.).
+
+Demais regras: erro de sintaxe, coluna inexistente, tabela inexistente, função não suportada, coluna ambígua, uso indevido de **agregação** (`HAVING` após `GROUP BY`) e SQL incompleto.
 
 ---
 
@@ -260,9 +279,10 @@ Todo desafio — base ou gerado — implementa `InvestigationScenario` (`src/cha
 | `titulo`, `enquadramento`, `dossie`, `objetivo` | Conteúdo exibido no Painel 3 |
 | `colunasEsperadas`, `ordenacao` | Enunciado e template inicial |
 | `dicaTexto`, `dicaSql` | "Dica de Sintaxe SQL" |
+| `decomposicao?` | Card **Decomposição em 2 Fases** (N3/N4 explícito; gerados inferem via `twoPhase.ts`) |
 | `gabaritoSql` | Referência da validação e gabarito comentado |
-| `colunaChave`, `rotuloEntidade` | Diferença de entidades nas mensagens |
-| `dicasDivergencia` | Textos para excesso, falta, valores e ordenação |
+| `colunaChave`, `rotuloEntidade` | Diferença de entidades nas mensagens de esteira |
+| `dicasDivergencia` | Dicas SQL em `details` (excesso, falta, valores, ordenação); o título/`message` da divergência de volume vem de `compare.ts` |
 | `resumirSucesso(gabarito)` | Mensagem e entidades exibidas no sucesso |
 
 ### 8.2 Trilha pedagógica por níveis
@@ -286,11 +306,13 @@ Todo cenário tem `nivel: TrailLevel` (`1 | 2 | 3 | 4 | 5`). `TRAIL_LEVELS` guar
 | 2 | `pico-diario` | Pico individual por conta no dia 18/08 (ROW_NUMBER) | `conta_origem, id_transacao, maior_pix, data_hora, qtd_no_dia, total_no_dia` | `maior_pix DESC, conta_origem` |
 | 3 | `burst` | Burst / alta frequência em janela curta | `id_transacao, conta_origem, conta_destino, valor, data_hora, intervalo_segundos` | `conta_origem ASC, data_hora ASC` |
 | 4 | `conta-aquecida` | Conta "aquecida": PIX de teste seguido de salto abrupto (CTE) | `id_transacao, conta_origem, titular, valor, data_hora, intervalo_horas, media_historica, salto` | `salto DESC, id_transacao` |
+| 4 | `janela-movel` | Acúmulo móvel: soma das últimas 3 originações (ROWS BETWEEN) | `id_transacao, conta_origem, titular, valor, data_hora, acumulado_movel_3` | `acumulado_movel_3 DESC, id_transacao` |
 
 Notas de desenho:
 
 - **`pico-diario`** usa o dia de rajada (18/08), em que C031 e C032 enviam 9 e 7 PIX. C031 tem dois PIX empatados em R$ 4.990, então o desempate `data_hora ASC` é obrigatório para o resultado ser determinístico. `COUNT`/`SUM` com `OVER (PARTITION BY …)` mostram que janelas agregam sem colapsar linhas.
 - **`conta-aquecida`** combina quatro regras no `WHERE` externo: 1 a 3 PIX anteriores, `valor >= 10 × média histórica` (frame `ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING`), `valor >= 5000` e intervalo de até 10 dias desde o PIX anterior (`LAG`). O resultado são as quatro contas laranja que fazem PIX de teste (C026, C027, C035, C036). Relaxar o critério de histórico faz aparecer falsos positivos legítimos (C006, C016).
+- **`janela-movel`** carimba `SUM(valor) OVER (PARTITION BY id_conta_origem ORDER BY data_hora ROWS BETWEEN 2 PRECEDING AND CURRENT ROW)` e corta `acumulado_movel_3 >= 25000` no `WHERE` externo (marcadores FASE 1 / FASE 2).
 
 ### 8.4 Adicionar um cenário base
 
@@ -335,7 +357,7 @@ interface GeneratedChallenge {
 flowchart TD
   A[Pedido: foco + dificuldade + títulos a evitar] --> B{Há chave?}
   B -- não --> OFF[Gerador offline]
-  B -- sim --> P[System prompt: DDL + perfil do dataset + normas Bacen + regras]
+  B -- sim --> P[System prompt: DDL + perfil + Bacen + toolkit do nível]
   P --> C[POST /chat/completions]
   C -- erro HTTP/rede/timeout --> OFF
   C --> D[parseGeneratedChallenge]
@@ -348,11 +370,19 @@ flowchart TD
   OFF --> R
 ```
 
-- **Prompt** (`prompt.ts` + `difficultyToolkit.ts`): o nível (`iniciante` | `intermediario` | `avancado`) entra no system prompt com prioridade máxima. Iniciante = `GROUP BY`/`HAVING`/`WHERE` (**sem** `WITH` e **sem** janelas); Intermediário = `WITH` + `ROW_NUMBER()`/`RANK()`/`DENSE_RANK()` e corte posicional; Avançado = `WITH` + `LAG`/`LEAD` (ou múltiplas janelas) e corte no `WHERE` externo. Intermediário e Avançado exigem os marcadores `-- FASE 1: O ENVELOPE ANALÍTICO` e `-- FASE 2: O INSPETOR DE RISCO`. Dialeto SQLite estrito (`strftime`, `unixepoch`), 1 a 150 linhas, `ORDER BY` externo com desempate.
-- **Sanity Check** (`challengeVerifier.ts`): o gabarito precisa ser somente leitura, ter `ORDER BY` externo, respeitar a amarração do nível (quando a origem é LLM), executar sem erro (em `runIsolated`), retornar entre 1 e 150 linhas e ter a mesma quantidade de colunas que `colunasEsperadas`. Os nomes reais das colunas substituem os declarados. A razão da falha é escrita como instrução de correção para o modelo.
+- **Prompt** (`prompt.ts` + `difficultyToolkit.ts`): `buildSystemPrompt(db, difficulty)` **exige** o nível (`iniciante` | `intermediario` | `avancado`) e injeta o toolkit correspondente como **PRIORIDADE MÁXIMA** (os outros níveis aparecem só como “não usar”). Colunas reais (`id_conta_origem`, `renda_mensal_declarada`, …) e dialeto SQLite (`strftime`, `unixepoch`) entram no contexto. Regras de ferramental:
+
+  | Nível | Obrigatório | Proibido | Foco |
+  | --- | --- | --- | --- |
+  | Iniciante | `GROUP BY`, `HAVING`, agregações (`COUNT`/`SUM`/`AVG`/`MAX`/`MIN`), `WHERE` (`BETWEEN`, `IN`, limiares) | `WITH` e Window Functions (`OVER`, `LAG`, `ROW_NUMBER`…) | Volumetria e fracionamento básico |
+  | Intermediário | `WITH` + `ROW_NUMBER()`/`RANK()`/`DENSE_RANK() OVER (...)` e corte posicional no SELECT externo | Resolver só com `GROUP BY`/`HAVING`; `LAG`/`LEAD` (reservados ao avançado) | Desduplicação, maior evento por conta, pico relativo |
+  | Avançado | `WITH` + `LAG()`/`LEAD()` **ou** ≥ 2 janelas `OVER`; corte no `WHERE` externo | `SELECT` plano sem CTE; só agregação como solução principal | Burst, mudança de comportamento, intervalo entre PIX consecutivos |
+
+  Intermediário e Avançado: `solutionQuery` na ordem do compilador, com comentários `-- FASE 1: O ENVELOPE ANALÍTICO` (carimbo linha a linha) e `-- FASE 2: O INSPETOR DE RISCO` (`WHERE` de corte + `ORDER BY`). Esqueleto em `COMPILER_SKELETON` (`difficultyToolkit.ts`). Iniciante: `SELECT` plano, comentários em `WHERE`/`GROUP BY`/`HAVING`. Demais regras: 1 a 150 linhas, `ORDER BY` externo com desempate, aliases `snake_case`.
+- **Sanity Check** (`challengeVerifier.ts`): somente leitura, `ORDER BY` externo, `checkDifficultyToolkit` **quando** `difficulty` é passado (pipeline LLM em `aiService`; o gerador offline **não** passa o nível, para os templates sem marcadores FASE 1/2 continuarem válidos). Executa em `runIsolated`, 1–150 linhas, mesmas colunas que `colunasEsperadas`. Nomes reais substituem os declarados. A razão da falha volta ao modelo como correção.
 - **Autocorreção**: até 3 tentativas; a conversa acumula a resposta anterior e o erro do SQLite.
 - **Timeout** de 60 s por requisição (`AbortSignal.timeout`) combinado com o cancelamento da usuária (`AbortSignal.any`). Cancelar **não** cai no offline.
-- **Fallback offline** (`offlineGenerator.ts`): 8 templates parametrizados (horário atípico, fan-in em conta nova, conta de passagem, valores redondos, fracionamento, rajadas por hora, recebimentos vs. renda de PF, maior PIX vs. faturamento de PJ com `ROW_NUMBER`). Os parâmetros são sorteados e o resultado passa pelo mesmo Sanity Check.
+- **Fallback offline** (`offlineGenerator.ts`): 8 templates parametrizados (horário atípico, fan-in em conta nova, conta de passagem, valores redondos, fracionamento, rajadas por hora, recebimentos vs. renda de PF, maior PIX vs. faturamento de PJ com `ROW_NUMBER`). Os parâmetros são sorteados e o resultado passa pelo Sanity Check **sem** `checkDifficultyToolkit` (os templates não trazem os marcadores FASE 1/2).
 
 ### 9.4 Integração com o validador
 
@@ -367,7 +397,7 @@ flowchart TD
 - **Header**: status do WASM, contadores do dataset, **Configurar IA (Groq / OpenAI)** com indicador de chave (verde = salva, cinza = offline) e **Resetar Banco**.
 - **Painel 1 — Dicionário de dados**: tabelas, colunas com PK/FK/NN e tipos, descrições, pré-visualização das 3 primeiras linhas; clicar numa coluna insere o nome no cursor do editor.
 - **Painel 2 — Editor + resultados**: editor (Tab indenta, Ctrl+Enter executa a seleção ou a consulta; **Testar Seleção / CTE** completa um `WITH` sem `SELECT` externo com `SELECT * FROM <cte>`), histórico, banner de confirmação e console de resultados com exportação.
-- **Painel 3 — Investigação**: Agente Educador, seletor de cenários, dossiê do caso, **Decomposição em 2 Fases** (N3, N4 e gerados: envelope `WITH` vs. `WHERE` externo), dica, feedback da validação e gabarito comentado (liberado após a primeira tentativa).
+- **Painel 3 — Investigação**: Agente Educador, seletor de cenários, dossiê do caso, **Decomposição em 2 Fases** (N3, N4 e gerados: envelope `WITH` vs. `WHERE` externo), dica, feedback da validação no vocabulário de **esteira de risco** (alertas perdidos, ruído, fila de priorização; erros de janela no `WHERE` explicam a ordem do compilador) e gabarito comentado (liberado após a primeira tentativa).
 
 ### 10.2 Sessão do editor e rascunhos (`editorSession.ts`, `drafts.ts`)
 
@@ -432,7 +462,7 @@ Tudo é lido de forma defensiva (JSON inválido é ignorado) e gravado com `try/
 
 ## 14. Limitações conhecidas e próximos passos
 
-- **Sem testes automatizados**: a verificação foi manual/no navegador. Candidatos naturais a testes unitários: `compare.ts`, `safeQuery.ts`, `challengeVerifier.ts`, `export/dossier.ts`, `drafts.ts`.
+- **Sem testes automatizados**: a verificação foi manual/no navegador. Candidatos naturais a testes unitários: `compare.ts` (auditoria FN/FP), `sqlErrors.ts` (janela no `WHERE`), `difficultyToolkit.ts`, `safeQuery.ts`, `challengeVerifier.ts`, `export/dossier.ts`, `drafts.ts`.
 - O caminho com LLM real foi testado com `fetch` simulado; vale validar com chaves reais de Groq e OpenAI.
 - O filtro de comandos é léxico; o `SAVEPOINT` é a garantia real de isolamento.
 - O histórico é apenas da sessão (não persiste ao recarregar).
