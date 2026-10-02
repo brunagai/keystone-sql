@@ -67,7 +67,8 @@ Dicas:
 ### Painel 2 — Editor SQL e Resultados (centro)
 
 - No **editor**, você escreve as consultas.
-- **▶ Executar Query** (ou **Ctrl+Enter**) roda a consulta e mostra o resultado abaixo, com o tempo de execução e o número de linhas.
+- **▶ Executar Query** (ou **Ctrl+Enter**) roda a consulta inteira — ou só o trecho selecionado.
+- **Testar Seleção / CTE** — selecione o miolo do `WITH` (a CTE, mesmo sem o `SELECT` externo) para inspecionar os dados intermediários antes de filtrar. O botão acende quando há texto selecionado.
 - **Validar Desafio** compara seu resultado com o gabarito do desafio selecionado.
 - **🕘 Histórico** mostra as últimas consultas executadas.
 - **⤓ Exportar Dossiê** baixa sua evidência em Markdown ou CSV.
@@ -79,6 +80,7 @@ Valores em reais aparecem formatados como **R$ 9.850,00** e datas como **dd/mm/a
 - **✨ Agente Educador IA** — cria novos desafios.
 - **Cenário investigativo** — escolha o caso a investigar.
 - Para cada caso você vê o **enquadramento regulatório** (selo âmbar), o **Contexto da Denúncia / Dossiê**, o **Objetivo da Análise SQL** (o que sua consulta deve retornar e em que ordem) e a **Dica de Sintaxe SQL** (abra só se precisar).
+- Nos níveis 3, 4 e nos desafios gerados, o card **Decomposição em 2 Fases (Esteira Analítica)** mostra o raciocínio: (1) o envelope `WITH` que carimba métricas linha a linha e (2) o `WHERE` externo que aplica o corte regulatório.
 - Abaixo aparecem o **feedback da validação** e, depois da primeira tentativa, o **Ver Gabarito Comentado**.
 
 ---
@@ -223,7 +225,7 @@ O botão fica desabilitado enquanto não houver um resultado válido (por exempl
 
 | Atalho | Onde | Ação |
 | --- | --- | --- |
-| **Ctrl+Enter** | Editor | Executa a consulta (ou só o trecho selecionado) |
+| **Ctrl+Enter** | Editor | Executa a consulta inteira, ou só o trecho selecionado (útil para inspecionar a CTE) |
 | **Tab** | Editor | Indenta com 2 espaços |
 | **Ctrl+Z** | Editor | Desfaz (inclusive após carregar do histórico ou o gabarito) |
 | **Esc** | Histórico, exportação, aviso do editor, modal de IA | Fecha / mantém sua query |

@@ -5,7 +5,8 @@ import {
   onScenariosChange,
   removeGenerated,
 } from '../challenges/registry.ts';
-import { TRAIL_LEVELS, TRAIL_ORDER, type InvestigationScenario, type ScenarioId, type TrailLevel } from '../challenges/scenarios.ts';
+import { TRAIL_LEVELS, TRAIL_ORDER, type InvestigationScenario, type ScenarioId, type TrailLevel, type TwoPhaseReasoning } from '../challenges/scenarios.ts';
+import { resolveTwoPhase } from '../challenges/twoPhase.ts';
 import type { ErrorHighlight } from '../challenges/sqlErrors.ts';
 import type { ValidationResult, ValidationStatus } from '../challenges/validator.ts';
 import { byId } from './dom.ts';
@@ -60,6 +61,34 @@ function renderOriginBadge(s: InvestigationScenario): string {
     </div>`;
 }
 
+function renderTwoPhase(s: InvestigationScenario): string {
+  const phases = resolveTwoPhase(s);
+  if (!phases) return '';
+  const step = (n: '1' | '2', phase: TwoPhaseReasoning['fase1']): string => `
+    <div class="rounded border border-violet-900/50 bg-violet-950/20 px-2.5 py-2">
+      <p class="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-violet-300">
+        <span class="flex size-4 items-center justify-center rounded-full bg-violet-500/20 font-mono text-[10px]">${n}</span>
+        ${formatInline(phase.titulo)}
+      </p>
+      <p class="text-[11px] leading-relaxed text-slate-300">${formatInline(phase.texto)}</p>
+    </div>`;
+  return `
+    <details open class="group rounded border border-violet-700/50 bg-violet-950/15">
+      <summary class="flex cursor-pointer select-none items-center gap-2 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-violet-300 hover:text-violet-200">
+        <span class="transition-transform group-open:rotate-90">▶</span>
+        Decomposição em 2 Fases (Esteira Analítica)
+      </summary>
+      <div class="space-y-2 border-t border-violet-900/40 px-3 py-2">
+        ${step('1', phases.fase1)}
+        ${step('2', phases.fase2)}
+        <p class="text-[10px] leading-relaxed text-slate-500">
+          Selecione o miolo do <code class="font-mono text-slate-400">WITH</code> no editor e clique em
+          <span class="text-sky-400">Testar Seleção / CTE</span> (Ctrl+Enter) para inspecionar os dados intermediários.
+        </p>
+      </div>
+    </details>`;
+}
+
 function renderScenario(s: InvestigationScenario): string {
   return `
     ${renderLevelBadge(s)}
@@ -72,6 +101,7 @@ function renderScenario(s: InvestigationScenario): string {
       `<p>${formatInline(s.objetivo)}</p>
        <p class="mt-2 text-[11px] text-slate-500">Ordenação: ${formatInline(`\`ORDER BY ${s.ordenacao}\``)}</p>`,
     )}
+    ${renderTwoPhase(s)}
     <details class="group rounded border border-slate-800 bg-slate-900/40">
       <summary class="flex cursor-pointer select-none items-center gap-2 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500 hover:text-slate-300">
         <span class="transition-transform group-open:rotate-90">▶</span> Dica de Sintaxe SQL

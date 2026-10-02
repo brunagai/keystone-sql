@@ -16,6 +16,13 @@ export function stripSqlComments(sql: string): string {
   return out.trim();
 }
 
+/** Comentários e literais mascarados, para casar palavras-chave só no código. */
+export function maskSql(sql: string): string {
+  return sql.replace(/'(?:[^']|'')*'|"(?:[^"]|"")*"|--[^\n]*|\/\*[\s\S]*?\*\//g, (m) =>
+    m.startsWith("'") ? "''" : m.startsWith('"') ? '""' : ' ',
+  );
+}
+
 const normalize = (sql: string): string => sql.replace(/[ \t]+$/gm, '').trim();
 
 /** Igualdade ignorando espaços no fim das linhas e nas bordas do texto. */

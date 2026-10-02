@@ -40,6 +40,18 @@ export interface DivergenceHints {
   ordenacao: string;
 }
 
+/** Esteira analítica: carimbar métricas no WITH, cortar no WHERE externo. */
+export interface TwoPhaseStep {
+  titulo: string;
+  /** Aceita `código` inline. */
+  texto: string;
+}
+
+export interface TwoPhaseReasoning {
+  fase1: TwoPhaseStep;
+  fase2: TwoPhaseStep;
+}
+
 export interface InvestigationScenario {
   id: ScenarioId;
   origem: ScenarioOrigin;
@@ -56,6 +68,8 @@ export interface InvestigationScenario {
   ordenacao: string;
   dicaTexto: string;
   dicaSql: string;
+  /** Esteira WITH → WHERE; presente nos níveis 3–4 (e inferida nos desafios gerados). */
+  decomposicao?: TwoPhaseReasoning;
   /** Query de referência (ground truth). Os comentários `--` fazem parte do gabarito comentado. */
   gabaritoSql: string;
   /** Coluna do gabarito usada para apontar entidades faltantes/excedentes. */
@@ -162,6 +176,18 @@ SELECT ...,
        strftime('%s', data_hora) - strftime('%s', lag_data_hora) AS intervalo_segundos
 FROM sequencia
 WHERE ...;`,
+    decomposicao: {
+      fase1: {
+        titulo: 'Fase 1 — O envelope `WITH`',
+        texto:
+          'Calcule, linha a linha, o horário do PIX anterior da mesma conta de origem com `LAG(data_hora) OVER (PARTITION BY id_conta_origem ORDER BY data_hora)` e o `intervalo_segundos` (`strftime(\'%s\', …)`). Faça isso no `WITH`: funções de janela não podem ir no `WHERE` do mesmo `SELECT`. Selecione o miolo da CTE e use Testar Seleção / CTE para ver o carimbo antes de filtrar.',
+      },
+      fase2: {
+        titulo: 'Fase 2 — O filtro do `WHERE` externo',
+        texto:
+          'No `SELECT` externo, isole apenas as linhas já carimbadas em que `intervalo_segundos <= 60` (janela de alta frequência da Carta Circular 4.001/2020). A primeira transação de cada conta não tem `LAG` (`NULL`) e sai nesta fase.',
+      },
+    },
     gabaritoSql: `-- Gabarito comentado · Burst / alta frequência (LAG)
 WITH sequencia AS (
   SELECT
@@ -404,6 +430,18 @@ FROM metricas
 WHERE qtd_historico BETWEEN ... AND ...
   AND ...
 ORDER BY ...;`,
+    decomposicao: {
+      fase1: {
+        titulo: 'Fase 1 — O envelope `WITH`',
+        texto:
+          'Na CTE `metricas`, carimbe cada PIX com três métricas antes do corte: `intervalo_segundos` (`LAG` da mesma origem), `media_historica` (`AVG(valor) OVER` só dos PIX anteriores) e `qtd_historico` (mesmo frame). Selecione o `WITH metricas AS (...)` e use Testar Seleção / CTE para inspecionar médias e intervalos ainda sem filtro.',
+      },
+      fase2: {
+        titulo: 'Fase 2 — O filtro do `WHERE` externo',
+        texto:
+          'No `WHERE` externo, aplique as regras em conjunto (`AND`) sobre o dado já carimbado: `qtd_historico BETWEEN 1 AND 3`, `valor >= 10 * media_historica`, `valor >= 5000` e `intervalo_segundos <= 864000` (10 dias). Cortar cedo demais (no envelope) impede de ver o histórico que sustenta o salto.',
+      },
+    },
     gabaritoSql: `-- Gabarito comentado · Conta "aquecida" (CTE + LAG + média histórica)
 WITH metricas AS (
   SELECT

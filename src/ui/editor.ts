@@ -12,6 +12,7 @@ export interface EditorController {
   /** SQL selecionado no editor ou, sem seleção, o conteúdo completo. */
   getSql(): string;
   getFullSql(): string;
+  hasSelection(): boolean;
   /** Troca programática (template/rascunho): não entra no histórico de desfazer nem dispara `onChange`. */
   setSql(sql: string): void;
   /** Troca pedida pela usuária (histórico, gabarito): preserva o Ctrl+Z e dispara `onChange`. */
@@ -27,6 +28,7 @@ export interface EditorController {
 
 export interface EditorHandlers {
   onRun: () => void;
+  onTestSelection: () => void;
   onValidate: () => void;
   onChange: () => void;
 }
@@ -34,22 +36,41 @@ export interface EditorHandlers {
 const INDENT = '  ';
 const STATUS_TIMEOUT_MS = 3500;
 
-export function initEditor({ onRun, onValidate, onChange }: EditorHandlers): EditorController {
+export function initEditor({ onRun, onTestSelection, onValidate, onChange }: EditorHandlers): EditorController {
   const textarea = byId<HTMLTextAreaElement>('sql-editor');
   const runButton = byId<HTMLButtonElement>('btn-run');
   const validateButton = byId<HTMLButtonElement>('btn-validate');
+  const selectionButton = byId<HTMLButtonElement>('btn-run-selection');
   const banner = byId('editor-banner');
   const status = byId('editor-status');
+
+  const hasSelection = (): boolean => textarea.selectionStart !== textarea.selectionEnd;
+
+  const syncSelectionAffordance = (): void => {
+    const armed = hasSelection();
+    selectionButton.classList.toggle('border-sky-400', armed);
+    selectionButton.classList.toggle('bg-sky-950/70', armed);
+    selectionButton.classList.toggle('text-sky-100', armed);
+    selectionButton.setAttribute('aria-pressed', String(armed));
+  };
 
   const insertAtCursor = (text: string): void => {
     textarea.focus();
     textarea.setRangeText(text, textarea.selectionStart, textarea.selectionEnd, 'end');
     onChange();
+    syncSelectionAffordance();
   };
 
   runButton.addEventListener('click', onRun);
+  selectionButton.addEventListener('click', onTestSelection);
   validateButton.addEventListener('click', onValidate);
-  textarea.addEventListener('input', onChange);
+  textarea.addEventListener('input', () => {
+    onChange();
+    syncSelectionAffordance();
+  });
+  textarea.addEventListener('select', syncSelectionAffordance);
+  textarea.addEventListener('keyup', syncSelectionAffordance);
+  textarea.addEventListener('mouseup', syncSelectionAffordance);
 
   textarea.addEventListener('keydown', (event) => {
     if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
@@ -89,6 +110,7 @@ export function initEditor({ onRun, onValidate, onChange }: EditorHandlers): Edi
       return selected.trim() ? selected : value;
     },
     getFullSql: () => textarea.value,
+    hasSelection,
     setSql(sql) {
       textarea.value = sql;
       textarea.setSelectionRange(sql.length, sql.length);
@@ -107,6 +129,7 @@ export function initEditor({ onRun, onValidate, onChange }: EditorHandlers): Edi
     setActionsEnabled(enabled) {
       runButton.disabled = !enabled;
       validateButton.disabled = !enabled;
+      selectionButton.disabled = !enabled;
     },
     focus() {
       textarea.focus();

@@ -41,7 +41,8 @@ export function buildStarterTemplate(scenario: InvestigationScenario): string {
     '--',
     ...wrapComment(scenario.colunasEsperadas.join(', '), '-- Colunas esperadas: '),
     ...wrapComment(`ORDER BY ${scenario.ordenacao}`, '-- Ordenação: '),
-    '-- Ctrl+Enter executa; "Validar Desafio" compara com o gabarito.',
+    '-- Selecione o miolo do WITH e use Testar Seleção / CTE (Ctrl+Enter).',
+    '-- "Validar Desafio" compara o resultado com o gabarito.',
     '',
     'SELECT ',
   ].join('\n');

@@ -6,6 +6,7 @@ import { pruneDrafts } from './challenges/drafts.ts';
 import { addGenerated, allScenarios, onScenariosChange } from './challenges/registry.ts';
 import { validateChallenge } from './challenges/validator.ts';
 import { executeTimedQuery, getDatabase, resetDatabase } from './database/sqlite.ts';
+import { prepareExecutableSql } from './database/cteInspector.ts';
 import { sameSql } from './database/sqlText.ts';
 import { initAgentPanel } from './ui/agentPanel.ts';
 import { initAiSettingsModal } from './ui/aiSettingsModal.ts';
@@ -50,6 +51,7 @@ const investigation = initInvestigationPanel({
 const schema = initSchemaPanel((column) => editor.insertAtCursor(column));
 const editor = initEditor({
   onRun: runCurrentQuery,
+  onTestSelection: () => runCurrentQuery({ inspectCte: true }),
   onValidate: () => void validateCurrentQuery(),
   onChange: () => session.noteEdit(),
 });
@@ -120,12 +122,24 @@ async function generateNewChallenge(focus: ChallengeFocus, difficulty: Challenge
   }
 }
 
-function runCurrentQuery(): boolean {
+function runCurrentQuery(options?: { inspectCte?: boolean }): boolean {
   if (!db) return false;
-  const sql = editor.getSql();
-  if (!sql.trim()) {
+  const selection = editor.hasSelection();
+  const source = editor.getSql();
+  if (!source.trim()) {
     output.showMessage('O editor está vazio.');
     return false;
+  }
+  const prepared = prepareExecutableSql(source);
+  if (options?.inspectCte && !selection && !prepared.inspectedCte) {
+    editor.flashStatus('Selecione o miolo do WITH (a CTE) para inspecionar o envelope. Ctrl+Enter executa a seleção ou a consulta inteira.');
+    return false;
+  }
+  const sql = prepared.sql;
+  if (prepared.inspectedCte) {
+    editor.flashStatus(`Inspecionando a CTE \`${prepared.inspectedCte}\` (SELECT * FROM ${prepared.inspectedCte}).`);
+  } else if (selection) {
+    editor.flashStatus('Executando o trecho selecionado.');
   }
   const start = performance.now();
   const executedAt = new Date();

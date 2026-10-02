@@ -73,9 +73,11 @@ src/
     sqlite.ts              Carga do WASM, criação, seed e reset do banco
     introspection.ts       Leitura do schema (PRAGMA) e pré-visualização de tabelas
     safeQuery.ts           Bloqueio de escrita, execução isolada (SAVEPOINT), extração do ORDER BY
+    cteInspector.ts        Completa um WITH sem SELECT externo para inspecionar a CTE
     sqlText.ts             Utilitários de texto SQL (remover comentários, comparar)
   challenges/
     scenarios.ts           Interface InvestigationScenario, níveis da trilha e 5 cenários base
+    twoPhase.ts            Decomposição pedagógica WITH → WHERE (N3, N4 e gerados)
     registry.ts            Catálogo único: cenários base + gerados (persistidos)
     validator.ts           Motor de validação semântica
     compare.ts             Comparação de células/colunas/linhas com tolerância
@@ -363,8 +365,8 @@ flowchart TD
 
 - **Header**: status do WASM, contadores do dataset, **Configurar IA (Groq / OpenAI)** com indicador de chave (verde = salva, cinza = offline) e **Resetar Banco**.
 - **Painel 1 — Dicionário de dados**: tabelas, colunas com PK/FK/NN e tipos, descrições, pré-visualização das 3 primeiras linhas; clicar numa coluna insere o nome no cursor do editor.
-- **Painel 2 — Editor + resultados**: editor (Tab indenta, Ctrl+Enter executa; com texto selecionado, executa só a seleção), histórico, banner de confirmação e console de resultados com exportação.
-- **Painel 3 — Investigação**: Agente Educador, seletor de cenários, dossiê do caso, dica, feedback da validação e gabarito comentado (liberado após a primeira tentativa).
+- **Painel 2 — Editor + resultados**: editor (Tab indenta, Ctrl+Enter executa a seleção ou a consulta; **Testar Seleção / CTE** completa um `WITH` sem `SELECT` externo com `SELECT * FROM <cte>`), histórico, banner de confirmação e console de resultados com exportação.
+- **Painel 3 — Investigação**: Agente Educador, seletor de cenários, dossiê do caso, **Decomposição em 2 Fases** (N3, N4 e gerados: envelope `WITH` vs. `WHERE` externo), dica, feedback da validação e gabarito comentado (liberado após a primeira tentativa).
 
 ### 10.2 Sessão do editor e rascunhos (`editorSession.ts`, `drafts.ts`)
 
