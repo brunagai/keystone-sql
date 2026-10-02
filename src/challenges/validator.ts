@@ -1,6 +1,13 @@
 import type { Database, QueryExecResult } from 'sql.js';
 import { findForbiddenCommand, runIsolated } from '../database/safeQuery.ts';
-import { findKeyColumn, mapColumns, normalizeColumnName, rowsMatchIgnoringOrder } from './compare.ts';
+import {
+  describePrioritizationMismatch,
+  describeRowAudit,
+  findKeyColumn,
+  mapColumns,
+  normalizeColumnName,
+  rowsMatchIgnoringOrder,
+} from './compare.ts';
 import type { InvestigationScenario } from './scenarios.ts';
 import { describeSqlError, type ErrorHighlight } from './sqlErrors.ts';
 
@@ -87,13 +94,21 @@ function compareResults(
   const { singular, plural } = scenario.rotuloEntidade;
   const hints = scenario.dicasDivergencia;
   const expectedCols = expected.columns.join(', ');
+  const diff = diffEntities(scenario, expected, student);
+  const entityLines = describeEntityDiff(scenario, diff);
+  const audit = describeRowAudit({
+    captured: student.values.length,
+    expected: expected.values.length,
+    missingKeys: diff.missing,
+    extraKeys: diff.extra,
+  });
 
   if (student.values.length === 0) {
     return {
       status: 'warning',
-      title: 'Nenhuma evidência encontrada',
-      message: 'A consulta executou, mas não encontrou evidências. Seus filtros podem estar restritivos demais.',
-      details: [hints.falta],
+      title: audit.title,
+      message: audit.message,
+      details: [hints.falta, ...entityLines],
       entities: [],
     };
   }
@@ -110,12 +125,11 @@ function compareResults(
 
   if (student.values.length !== expected.values.length) {
     const mais = student.values.length > expected.values.length;
-    const details = [mais ? hints.excesso : hints.falta, ...describeEntityDiff(scenario, diffEntities(scenario, expected, student))];
     return {
       status: 'error',
-      title: 'Inconsistência no filtro',
-      message: `Sua consulta retornou ${student.values.length} linha(s), mas o gabarito esperava ${expected.values.length}. Verifique as condições do \`WHERE\`/\`HAVING\` e os limites (\`BETWEEN\`, \`<=\`, \`>=\`).`,
-      details,
+      title: audit.title,
+      message: audit.message,
+      details: [mais ? hints.excesso : hints.falta, ...entityLines],
       entities: [],
     };
   }
@@ -125,21 +139,23 @@ function compareResults(
 
   if (unmatched.length > 0) {
     if (rowsMatchIgnoringOrder(expected, student)) {
+      const prio = describePrioritizationMismatch(scenario.ordenacao);
       return {
         status: 'warning',
-        title: 'Quase lá: ordenação divergente',
-        message: hints.ordenacao,
-        details: [`Ordenação esperada: \`ORDER BY ${scenario.ordenacao}\`.`],
+        title: prio.title,
+        message: prio.message,
+        details: [hints.ordenacao],
         entities: [],
       };
     }
-    const diff = diffEntities(scenario, expected, student);
     if (!diff.keyFound || diff.missing.length || diff.extra.length) {
       return {
         status: 'error',
-        title: 'Entidades divergentes',
-        message: `A quantidade de linhas bate (${expected.values.length}), mas os registros identificados não são os mesmos do gabarito.`,
-        details: [hints.excesso, ...describeEntityDiff(scenario, diff)],
+        title: diff.keyFound ? audit.title : 'Entidades divergentes',
+        message: diff.keyFound
+          ? `A quantidade de linhas bate (${expected.values.length}), mas os registros identificados não são os mesmos do gabarito. ${audit.message}`
+          : `A quantidade de linhas bate (${expected.values.length}), mas os registros identificados não são os mesmos do gabarito.`,
+        details: [hints.excesso, ...entityLines],
         entities: [],
       };
     }

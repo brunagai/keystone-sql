@@ -94,3 +94,78 @@ export function findKeyColumn(student: QueryExecResult, expectedKeys: ReadonlySe
   });
   return best;
 }
+
+const MAX_LISTED_KEYS = 6;
+
+export interface RowAuditInput {
+  captured: number;
+  expected: number;
+  missingKeys: readonly string[];
+  extraKeys: readonly string[];
+}
+
+export interface AuditFeedback {
+  title: string;
+  message: string;
+}
+
+function formatKeyExamples(keys: readonly string[]): string {
+  if (!keys.length) return '';
+  const shown = keys.slice(0, MAX_LISTED_KEYS).map((k) => `\`${k}\``).join(', ');
+  const rest = keys.length > MAX_LISTED_KEYS ? ` e mais ${keys.length - MAX_LISTED_KEYS}` : '';
+  return ` (ex.: ${shown}${rest})`;
+}
+
+/** Falsos negativos: a esteira deixou de capturar alertas do gabarito. */
+export function describeFalseNegatives(captured: number, missingKeys: readonly string[], expected: number): string {
+  const escaped = missingKeys.length > 0 ? missingKeys.length : Math.max(0, expected - captured);
+  return (
+    `Sua esteira capturou ${captured} transações suspeitas, mas deixou escapar ${escaped} alerta(s) regulatório(s) legítimo(s)` +
+    `${formatKeyExamples(missingKeys)}. Verifique se os filtros de data, intervalo de segundos ou limiares de valor não ficaram restritivos demais.`
+  );
+}
+
+/** Falsos positivos: ruído operacional além do corte do cenário. */
+export function describeFalsePositives(extraKeys: readonly string[], extraFallback: number): string {
+  const noise = extraKeys.length > 0 ? extraKeys.length : Math.max(0, extraFallback);
+  return (
+    `Sua esteira gerou ${noise} falso(s) positivo(s) (ruído de monitoramento). Foram incluídas transações legítimas que não atendem aos critérios de corte do cenário` +
+    `${formatKeyExamples(extraKeys)}. Revise se faltou algum filtro no WHERE externo ou se a janela temporal precisa de ajuste.`
+  );
+}
+
+/** Volume da esteira: FN, FP ou os dois. */
+export function describeRowAudit(input: RowAuditInput): AuditFeedback {
+  const { captured, expected, missingKeys, extraKeys } = input;
+  const hasMissing = missingKeys.length > 0 || captured < expected;
+  const hasExtra = extraKeys.length > 0 || captured > expected;
+  const extraFallback = captured - expected;
+
+  if (hasMissing && hasExtra) {
+    return {
+      title: 'Esteira com alertas perdidos e ruído operacional',
+      message: `${describeFalseNegatives(captured, missingKeys, expected)} ${describeFalsePositives(extraKeys, extraFallback)}`,
+    };
+  }
+  if (hasExtra) {
+    return {
+      title: 'Falsos positivos / ruído operacional',
+      message: describeFalsePositives(extraKeys, extraFallback),
+    };
+  }
+  return {
+    title: 'Falsos negativos / alertas não capturados',
+    message: describeFalseNegatives(captured, missingKeys, expected),
+  };
+}
+
+/** Mesmos registros, ordem diferente da fila de priorização PLD. */
+export function describePrioritizationMismatch(ordenacao: string): AuditFeedback {
+  return {
+    title: 'Fila de priorização desalinhada',
+    message:
+      'Os registros capturados estão corretos, mas a fila de priorização da esteira está desalinhada. ' +
+      'No monitoramento de PLD, a ordem é crucial para priorizar os casos mais graves primeiro. ' +
+      `Aplique a ordenação esperada: \`ORDER BY ${ordenacao}\`.`,
+  };
+}

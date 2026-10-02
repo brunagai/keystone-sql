@@ -1,3 +1,5 @@
+import { maskSql } from '../database/sqlText.ts';
+
 export interface ErrorHighlight {
   lineNumber: number;
   line: string;
@@ -15,6 +17,44 @@ interface ErrorRule {
   pattern: RegExp;
   title: string;
   explain: (token: string) => string;
+}
+
+const COMPILER_ORDER_TITLE = '⚠️ Ordem de Execução do Compilador SQL';
+
+const COMPILER_ORDER_EXPLANATION =
+  'O compilador SQL executa a cláusula `WHERE` antes de o `SELECT` processar as Window Functions (`LAG`, `ROW_NUMBER`, etc.). Para filtrar com base em uma métrica de janela, envelope o cálculo em uma CTE usando `WITH envelope_metricas AS (...)` (Fase 1) e aplique o filtro de corte regulatório no `WHERE` externo (Fase 2).';
+
+/** Mensagens típicas do SQLite (e variantes) ao filtrar janela no WHERE/HAVING. */
+const SQLITE_WINDOW_FILTER_ERROR =
+  /misuse of window function|window functions? not allowed in (?:WHERE|HAVING)|window function.*(?:WHERE|HAVING)/i;
+
+const WINDOW_CALL = /\b(?:OVER\s*\(|(?:LAG|LEAD|ROW_NUMBER|RANK|DENSE_RANK|NTILE)\s*\()/i;
+const WINDOW_HIGHLIGHT = /\b(?:LAG|LEAD|ROW_NUMBER|RANK|DENSE_RANK|NTILE|OVER)\b/i;
+const FILTER_STOP = /\b(?:GROUP\s+BY|HAVING|ORDER\s+BY|LIMIT|WINDOW|UNION|INTERSECT|EXCEPT)\b/i;
+
+function extractFilterClauses(masked: string): string[] {
+  const clauses: string[] = [];
+  const opener = /\b(WHERE|HAVING)\b/gi;
+  let match: RegExpExecArray | null;
+  while ((match = opener.exec(masked))) {
+    const rest = masked.slice(match.index + match[0].length);
+    const stop = rest.search(FILTER_STOP);
+    clauses.push(stop < 0 ? rest : rest.slice(0, stop));
+  }
+  return clauses;
+}
+
+/** True se WHERE/HAVING contém OVER / LAG / LEAD / ROW_NUMBER etc. */
+export function sqlFiltersOnWindowFunction(sql: string): boolean {
+  return extractFilterClauses(maskSql(sql)).some((clause) => WINDOW_CALL.test(clause));
+}
+
+function windowHighlightToken(sql: string): string {
+  const fromFilter = extractFilterClauses(maskSql(sql))
+    .map((clause) => WINDOW_HIGHLIGHT.exec(clause)?.[0])
+    .find(Boolean);
+  if (fromFilter) return fromFilter;
+  return WINDOW_HIGHLIGHT.exec(sql)?.[0] ?? 'OVER';
 }
 
 const RULES: readonly ErrorRule[] = [
@@ -45,10 +85,10 @@ const RULES: readonly ErrorRule[] = [
     explain: (t) => `\`${t}\` existe em mais de uma tabela do JOIN. Qualifique com o alias da tabela (ex.: \`t.${t}\`).`,
   },
   {
-    pattern: /misuse of (?:aggregate|window) function (\w+)/i,
-    title: 'Uso indevido de função de agregação/janela',
+    pattern: /misuse of aggregate function (\w+)/i,
+    title: 'Uso indevido de função de agregação',
     explain: (t) =>
-      `\`${t}()\` não pode ser usada nesse ponto. Agregações filtram-se no \`HAVING\`; funções de janela devem ser calculadas em uma CTE/subconsulta antes do filtro.`,
+      `\`${t}()\` não pode ser usada nesse ponto. Agregações (\`COUNT\`, \`SUM\`, \`AVG\`…) filtram-se no \`HAVING\`, depois do \`GROUP BY\`.`,
   },
   {
     pattern: /incomplete input/i,
@@ -67,6 +107,15 @@ function findHighlight(sql: string, token: string): ErrorHighlight | null {
 
 export function describeSqlError(error: unknown, sql: string): FriendlySqlError {
   const raw = error instanceof Error ? error.message : String(error);
+  if (SQLITE_WINDOW_FILTER_ERROR.test(raw) || sqlFiltersOnWindowFunction(sql)) {
+    const token = windowHighlightToken(sql);
+    return {
+      title: COMPILER_ORDER_TITLE,
+      explanation: COMPILER_ORDER_EXPLANATION,
+      raw,
+      highlight: findHighlight(sql, token),
+    };
+  }
   for (const rule of RULES) {
     const match = rule.pattern.exec(raw);
     if (match) {
