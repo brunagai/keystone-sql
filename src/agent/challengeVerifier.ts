@@ -1,6 +1,7 @@
 import type { Database } from 'sql.js';
 import { extractOrderBy, findForbiddenCommand, runIsolated } from '../database/safeQuery.ts';
-import type { GeneratedChallenge } from './types.ts';
+import { checkDifficultyToolkit } from './difficultyToolkit.ts';
+import type { ChallengeDifficulty, GeneratedChallenge } from './types.ts';
 
 export const MAX_SOLUTION_ROWS = 150;
 
@@ -13,12 +14,20 @@ export type VerificationResult =
  * Garante que a solutionQuery é somente leitura, executa no SQLite em memória,
  * retorna um conjunto não vazio e razoável, e é determinística (ORDER BY externo).
  */
-export function verifyChallenge(db: Database, challenge: GeneratedChallenge): VerificationResult {
+export function verifyChallenge(
+  db: Database,
+  challenge: GeneratedChallenge,
+  difficulty?: ChallengeDifficulty,
+): VerificationResult {
   const sql = challenge.solutionQuery;
   const forbidden = findForbiddenCommand(sql);
   if (forbidden) return { ok: false, reason: `A solutionQuery usa o comando proibido ${forbidden}. Use apenas SELECT/WITH.` };
   if (!extractOrderBy(sql)) {
     return { ok: false, reason: 'A solutionQuery não tem ORDER BY externo. Adicione uma ordenação determinística (com desempate).' };
+  }
+  if (difficulty) {
+    const toolkit = checkDifficultyToolkit(sql, difficulty);
+    if (toolkit) return { ok: false, reason: toolkit };
   }
 
   let columns: string[];

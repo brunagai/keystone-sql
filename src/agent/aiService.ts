@@ -130,7 +130,7 @@ export async function generateChallenge(db: Database, req: GenerationRequest, op
 
   const { label } = PROVIDERS[settings.provider];
   const messages: ChatMessage[] = [
-    { role: 'system', content: buildSystemPrompt(db) },
+    { role: 'system', content: buildSystemPrompt(db, req.difficulty) },
     { role: 'user', content: buildUserPrompt(req) },
   ];
   let lastProblem = '';
@@ -154,7 +154,7 @@ export async function generateChallenge(db: Database, req: GenerationRequest, op
     onProgress?.('Sanity Check: executando o gabarito gerado no SQLite em memória…');
     await yieldToBrowser();
     try {
-      const verification = verifyChallenge(db, parseGeneratedChallenge(raw));
+      const verification = verifyChallenge(db, parseGeneratedChallenge(raw), req.difficulty);
       if (verification.ok) {
         return { challenge: { ...verification.challenge, id: newId('ia') }, source: 'ia', model: settings.model, attempts: attempt };
       }

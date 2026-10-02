@@ -1,7 +1,12 @@
 import type { Database } from 'sql.js';
 import { SCHEMA_SQL } from '../database/schema.ts';
-import { DIFFICULTY_LABELS, FOCUS_LABELS, type GenerationRequest } from './types.ts';
 import { MAX_SOLUTION_ROWS } from './challengeVerifier.ts';
+import {
+  COMPILER_SKELETON,
+  DIFFICULTY_TOOLKIT,
+  formatToolkitForPrompt,
+} from './difficultyToolkit.ts';
+import { DIFFICULTY_LABELS, FOCUS_LABELS, type ChallengeDifficulty, type GenerationRequest } from './types.ts';
 
 const REGULATORY_GUIDELINES = `
 - Circular Bacen 3.978/2020: política de PLD/FT com abordagem baseada em risco; conhecimento do cliente (KYC),
@@ -47,12 +52,54 @@ export function buildDatasetProfile(db: Database): string {
   ${rows(db, 'SELECT * FROM transacoes_pix ORDER BY rowid LIMIT 1')}`.trim();
 }
 
-export function buildSystemPrompt(db: Database): string {
+const COLUMN_CONTEXT = `Colunas reais (não invente nomes): contas.id_conta, titular, tipo_pessoa, documento, ocupacao,
+renda_mensal_declarada, banco_ispb, banco_nome, agencia, numero_conta, tipo_chave_pix, chave_pix, cidade, uf, data_abertura;
+transacoes_pix.id_transacao, id_conta_origem, id_conta_destino, valor, data_hora, tipo_chave_destino, chave_pix_destino,
+descricao, canal.`;
+
+function compilerSection(difficulty: ChallengeDifficulty): string {
+  if (difficulty === 'iniciante') {
+    return `## Gabarito (Iniciante) — agregação relacional
+solutionQuery é um SELECT (sem WITH e sem OVER). Comentários "--" explicam WHERE, GROUP BY e HAVING.
+O corte regulatório vive no HAVING (e/ou WHERE). Termine com ORDER BY determinístico (com desempate).`;
+  }
+  return `## Gabarito na ordem do compilador (Intermediário / Avançado) — OBRIGATÓRIO
+solutionQuery e os comentários "--" devem evidenciar a separação entre carimbo métrico e filtro de corte,
+nesta estrutura (nomes de CTE/colunas podem variar; os marcadores FASE 1 / FASE 2 não):
+
+\`\`\`sql
+${COMPILER_SKELETON}
+\`\`\`
+
+- FASE 1 (Envelope): gera e carimba a métrica linha a linha. Não filtre o critério BACEN aqui.
+- FASE 2 (Inspetor): projeta evidências, aplica o WHERE de corte sobre o dado já carimbado, ORDER BY.
+- dicaSql deve esboçar as duas fases, sem entregar o gabarito completo.`;
+}
+
+/**
+ * System prompt do Agente Educador. `difficulty` é injetado com prioridade máxima:
+ * o modelo só pode usar as ferramentas daquele nível.
+ */
+export function buildSystemPrompt(db: Database, difficulty: ChallengeDifficulty): string {
+  const kit = DIFFICULTY_TOOLKIT[difficulty];
+  const others = (Object.keys(DIFFICULTY_TOOLKIT) as ChallengeDifficulty[])
+    .filter((level) => level !== difficulty)
+    .map((level) => `- ${DIFFICULTY_LABELS[level]} (NÃO usar neste pedido): ${DIFFICULTY_TOOLKIT[level].resumo}`)
+    .join('\n');
+
   return `Você é um Agente Educador especialista em PLD/FT (Prevenção à Lavagem de Dinheiro) e SQL analítico.
 Sua tarefa é criar UM desafio investigativo inédito para estudantes, baseado EXCLUSIVAMENTE no banco SQLite abaixo.
 
+## PRIORIDADE MÁXIMA — nível deste pedido: ${DIFFICULTY_LABELS[difficulty]} (${difficulty})
+${formatToolkitForPrompt(difficulty)}
+Não misture níveis, não “enfeite” com técnicas do nível acima e não simplifique o de baixo.
+Outros níveis (apenas para você NÃO usar agora):
+${others}
+
 ## Schema (DDL exato, SQLite)
 ${SCHEMA_SQL.trim()}
+
+${COLUMN_CONTEXT}
 
 ## Perfil do dataset em memória
 ${buildDatasetProfile(db)}
@@ -60,22 +107,22 @@ ${buildDatasetProfile(db)}
 ## Diretrizes regulatórias (Bacen)
 ${REGULATORY_GUIDELINES}
 
+${compilerSection(difficulty)}
+
 ## Regras obrigatórias para "solutionQuery"
-1. Dialeto ESTRITAMENTE SQLite, executável contra o schema acima, usando somente as colunas reais
-   (ex.: id_conta_origem, id_conta_destino, renda_mensal_declarada, data_hora, valor, canal).
-2. Funções permitidas: agregações, CASE, ROUND, ABS, COALESCE, strftime, unixepoch, julianday, date, time,
-   window functions (LAG, LEAD, ROW_NUMBER, RANK, SUM/COUNT OVER), CTEs (WITH). Proibido: ILIKE, DATE_TRUNC, EXTRACT,
-   INTERVAL, NOW(), funções de outros SGBDs e qualquer comando de escrita (INSERT, UPDATE, DELETE, DDL, PRAGMA).
-3. data_hora é TEXT 'YYYY-MM-DD HH:MM:SS'; para diferenças de tempo use unixepoch(data_hora) ou strftime('%s', data_hora).
+1. Dialeto ESTRITAMENTE SQLite, executável contra o schema acima, usando somente as colunas reais listadas.
+2. Funções de data/hora: data_hora é TEXT 'YYYY-MM-DD HH:MM:SS'; use strftime('%H', data_hora), strftime('%s', data_hora)
+   ou unixepoch(data_hora). Proibido: ILIKE, DATE_TRUNC, EXTRACT, INTERVAL, NOW() e funções de outros SGBDs.
+3. Proibido qualquer comando de escrita (INSERT, UPDATE, DELETE, DDL, PRAGMA).
 4. Deve retornar entre 1 e ${MAX_SOLUTION_ROWS} linhas NESTE dataset e terminar com ORDER BY externo determinístico (com desempate).
-5. Use aliases descritivos em snake_case; "colunasEsperadas" deve listar exatamente as colunas do SELECT final, na mesma ordem.
-6. Inclua comentários "--" didáticos explicando cada etapa da query (eles serão exibidos como gabarito comentado).
+5. Aliases descritivos em snake_case; "colunasEsperadas" lista exatamente as colunas do SELECT final, na mesma ordem.
+6. Comentários "--" concisos no próprio SQL evidenciam cada etapa (gabarito comentado).
 
 ## Regras de conteúdo
 - Português do Brasil, tom profissional de área de compliance.
 - "contexto": dossiê/denúncia fictícia (2 a 4 frases), coerente com o dataset.
-- "objetivo": o que a query deve retornar, citando colunas esperadas e a ordenação. Use crases para nomes de colunas.
-- "dicaSql": um esqueleto parcial da técnica, SEM entregar a resposta completa.
+- "objetivo": o que a query deve retornar, citando colunas esperadas, a ordenação e a técnica do nível (${kit.resumo}).
+- "dicaSql": esqueleto parcial da técnica, SEM entregar a resposta completa.
 - "badgeEnquadramento": cite a norma (ex.: "Carta Circular 4.001/2020 · Conta de passagem"). Não invente números de
   artigos ou incisos dos quais não tenha certeza.
 - "criteriosValidacao.descricaoSucesso": mensagem de parabéns explicando o que o resultado revela.
@@ -86,13 +133,8 @@ dicaSql, solutionQuery, criteriosValidacao { colunasEsperadas: string[], descric
 
 export function buildUserPrompt({ focus, difficulty, avoidTitles }: GenerationRequest): string {
   const avoid = avoidTitles.length ? `\nNão repita estes desafios já existentes: ${avoidTitles.map((t) => `"${t}"`).join(', ')}.` : '';
-  const technique =
-    difficulty === 'iniciante'
-      ? 'filtros, JOIN e GROUP BY/HAVING'
-      : difficulty === 'intermediario'
-        ? 'CTEs, agregações condicionais e razões/proporções'
-        : 'window functions (LAG/LEAD/ROW_NUMBER/SUM OVER), múltiplas CTEs e janelas temporais';
   return `Gere um novo desafio.
 - Foco da tipologia: ${FOCUS_LABELS[focus]}.
-- Dificuldade: ${DIFFICULTY_LABELS[difficulty]} (técnicas esperadas: ${technique}).${avoid}`;
+- Dificuldade: ${DIFFICULTY_LABELS[difficulty]} (${difficulty}).
+${formatToolkitForPrompt(difficulty)}${avoid}`;
 }

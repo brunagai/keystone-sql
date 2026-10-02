@@ -87,7 +87,8 @@ src/
   agent/
     types.ts               GeneratedChallenge, AiSettings, foco/dificuldade
     settingsStore.ts       Provedores (Groq/OpenAI) e persistência da chave
-    prompt.ts              System/user prompt (DDL + perfil do dataset + normas Bacen)
+    prompt.ts              System/user prompt (DDL + perfil + normas Bacen + amarração por nível)
+    difficultyToolkit.ts   Amarração Iniciante/Intermediário/Avançado + checagem do gabarito
     challengeSchema.ts     JSON Schema e parser/validador da resposta do LLM
     challengeVerifier.ts   Sanity Check do gabarito no SQLite
     aiService.ts           Chamadas HTTP, autocorreção e fallback offline
@@ -347,8 +348,8 @@ flowchart TD
   OFF --> R
 ```
 
-- **Prompt** (`prompt.ts`): inclui o DDL exato, um perfil calculado do banco (faixas de valor, canais, período, perfil de renda, linha de exemplo) e as diretrizes da **Circular Bacen 3.978/2020** e da **Carta Circular Bacen 4.001/2020**. As regras exigem SQLite estrito, funções suportadas, 1 a 150 linhas, `ORDER BY` externo com desempate, aliases em `snake_case` e comentários didáticos no gabarito.
-- **Sanity Check** (`challengeVerifier.ts`): o gabarito precisa ser somente leitura, ter `ORDER BY` externo, executar sem erro (em `runIsolated`), retornar entre 1 e 150 linhas e ter a mesma quantidade de colunas que `colunasEsperadas`. Os nomes reais das colunas substituem os declarados. A razão da falha é escrita como instrução de correção para o modelo.
+- **Prompt** (`prompt.ts` + `difficultyToolkit.ts`): o nível (`iniciante` | `intermediario` | `avancado`) entra no system prompt com prioridade máxima. Iniciante = `GROUP BY`/`HAVING`/`WHERE` (**sem** `WITH` e **sem** janelas); Intermediário = `WITH` + `ROW_NUMBER()`/`RANK()`/`DENSE_RANK()` e corte posicional; Avançado = `WITH` + `LAG`/`LEAD` (ou múltiplas janelas) e corte no `WHERE` externo. Intermediário e Avançado exigem os marcadores `-- FASE 1: O ENVELOPE ANALÍTICO` e `-- FASE 2: O INSPETOR DE RISCO`. Dialeto SQLite estrito (`strftime`, `unixepoch`), 1 a 150 linhas, `ORDER BY` externo com desempate.
+- **Sanity Check** (`challengeVerifier.ts`): o gabarito precisa ser somente leitura, ter `ORDER BY` externo, respeitar a amarração do nível (quando a origem é LLM), executar sem erro (em `runIsolated`), retornar entre 1 e 150 linhas e ter a mesma quantidade de colunas que `colunasEsperadas`. Os nomes reais das colunas substituem os declarados. A razão da falha é escrita como instrução de correção para o modelo.
 - **Autocorreção**: até 3 tentativas; a conversa acumula a resposta anterior e o erro do SQLite.
 - **Timeout** de 60 s por requisição (`AbortSignal.timeout`) combinado com o cancelamento da usuária (`AbortSignal.any`). Cancelar **não** cai no offline.
 - **Fallback offline** (`offlineGenerator.ts`): 8 templates parametrizados (horário atípico, fan-in em conta nova, conta de passagem, valores redondos, fracionamento, rajadas por hora, recebimentos vs. renda de PF, maior PIX vs. faturamento de PJ com `ROW_NUMBER`). Os parâmetros são sorteados e o resultado passa pelo mesmo Sanity Check.

@@ -2,66 +2,96 @@ import { maskSql } from '../database/sqlText.ts';
 import type { ChallengeDifficulty } from './types.ts';
 
 export interface DifficultyToolkit {
-  /** Uma linha para o seletor / user prompt. */
   resumo: string;
   obrigatorio: string;
   proibido: string;
+  foco: string;
 }
+
+export const ENVELOPE_HEADING = '-- FASE 1: O ENVELOPE ANALÍTICO (Criação da linha do tempo e carimbo de métricas linha a linha)';
+export const INSPECTOR_HEADING = '-- FASE 2: O INSPETOR DE RISCO (Corte regulatório e enriquecimento sobre os dados já carimbados)';
+
+/** Esqueleto didático injetado no system prompt (Intermediário e Avançado). */
+export const COMPILER_SKELETON = `${ENVELOPE_HEADING}
+WITH envelope_metricas AS (
+  SELECT
+    id_transacao,
+    id_conta_origem,
+    valor,
+    data_hora
+    -- métrica analítica (ROW_NUMBER/RANK no Intermediário; LAG/LEAD no Avançado)
+  FROM transacoes_pix
+)
+${INSPECTOR_HEADING}
+SELECT
+  -- colunas de evidência
+FROM envelope_metricas
+WHERE /* critério de corte regulatório BACEN */
+ORDER BY /* ordenação determinística */;`;
 
 export const DIFFICULTY_TOOLKIT: Record<ChallengeDifficulty, DifficultyToolkit> = {
   iniciante: {
-    resumo: 'GROUP BY, HAVING e filtros lógicos (sem window functions)',
+    resumo: 'Agregação relacional: GROUP BY, HAVING e WHERE (sem janelas e sem CTE)',
     obrigatorio:
-      'Use apenas filtros (`WHERE`), `JOIN` quando necessário, `GROUP BY` e `HAVING`. O corte regulatório deve estar no `HAVING` ou no `WHERE` (limiares, `BETWEEN`, `AND`/`OR`).',
+      'Obrigatório: `GROUP BY`, `HAVING`, agregações clássicas (`COUNT`, `SUM`, `AVG`, `MAX`, `MIN`) e filtros lógicos no `WHERE` (múltiplos limiares, `BETWEEN`, `IN`, `AND`/`OR`). `JOIN` com `contas` quando o critério envolver KYC (`renda_mensal_declarada`, `titular`).',
     proibido:
-      'PROIBIDO: `OVER`, `LAG`, `LEAD`, `ROW_NUMBER`, `RANK`, `DENSE_RANK`, `NTILE` e qualquer window function. Não use CTE só para “parecer avançado”: se usar `WITH`, o corpo deve continuar sendo agregação clássica, sem janelas.',
+      'PROIBIDO de forma expressa: Window Functions (`OVER (...)`, `LAG`, `LEAD`, `ROW_NUMBER`, `RANK`, `DENSE_RANK`, `NTILE`) e CTEs (`WITH`). O foco é puramente agregação relacional (volumetria e fracionamento básico).',
+    foco: 'Detecção de volumetria e fracionamento básico (várias operações logo abaixo de um limiar, concentração por remetente/destino).',
   },
   intermediario: {
-    resumo: 'ROW_NUMBER() ou RANK() para ordenação e corte posicional',
+    resumo: 'Classificação posicional: ROW_NUMBER() / RANK() / DENSE_RANK() no envelope WITH',
     obrigatorio:
-      'Obrigatório: `ROW_NUMBER()` ou `RANK()` com `OVER (PARTITION BY … ORDER BY …)` para ranquear e um corte posicional (`WHERE posicao = 1`, `<= N`, etc.). Prefira um `WITH` para carimbar a posição linha a linha e filtrar fora.',
+      'Obrigatório: `WITH envelope_metricas AS (...)` carimbando `ROW_NUMBER() OVER (PARTITION BY … ORDER BY …)` ou `RANK()`/`DENSE_RANK() OVER (...)`, e corte posicional no Inspetor (`WHERE posicao = 1`, `<= N`).',
     proibido:
-      'Não resolva só com `GROUP BY`/`HAVING` se o corte for posicional (maior PIX, top-N, primeiro/último do grupo). `LAG`/`LEAD` ficam para o nível Avançado.',
+      'Não resolva só com `GROUP BY`/`HAVING` se o corte for posicional (maior PIX, top-N, primeiro/último do grupo). `LAG`/`LEAD` ficam para o Avançado.',
+    foco: 'Desduplicação de alertas, maior evento por conta em um período, isolamento de transações de pico relativo.',
   },
   avancado: {
-    resumo: 'WITH (CTE) + LAG/LEAD ou múltiplas janelas de partição',
+    resumo: 'CTE + LAG/LEAD (ou múltiplas janelas) e corte no WHERE externo',
     obrigatorio:
-      'Obrigatório: estrutura `WITH` (uma ou mais CTEs) combinada com `LAG()`/`LEAD()` **ou** pelo menos duas janelas (`OVER`) em partições distintas. Calcule métricas de linha do tempo/histórico no envelope e corte no `SELECT` externo.',
-    proibido: 'Não entregue um `SELECT` plano sem CTE. Não use só `GROUP BY`/`HAVING` como solução principal.',
+      'Obrigatório: `WITH envelope_metricas AS (...)` combinado com `LAG()` ou `LEAD()` (desfasamento temporal) **ou** janelas `OVER` em partições distintas. As métricas são carimbadas no Envelope; o corte regulatório vai no `WHERE` do SELECT externo.',
+    proibido: 'Não entregue um `SELECT` plano sem CTE. Não use só `GROUP BY`/`HAVING` como solução principal. Não omita o filtro externo sobre o dado já carimbado.',
+    foco: 'Mudança abrupta de comportamento, velocidade anómala (burst) ou intervalos entre transações consecutivas com corte BACEN no WHERE externo.',
   },
 };
 
 const WINDOW_FN = /\b(LAG|LEAD|ROW_NUMBER|RANK|DENSE_RANK|NTILE)\s*\(/i;
 const OVER = /\bOVER\s*\(/i;
-const ROW_OR_RANK = /\b(ROW_NUMBER|RANK)\s*\(/i;
+const ROW_OR_RANK = /\b(ROW_NUMBER|RANK|DENSE_RANK)\s*\(/i;
 const LAG_OR_LEAD = /\b(LAG|LEAD)\s*\(/i;
-const WITH_HEAD = /^\s*WITH\b/i;
+const WITH_ANY = /\bWITH\b/i;
 const GROUP_BY = /\bGROUP\s+BY\b/i;
 const HAVING = /\bHAVING\b/i;
-const ENVELOPE_MARK = /bloco\s+envelope/i;
-const INSPECTOR_MARK = /bloco\s+inspetor/i;
+const ENVELOPE_MARK = /fase\s*1\s*:\s*o\s*envelope\s*anal[ií]tico|bloco\s+envelope/i;
+const INSPECTOR_MARK = /fase\s*2\s*:\s*o\s*inspetor\s+de\s+risco|bloco\s+inspetor/i;
 
 const countMatches = (text: string, pattern: RegExp): number => {
   const flags = pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`;
   return [...text.matchAll(new RegExp(pattern.source, flags))].length;
 };
 
-/** Confere se o gabarito respeita a amarração de ferramentas do nível. `null` = ok. */
-export function checkDifficultyToolkit(sql: string, difficulty: ChallengeDifficulty): string | null {
-  const code = maskSql(sql);
-  const comments = sql;
-
-  if (!ENVELOPE_MARK.test(comments) || !INSPECTOR_MARK.test(comments)) {
+const requireTwoPhaseComments = (sql: string): string | null => {
+  const envAt = sql.search(ENVELOPE_MARK);
+  const insAt = sql.search(INSPECTOR_MARK);
+  if (envAt < 0 || insAt < 0 || envAt > insAt) {
     return (
-      'A solutionQuery deve estruturar o raciocínio em dois blocos comentados: ' +
-      '"-- === Bloco Envelope (criação da métrica / linha do tempo) ===" e ' +
-      '"-- === Bloco Inspetor de Risco (corte e enriquecimento) ===".'
+      'A solutionQuery deve separar Envelope e Inspetor, nesta ordem, com os comentários: ' +
+      `"${ENVELOPE_HEADING}" e depois "${INSPECTOR_HEADING}".`
     );
   }
+  return null;
+};
+
+/** Confere se o gabarito respeita a amarração do nível. `null` = ok. */
+export function checkDifficultyToolkit(sql: string, difficulty: ChallengeDifficulty): string | null {
+  const code = maskSql(sql);
 
   if (difficulty === 'iniciante') {
     if (WINDOW_FN.test(code) || OVER.test(code)) {
-      return 'Nível Iniciante: remova window functions (`OVER`, `LAG`, `LEAD`, `ROW_NUMBER`, `RANK`). Use GROUP BY/HAVING e filtros.';
+      return 'Nível Iniciante: remova Window Functions (`OVER`, `LAG`, `LEAD`, `ROW_NUMBER`, `RANK`). Use só GROUP BY, HAVING, agregações e WHERE.';
+    }
+    if (WITH_ANY.test(code)) {
+      return 'Nível Iniciante: remova a CTE (`WITH`). O desafio deve ser agregação relacional pura (GROUP BY / HAVING / WHERE).';
     }
     if (!GROUP_BY.test(code) || !HAVING.test(code)) {
       return 'Nível Iniciante: a solutionQuery deve ter GROUP BY e HAVING (agregação + corte por limiar).';
@@ -69,30 +99,42 @@ export function checkDifficultyToolkit(sql: string, difficulty: ChallengeDifficu
     return null;
   }
 
+  const phase = requireTwoPhaseComments(sql);
+  if (phase) return phase;
+
   if (difficulty === 'intermediario') {
     if (LAG_OR_LEAD.test(code)) {
-      return 'Nível Intermediário: não use LAG/LEAD (reserve para Avançado). Use ROW_NUMBER() ou RANK() com corte posicional.';
+      return 'Nível Intermediário: não use LAG/LEAD (reserve para Avançado). Use ROW_NUMBER(), RANK() ou DENSE_RANK() com corte posicional.';
+    }
+    if (!WITH_ANY.test(code)) {
+      return 'Nível Intermediário: a solutionQuery deve usar WITH (Envelope) para carimbar ROW_NUMBER/RANK e cortar no SELECT externo (Inspetor).';
     }
     if (!ROW_OR_RANK.test(code) || !OVER.test(code)) {
-      return 'Nível Intermediário: é obrigatório ROW_NUMBER() ou RANK() com OVER (PARTITION BY … ORDER BY …) e um corte posicional no Inspetor.';
+      return 'Nível Intermediário: é obrigatório ROW_NUMBER(), RANK() ou DENSE_RANK() com OVER (PARTITION BY … ORDER BY …) e um corte posicional no Inspetor.';
     }
     return null;
   }
 
-  if (!WITH_HEAD.test(code)) {
-    return 'Nível Avançado: a solutionQuery deve começar com WITH (CTE) — o Bloco Envelope vive na CTE.';
+  if (!WITH_ANY.test(code)) {
+    return 'Nível Avançado: a solutionQuery deve ter WITH envelope_metricas AS (...) — o Envelope vive na CTE.';
   }
   const overCount = countMatches(code, OVER);
   if (!LAG_OR_LEAD.test(code) && overCount < 2) {
-    return 'Nível Avançado: combine a CTE com LAG()/LEAD() ou com pelo menos duas janelas OVER (partições/métricas distintas).';
+    return 'Nível Avançado: combine a CTE com LAG()/LEAD() (desfasamento temporal) ou com pelo menos duas janelas OVER (partições distintas).';
   }
   return null;
 }
 
 export function formatToolkitForPrompt(difficulty: ChallengeDifficulty): string {
   const kit = DIFFICULTY_TOOLKIT[difficulty];
-  return `AMARRAÇÃO OBRIGATÓRIA deste pedido (${difficulty}):
+  const structure =
+    difficulty === 'iniciante'
+      ? '- Não use WITH nem OVER. Comentários "--" explicam o WHERE/GROUP BY/HAVING, sem fingir um envelope de janela.'
+      : `- Estruture solutionQuery na ordem do compilador, com estes marcadores (nesta ordem):\n  ${ENVELOPE_HEADING}\n  ${INSPECTOR_HEADING}`;
+  return `PRIORIDADE MÁXIMA — amarração deste pedido (${difficulty}):
 - Ferramentas: ${kit.resumo}
 - ${kit.obrigatorio}
-- ${kit.proibido}`;
+- ${kit.proibido}
+- Foco analítico: ${kit.foco}
+${structure}`;
 }

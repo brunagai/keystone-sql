@@ -142,7 +142,10 @@ O que ele **aponta**:
 
 ## 5. Gerando novos desafios com IA
 
-1. No Painel 3, em **✨ Agente Educador IA**, escolha o **Foco da tipologia** (ou "Livre") e a **Dificuldade** (Iniciante, Intermediário ou Avançado).
+1. No Painel 3, em **✨ Agente Educador IA**, escolha o **Foco da tipologia** (ou "Livre") e a **Dificuldade**:
+   - **Iniciante** — `GROUP BY`, `HAVING` e `WHERE` (sem `WITH` e sem funções de janela).
+   - **Intermediário** — `WITH` + `ROW_NUMBER()` / `RANK()` para ranquear e cortar (maior PIX, top-N).
+   - **Avançado** — `WITH` + `LAG()`/`LEAD()` (burst, intervalo entre PIX) e corte no `WHERE` externo.
 2. Clique em **✨ Gerar Novo Desafio com IA**.
 3. Acompanhe as mensagens: o agente analisa as tipologias do Bacen e o dataset, redige o caso e roda um **Sanity Check** — executa o gabarito no banco para garantir que ele funciona e encontra evidências.
 4. Quando terminar, o desafio aparece no grupo **"Nível 5 — Laboratório Aberto (Agente IA)"** do seletor, já selecionado, e o editor recebe um **template comentado** com o título, o objetivo, as colunas esperadas e a ordenação. É só começar a escrever depois do `SELECT`.
