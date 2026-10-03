@@ -41,8 +41,12 @@ export function buildStarterTemplate(scenario: InvestigationScenario): string {
     '--',
     ...wrapComment(scenario.colunasEsperadas.join(', '), '-- Colunas esperadas: '),
     ...wrapComment(`ORDER BY ${scenario.ordenacao}`, '-- Ordenação: '),
-    '-- Selecione o miolo do WITH e use Testar Seleção / CTE (Ctrl+Enter).',
+    '-- Selecione o miolo do WITH e use Testar CTE (Ctrl+Enter).',
     '-- "Validar Desafio" compara o resultado com o gabarito.',
+    '--',
+    '-- 1. De onde vêm os dados?',
+    '-- 2. Qual conta ou período vamos filtrar no WHERE?',
+    '-- 3. Que métricas e colunas queremos exibir?',
     '',
     'SELECT ',
   ].join('\n');

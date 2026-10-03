@@ -32,12 +32,6 @@ const STATUS_STYLE: Record<ValidationStatus, { box: string; title: string; icon:
   warning: { box: 'bg-amber-950/40 border-amber-500/50', title: 'text-amber-300', icon: '!', label: 'Parcial' },
 };
 
-const block = (title: string, contentHtml: string): string => `
-  <section class="rounded border border-slate-800 bg-slate-900/40">
-    <h3 class="border-b border-slate-800 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">${title}</h3>
-    <div class="px-3 py-2 text-xs leading-relaxed text-slate-300">${contentHtml}</div>
-  </section>`;
-
 const levelLabel = (nivel: TrailLevel): string => `Nível ${nivel} — ${TRAIL_LEVELS[nivel].titulo}`;
 
 function renderLevelBadge(s: InvestigationScenario): string {
@@ -73,7 +67,7 @@ function renderTwoPhase(s: InvestigationScenario): string {
       <p class="text-[11px] leading-relaxed text-slate-300">${formatInline(phase.texto)}</p>
     </div>`;
   return `
-    <details open class="group rounded border border-violet-700/50 bg-violet-950/15">
+    <details class="group rounded border border-violet-700/50 bg-violet-950/15">
       <summary class="flex cursor-pointer select-none items-center gap-2 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-violet-300 hover:text-violet-200">
         <span class="transition-transform group-open:rotate-90">▶</span>
         Decomposição em 2 Fases (Esteira Analítica)
@@ -83,31 +77,54 @@ function renderTwoPhase(s: InvestigationScenario): string {
         ${step('2', phases.fase2)}
         <p class="text-[10px] leading-relaxed text-slate-500">
           Selecione o miolo do <code class="font-mono text-slate-400">WITH</code> no editor e clique em
-          <span class="text-sky-400">Testar Seleção / CTE</span> (Ctrl+Enter) para inspecionar os dados intermediários.
+          <span class="text-sky-400">Testar CTE</span> (Ctrl+Enter) para inspecionar os dados intermediários.
         </p>
       </div>
     </details>`;
+}
+
+function missionLine(objetivo: string): string {
+  const text = objetivo.replace(/`/g, '').replace(/\s+/g, ' ').trim();
+  const sentence = text.split(/(?<=[.!?])\s+/)[0] ?? text;
+  return sentence.length > 200 ? `${sentence.slice(0, 197)}…` : sentence;
 }
 
 function renderScenario(s: InvestigationScenario): string {
   return `
     ${renderLevelBadge(s)}
     ${renderOriginBadge(s)}
-    <span class="inline-block rounded border border-amber-700/60 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-300">${escapeHtml(s.enquadramento)}</span>
     <h3 class="text-sm font-semibold text-slate-100">${escapeHtml(s.titulo)}</h3>
-    ${block('Contexto da Denúncia / Dossiê', escapeHtml(s.dossie))}
-    ${block(
-      'Objetivo da Análise SQL',
-      `<p>${formatInline(s.objetivo)}</p>
-       <p class="mt-2 text-[11px] text-slate-500">Ordenação: ${formatInline(`\`ORDER BY ${s.ordenacao}\``)}</p>`,
-    )}
-    ${renderTwoPhase(s)}
-    <details class="group rounded border border-slate-800 bg-slate-900/40">
-      <summary class="flex cursor-pointer select-none items-center gap-2 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500 hover:text-slate-300">
-        <span class="transition-transform group-open:rotate-90">▶</span> Dica de Sintaxe SQL
+    <section class="rounded-lg border border-sky-600/50 bg-sky-950/35 p-3 shadow-sm shadow-sky-950/20">
+      <p class="text-[10px] font-semibold uppercase tracking-wider text-sky-300">🎯 Sua Missão</p>
+      <p class="mt-1.5 text-sm font-medium leading-snug text-slate-50">${escapeHtml(missionLine(s.objetivo))}</p>
+      <p class="mt-2 text-[11px] text-sky-200/70">Ordene o resultado: ${formatInline(`\`ORDER BY ${s.ordenacao}\``)}</p>
+    </section>
+    <details class="rounded border border-slate-800 bg-slate-900/40">
+      <summary class="cursor-pointer select-none px-3 py-1.5 text-[11px] font-medium text-slate-500 hover:text-slate-300">
+        Contexto da Denúncia / Dossiê Policial e Bacen
       </summary>
       <div class="space-y-2 border-t border-slate-800 px-3 py-2">
-        <p class="text-xs leading-relaxed text-slate-400">${escapeHtml(s.dicaTexto)}</p>
+        <span class="inline-block rounded border border-amber-700/60 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-300">${escapeHtml(s.enquadramento)}</span>
+        <p class="text-xs leading-relaxed text-slate-400">${escapeHtml(s.dossie)}</p>
+      </div>
+    </details>
+    <details class="rounded border border-slate-800 bg-slate-900/40">
+      <summary class="cursor-pointer select-none px-3 py-1.5 text-[11px] font-medium text-slate-500 hover:text-slate-300">
+        O que sua consulta deve devolver (colunas)
+      </summary>
+      <div class="border-t border-slate-800 px-3 py-2 text-xs leading-relaxed text-slate-300">
+        <p>${formatInline(s.objetivo)}</p>
+        <p class="mt-2 text-[11px] text-slate-500">Colunas: ${formatInline(s.colunasEsperadas.map((c) => `\`${c}\``).join(', '))}</p>
+      </div>
+    </details>
+    ${renderTwoPhase(s)}
+    <details class="group rounded-lg border border-amber-700/40 bg-amber-950/20">
+      <summary class="flex cursor-pointer select-none items-start gap-2 px-3 py-2.5 text-[13px] font-medium leading-snug text-amber-100 hover:bg-amber-950/40">
+        <span class="mt-0.5 text-base" aria-hidden="true">💡</span>
+        Precisa de ajuda com SQL? Clique aqui para ver a dica passo a passo
+      </summary>
+      <div class="space-y-2 border-t border-amber-900/40 px-3 py-2">
+        <p class="text-xs leading-relaxed text-slate-300">${escapeHtml(s.dicaTexto)}</p>
         <pre class="overflow-x-auto rounded bg-slate-950 p-2 font-mono text-[11px] leading-5 text-emerald-200">${escapeHtml(s.dicaSql)}</pre>
       </div>
     </details>`;

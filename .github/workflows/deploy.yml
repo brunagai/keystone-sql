@@ -1,4 +1,4 @@
-name: Deploy para o GitHub Pages
+﻿name: Deploy para o GitHub Pages
 
 on:
   push:
@@ -46,4 +46,4 @@ jobs:
 
       - name: Concluir deploy
         id: deployment
-        uses: actions/deploy-pages@v4 mhjbgnj
+        uses: actions/deploy-pages@v4

@@ -13,6 +13,9 @@
       *::-webkit-scrollbar-corner { background: transparent; }
       details > summary { list-style: none; }
       details > summary::-webkit-details-marker { display: none; }
+      #schema-panel[data-collapsed="true"] { width: 2.75rem; }
+      #schema-panel[data-collapsed="false"] { width: 20rem; }
+      .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
     </style>
   </head>
   <body class="h-screen overflow-hidden bg-slate-950 text-[13px] text-slate-200 antialiased">
@@ -50,47 +53,54 @@
 
       <main id="workspace" class="flex min-h-0 flex-1 overflow-hidden">
         <!-- Painel 1: Dicionário de dados -->
-        <aside id="schema-panel" aria-labelledby="schema-panel-title"
-          class="flex w-80 shrink-0 flex-col border-r border-slate-800 bg-zinc-950">
-          <div class="flex h-9 shrink-0 items-center border-b border-slate-800 px-3">
-            <h2 id="schema-panel-title" class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-              Dicionário de Dados &amp; Metadados
+        <aside id="schema-panel" aria-labelledby="schema-panel-title" data-collapsed="true"
+          class="flex w-11 shrink-0 flex-col border-r border-slate-800 bg-zinc-950 transition-[width] duration-200">
+          <div class="flex h-9 shrink-0 items-center gap-1 border-b border-slate-800 px-1.5">
+            <button id="schema-toggle" type="button" aria-expanded="false" aria-controls="schema-tree"
+              title="Expandir dicionário de dados"
+              class="flex size-7 shrink-0 items-center justify-center rounded text-slate-400 hover:bg-slate-800 hover:text-slate-100">
+              <span aria-hidden="true" id="schema-toggle-icon">▶</span>
+              <span class="sr-only">Expandir dicionário de dados</span>
+            </button>
+            <h2 id="schema-panel-title" class="hidden min-w-0 truncate text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+              Dicionário de Dados
             </h2>
           </div>
-          <div id="schema-tree" class="min-h-0 flex-1 space-y-2 overflow-y-auto p-2"></div>
+          <div id="schema-tree" hidden class="min-h-0 flex-1 space-y-2 overflow-y-auto p-2"></div>
         </aside>
 
         <!-- Painel 2: Editor + resultados -->
         <section id="query-panel" aria-label="Editor SQL e console de resultados" class="flex min-w-0 flex-1 flex-col">
           <div id="editor-pane" class="flex h-1/2 min-h-0 flex-col border-b border-slate-800">
-            <div class="flex h-9 shrink-0 items-center gap-3 border-b border-slate-800 bg-zinc-950 px-3">
+            <div class="flex h-9 shrink-0 items-center gap-2 border-b border-slate-800 bg-zinc-950 px-3">
               <h2 class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Editor SQL</h2>
-              <kbd class="rounded border border-slate-700 bg-slate-900 px-1.5 font-mono text-[10px] text-slate-500">Ctrl+Enter = seleção ou consulta</kbd>
-              <div class="relative">
-                <button id="btn-history" type="button"
-                  class="flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-slate-400 hover:bg-slate-800 hover:text-slate-200 aria-expanded:bg-slate-800 aria-expanded:text-slate-200">
-                  <span aria-hidden="true">🕘</span> Histórico
-                  <span id="history-count" hidden class="rounded-full bg-slate-700 px-1.5 font-mono text-[10px] text-slate-200"></span>
-                </button>
-                <div id="history-panel" role="dialog" aria-label="Últimas queries executadas"
-                  class="absolute left-0 top-full z-30 mt-1 w-[30rem] max-w-[60vw] rounded border border-slate-700 bg-zinc-950 p-1.5 shadow-2xl shadow-black/60">
-                  <p class="px-2 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Últimas 10 execuções (sessão)</p>
-                  <div id="history-list" class="max-h-80 overflow-y-auto"></div>
+              <span id="editor-status" role="status" aria-live="polite" class="min-w-0 truncate text-[11px] text-sky-300"></span>
+              <div class="ml-auto flex items-center gap-3">
+                <div class="flex items-center gap-0.5 rounded border border-slate-800/80 bg-slate-950/40 px-0.5">
+                  <div class="relative">
+                    <button id="btn-history" type="button"
+                      class="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-slate-500 hover:bg-slate-800 hover:text-slate-300 aria-expanded:bg-slate-800 aria-expanded:text-slate-200">
+                      <span aria-hidden="true">🕘</span> Histórico
+                      <span id="history-count" hidden class="rounded-full bg-slate-700 px-1.5 font-mono text-[10px] text-slate-200"></span>
+                    </button>
+                    <div id="history-panel" role="dialog" aria-label="Últimas queries executadas"
+                      class="absolute right-0 top-full z-30 mt-1 w-[30rem] max-w-[60vw] rounded border border-slate-700 bg-zinc-950 p-1.5 shadow-2xl shadow-black/60">
+                      <p class="px-2 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Últimas 10 execuções (sessão)</p>
+                      <div id="history-list" class="max-h-80 overflow-y-auto"></div>
+                    </div>
+                  </div>
+                  <button id="btn-run-selection" type="button" disabled
+                    title="Selecione o miolo do WITH (a CTE) e execute só esse trecho. Ctrl+Enter faz o mesmo."
+                    class="rounded px-1.5 py-0.5 text-[10px] text-slate-500 hover:bg-slate-800 hover:text-slate-300 disabled:cursor-not-allowed disabled:opacity-40">
+                    Testar CTE
+                  </button>
                 </div>
-              </div>
-              <span id="editor-status" role="status" aria-live="polite" class="truncate text-[11px] text-sky-300"></span>
-              <div class="ml-auto flex items-center gap-2">
-                <button id="btn-run-selection" type="button" disabled
-                  title="Selecione o miolo do WITH (a CTE) e execute só esse trecho para ver os dados intermediários. Ctrl+Enter faz o mesmo."
-                  class="rounded border border-sky-800/80 px-2 py-1 text-[11px] font-medium text-sky-300 hover:bg-sky-950/50 disabled:cursor-not-allowed disabled:opacity-40">
-                  Testar Seleção / CTE
-                </button>
                 <button id="btn-validate" type="button" disabled
-                  class="rounded border border-sky-700 px-2.5 py-1 text-xs font-medium text-sky-300 hover:bg-sky-950/50 disabled:cursor-not-allowed disabled:opacity-40">
+                  class="rounded bg-sky-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm shadow-sky-950/40 hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-40">
                   Validar Desafio
                 </button>
                 <button id="btn-run" type="button" disabled
-                  class="rounded bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40">
+                  class="rounded bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm shadow-emerald-950/40 hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40">
                   ▶ Executar Query
                 </button>
               </div>
@@ -109,8 +119,8 @@
               <div id="output-meta" class="ml-auto flex items-center gap-3 font-mono text-[11px] text-slate-500"></div>
               <div class="relative">
                 <button id="btn-export" type="button" disabled
-                  class="rounded px-1.5 py-0.5 text-[11px] text-slate-400 hover:bg-slate-800 hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent aria-expanded:bg-slate-800">
-                  <span aria-hidden="true">⤓</span> Exportar Dossiê <span class="text-slate-600">(CSV / Markdown)</span>
+                  class="rounded px-1.5 py-0.5 text-[10px] text-slate-500 hover:bg-slate-800 hover:text-slate-300 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent aria-expanded:bg-slate-800">
+                  <span aria-hidden="true">⤓</span> Exportar
                 </button>
                 <div id="export-menu" role="menu" aria-label="Formato do dossiê"
                   class="absolute right-0 top-full z-30 mt-1 w-64 rounded border border-slate-700 bg-zinc-950 p-1.5 shadow-2xl shadow-black/60">

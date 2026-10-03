@@ -11,30 +11,14 @@ export interface SchemaPanelController {
 }
 
 function renderColumn(table: string, col: ColumnSchema): string {
-  const descricao = DATA_DICTIONARY[table]?.colunas[col.name] ?? '';
-  const badges = [
-    col.primaryKey ? '<span class="rounded bg-amber-500/15 px-1 text-[9px] font-bold text-amber-300">PK</span>' : '',
-    col.foreignKey
-      ? `<span class="rounded bg-sky-500/15 px-1 text-[9px] font-bold text-sky-300" title="Referencia ${escapeHtml(
-          `${col.foreignKey.table}.${col.foreignKey.column}`,
-        )}">FK</span>`
-      : '',
-    col.notNull && !col.primaryKey ? '<span class="text-[9px] text-slate-600" title="NOT NULL">NN</span>' : '',
-  ].join('');
-
+  const descricao = DATA_DICTIONARY[table]?.colunas[col.name] ?? `Campo ${col.name}`;
+  const hint = `${descricao}\nClique para inserir no editor.`;
   return `
     <li>
-      <button type="button" data-insert="${escapeHtml(col.name)}" title="${escapeHtml(descricao)}&#10;Clique para inserir no editor"
-        class="group flex w-full items-center gap-1.5 rounded px-1.5 py-0.5 text-left hover:bg-slate-800/70">
-        <span class="truncate font-mono text-[11px] text-slate-200 group-hover:text-emerald-300">${escapeHtml(col.name)}</span>
-        ${badges}
-        <span class="ml-auto shrink-0 font-mono text-[10px] uppercase text-slate-500">${escapeHtml(col.type)}</span>
+      <button type="button" data-insert="${escapeHtml(col.name)}" title="${escapeHtml(hint)}"
+        class="group flex w-full items-center rounded px-1.5 py-1 text-left hover:bg-slate-800/70">
+        <span class="truncate font-mono text-[12px] text-slate-200 group-hover:text-emerald-300">${escapeHtml(col.name)}</span>
       </button>
-      ${
-        col.foreignKey
-          ? `<p class="pl-3 font-mono text-[10px] text-sky-400/70">↳ ${escapeHtml(col.foreignKey.table)}.${escapeHtml(col.foreignKey.column)}</p>`
-          : ''
-      }
     </li>`;
 }
 
@@ -51,9 +35,9 @@ function renderTable(table: TableSchema): string {
         ${descricao ? `<p class="px-1.5 pb-1.5 text-[11px] leading-snug text-slate-500">${escapeHtml(descricao)}</p>` : ''}
         <ul class="space-y-px">${table.columns.map((c) => renderColumn(table.name, c)).join('')}</ul>
         <details data-preview="${escapeHtml(table.name)}" class="group/preview mt-2 px-1">
-          <summary class="flex cursor-pointer items-center gap-1 rounded border border-slate-800 px-2 py-1 text-[11px] text-slate-400 hover:border-slate-700 hover:text-slate-200">
-            <span class="text-[9px] transition-transform group-open/preview:rotate-90">▶</span>
-            Pré-visualizar 3 primeiras linhas
+          <summary class="flex cursor-pointer items-center justify-center gap-1.5 rounded-md border border-sky-800/70 bg-sky-950/40 px-2 py-1.5 text-[12px] font-medium text-sky-200 hover:border-sky-600 hover:bg-sky-950/70 hover:text-white">
+            <span aria-hidden="true">👁</span>
+            Ver 3 exemplos práticos desta tabela
           </summary>
           <div data-preview-body class="mt-1 max-h-48 overflow-auto rounded border border-slate-800"></div>
         </details>
@@ -62,15 +46,37 @@ function renderTable(table: TableSchema): string {
 }
 
 export function initSchemaPanel(onInsertColumn: (column: string) => void): SchemaPanelController {
+  const panel = byId('schema-panel');
   const container = byId('schema-tree');
+  const toggle = byId<HTMLButtonElement>('schema-toggle');
+  const toggleIcon = byId('schema-toggle-icon');
+  const title = byId('schema-panel-title');
   let currentDb: Database | null = null;
+
+  const applyCollapsed = (collapsed: boolean): void => {
+    panel.dataset['collapsed'] = collapsed ? 'true' : 'false';
+    panel.classList.toggle('w-11', collapsed);
+    panel.classList.toggle('w-80', !collapsed);
+    container.hidden = collapsed;
+    title.classList.toggle('hidden', collapsed);
+    toggle.setAttribute('aria-expanded', String(!collapsed));
+    toggle.title = collapsed ? 'Expandir dicionário de dados' : 'Recolher dicionário de dados';
+    toggleIcon.textContent = collapsed ? '▶' : '◀';
+    const sr = toggle.querySelector('.sr-only');
+    if (sr) sr.textContent = collapsed ? 'Expandir dicionário de dados' : 'Recolher dicionário de dados';
+  };
+
+  applyCollapsed(true);
+
+  toggle.addEventListener('click', () => {
+    applyCollapsed(panel.dataset['collapsed'] !== 'true');
+  });
 
   container.addEventListener('click', (event) => {
     const target = (event.target as HTMLElement).closest<HTMLElement>('[data-insert]');
     if (target?.dataset['insert']) onInsertColumn(target.dataset['insert']);
   });
 
-  // "toggle" não borbulha; a captura permite um único listener para todas as pré-visualizações.
   container.addEventListener(
     'toggle',
     (event) => {
