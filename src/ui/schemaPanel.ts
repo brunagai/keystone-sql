@@ -1,13 +1,15 @@
 import type { Database } from 'sql.js';
-import { CATEGORY_ORDER, DATA_DICTIONARY, type DictionaryCategory } from '../data/dictionary.ts';
+import { DATA_DICTIONARY, type DictionaryCategory } from '../data/dictionary.ts';
 import { getDatabaseSchema, previewTable, type ColumnSchema, type TableSchema } from '../database/introspection.ts';
 import { byId } from './dom.ts';
 import { escapeHtml, formatInteiro } from './format.ts';
 import { renderResultTable } from './resultTable.ts';
 
 export interface SchemaPanelController {
-  /** Re-renderiza a árvore a partir do banco atual (ex.: após reset). */
   render(db: Database): void;
+  toggle(): void;
+  open(): void;
+  close(): void;
 }
 
 const BADGE: Record<DictionaryCategory, { short: string; tone: string }> = {
@@ -18,6 +20,18 @@ const BADGE: Record<DictionaryCategory, { short: string; tone: string }> = {
 };
 
 const categoryOf = (table: string): DictionaryCategory | null => DATA_DICTIONARY[table]?.categoria ?? null;
+
+function tableMatches(table: TableSchema, query: string): boolean {
+  if (!query) return true;
+  if (table.name.toLowerCase().includes(query)) return true;
+  const entry = DATA_DICTIONARY[table.name];
+  if (entry?.descricao.toLowerCase().includes(query)) return true;
+  return table.columns.some((col) => {
+    if (col.name.toLowerCase().includes(query)) return true;
+    const meta = entry?.colunas[col.name];
+    return Boolean(meta && `${meta.descricao} ${meta.exemplo}`.toLowerCase().includes(query));
+  });
+}
 
 function keyBadges(col: ColumnSchema, table: string): string {
   const meta = DATA_DICTIONARY[table]?.colunas[col.name];
@@ -45,11 +59,13 @@ function renderColumn(table: string, col: ColumnSchema): string {
   return `
     <li>
       <button type="button" data-insert="${escapeHtml(col.name)}" title="${escapeHtml(hint)}"
-        class="group flex w-full items-start gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-slate-800/70">
+        class="group relative flex w-full items-start gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-slate-800/70">
         <span class="min-w-0 flex-1">
           <span class="flex flex-wrap items-center gap-1.5">
             <span class="truncate font-mono text-[13px] text-slate-200 group-hover:text-emerald-300">${escapeHtml(col.name)}</span>
+            <span class="rounded bg-slate-800 px-1 py-px font-mono text-[9px] uppercase text-slate-400">${escapeHtml(col.type || 'ANY')}</span>
             ${keyBadges(col, table)}
+            <span data-inserted-badge hidden class="rounded bg-emerald-500/15 px-1 py-px text-[10px] font-medium text-emerald-300">✓ inserido</span>
           </span>
           <span class="mt-0.5 block text-[11px] leading-snug text-slate-500">${escapeHtml(descricao)}</span>
           ${exemplo ? `<span class="mt-0.5 block font-mono text-[10px] text-slate-600">ex.: ${escapeHtml(exemplo)}</span>` : ''}
@@ -58,93 +74,129 @@ function renderColumn(table: string, col: ColumnSchema): string {
     </li>`;
 }
 
-function renderTable(table: TableSchema): string {
+function renderInspector(table: TableSchema): string {
   const entry = DATA_DICTIONARY[table.name];
   const descricao = entry?.descricao ?? '';
+  return `
+    <div class="space-y-3">
+      <div class="flex items-start gap-2">
+        <button type="button" data-insert="${escapeHtml(table.name)}" title="Inserir o nome da tabela no editor"
+          class="relative truncate font-mono text-sm font-semibold text-emerald-300 hover:underline">
+          ${escapeHtml(table.name)}
+          <span data-inserted-badge hidden class="ml-2 rounded bg-emerald-500/15 px-1 py-px text-[10px] font-medium text-emerald-300">✓ inserido</span>
+        </button>
+        <span class="ml-auto shrink-0 font-mono text-[11px] text-slate-500">${formatInteiro(table.rowCount)} linhas</span>
+      </div>
+      ${descricao ? `<p class="text-[12px] leading-relaxed text-slate-500">${escapeHtml(descricao)}</p>` : ''}
+      <ul class="space-y-px">${table.columns.map((c) => renderColumn(table.name, c)).join('')}</ul>
+      <details data-preview="${escapeHtml(table.name)}" class="pt-1">
+        <summary class="flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-sky-800/60 bg-sky-950/30 px-2 py-2 text-[12px] font-medium text-sky-200 hover:border-sky-600 hover:bg-sky-950/60">
+          <span aria-hidden="true">👁</span>
+          Ver 3 exemplos práticos desta tabela
+        </summary>
+        <div data-preview-body class="mt-2 max-h-48 overflow-auto rounded-lg border border-slate-800"></div>
+      </details>
+    </div>`;
+}
+
+function renderTableButton(table: TableSchema, selected: boolean): string {
   const categoria = categoryOf(table.name);
   const badge = categoria
-    ? `<span class="rounded border px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide ${BADGE[categoria].tone}">${escapeHtml(BADGE[categoria].short)}</span>`
+    ? `<span class="rounded border px-1 py-px text-[9px] font-semibold uppercase tracking-wide ${BADGE[categoria].tone}">${escapeHtml(BADGE[categoria].short)}</span>`
     : '';
+  const on = selected ? 'border-sky-700 bg-sky-950/50' : 'border-transparent hover:bg-slate-800/70';
   return `
-    <details open class="group/table rounded-xl border border-slate-800 bg-slate-900/30">
-      <summary class="flex cursor-pointer select-none items-center gap-2 px-3 py-2 hover:bg-slate-800/40">
-        <span class="text-[10px] text-slate-500 transition-transform group-open/table:rotate-90">▶</span>
-        <span data-insert="${escapeHtml(table.name)}" title="Inserir o nome da tabela no editor"
-          class="truncate font-mono text-sm font-semibold text-emerald-300 hover:underline">${escapeHtml(table.name)}</span>
-        ${badge}
-        <span class="ml-auto font-mono text-[11px] tabular-nums text-slate-500">${formatInteiro(table.rowCount)} linhas</span>
-      </summary>
-      <div class="border-t border-slate-800 px-2 pb-3 pt-2">
-        ${descricao ? `<p class="px-2 pb-2 text-[12px] leading-relaxed text-slate-500">${escapeHtml(descricao)}</p>` : ''}
-        <ul class="space-y-px">${table.columns.map((c) => renderColumn(table.name, c)).join('')}</ul>
-        <details data-preview="${escapeHtml(table.name)}" class="mt-3 px-1">
-          <summary class="flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-sky-800/60 bg-sky-950/30 px-2 py-2 text-[12px] font-medium text-sky-200 hover:border-sky-600 hover:bg-sky-950/60">
-            <span aria-hidden="true">👁</span>
-            Ver 3 exemplos práticos desta tabela
-          </summary>
-          <div data-preview-body class="mt-2 max-h-48 overflow-auto rounded-lg border border-slate-800"></div>
-        </details>
-      </div>
-    </details>`;
+    <button type="button" data-select-table="${escapeHtml(table.name)}"
+      class="flex w-full items-center gap-2 rounded-lg border px-2 py-1.5 text-left ${on}">
+      <span class="min-w-0 flex-1 truncate font-mono text-[12px] text-slate-100">${escapeHtml(table.name)}</span>
+      ${badge}
+      <span class="shrink-0 font-mono text-[10px] text-slate-500">${formatInteiro(table.rowCount)}</span>
+    </button>`;
 }
 
-function renderGroups(tables: readonly TableSchema[]): string {
-  const leftover = tables.filter((t) => !categoryOf(t.name));
-  const sections = CATEGORY_ORDER.map((categoria) => {
-    const items = tables.filter((t) => categoryOf(t.name) === categoria);
-    if (items.length === 0) return '';
-    const badge = BADGE[categoria];
-    return `
-      <section class="space-y-2">
-        <h3 class="flex items-center gap-2 px-0.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-          <span class="rounded border px-1.5 py-px ${badge.tone}">${escapeHtml(badge.short)}</span>
-          <span class="font-normal normal-case tracking-normal text-slate-500">${escapeHtml(categoria)}</span>
-        </h3>
-        ${items.map(renderTable).join('')}
-      </section>`;
-  });
-  const extra = leftover.length
-    ? `<section class="space-y-2">${leftover.map(renderTable).join('')}</section>`
-    : '';
-  return `${sections.join('')}${extra}`;
-}
-
-export function initSchemaPanel(onInsertColumn: (column: string) => void): SchemaPanelController {
+export function initSchemaPanel(onInsertIdentifier: (identifier: string) => void): SchemaPanelController {
   const drawer = byId('schema-drawer');
-  const container = byId('schema-tree');
+  const list = byId('schema-table-list');
+  const inspector = byId('schema-tree');
+  const filter = byId<HTMLInputElement>('schema-filter');
   const openButton = byId<HTMLButtonElement>('btn-schema');
   const closeButton = byId<HTMLButtonElement>('schema-toggle');
-  const backdrop = byId('schema-backdrop');
+
   let currentDb: Database | null = null;
+  let tables: TableSchema[] = [];
+  let selected: string | null = null;
+  let query = '';
+  let flashTimer: ReturnType<typeof setTimeout> | undefined;
+
+  const isOpen = (): boolean => !drawer.hidden;
 
   const setOpen = (open: boolean): void => {
     drawer.hidden = !open;
     openButton.setAttribute('aria-expanded', String(open));
-    if (open) closeButton.focus();
+  };
+
+  const visibleTables = (): TableSchema[] => tables.filter((t) => tableMatches(t, query));
+
+  const paint = (): void => {
+    const visible = visibleTables();
+    if (selected && !visible.some((t) => t.name === selected)) selected = visible[0]?.name ?? null;
+    if (!selected) selected = visible[0]?.name ?? null;
+
+    list.innerHTML = visible.length
+      ? visible.map((t) => renderTableButton(t, t.name === selected)).join('')
+      : '<p class="px-2 py-3 text-center text-[12px] text-slate-500">Nenhuma tabela ou coluna corresponde ao filtro.</p>';
+
+    const current = visible.find((t) => t.name === selected);
+    inspector.innerHTML = current
+      ? renderInspector(current)
+      : '<p class="p-2 text-[12px] text-slate-500">Selecione uma tabela para inspecionar colunas.</p>';
+  };
+
+  const flashInserted = (host: HTMLElement): void => {
+    host.classList.add('ring-1', 'ring-emerald-400/70', 'bg-emerald-950/30');
+    const badge = host.querySelector<HTMLElement>('[data-inserted-badge]');
+    if (badge) badge.hidden = false;
+    clearTimeout(flashTimer);
+    flashTimer = setTimeout(() => {
+      host.classList.remove('ring-1', 'ring-emerald-400/70', 'bg-emerald-950/30');
+      if (badge) badge.hidden = true;
+    }, 1200);
   };
 
   setOpen(false);
 
-  openButton.addEventListener('click', () => setOpen(true));
+  openButton.addEventListener('click', () => setOpen(!isOpen()));
   closeButton.addEventListener('click', () => setOpen(false));
-  backdrop.addEventListener('click', () => setOpen(false));
   document.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape' || drawer.hidden || document.querySelector('dialog[open]')) return;
+    if (event.key !== 'Escape' || !isOpen() || document.querySelector('dialog[open]')) return;
     setOpen(false);
   });
 
-  container.addEventListener('click', (event) => {
+  filter.addEventListener('input', () => {
+    query = filter.value.trim().toLowerCase();
+    paint();
+  });
+
+  list.addEventListener('click', (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    const name = target.closest<HTMLElement>('[data-select-table]')?.dataset['selectTable'];
+    if (!name) return;
+    selected = name;
+    paint();
+  });
+
+  inspector.addEventListener('click', (event) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
     const insert = target.closest<HTMLElement>('[data-insert]');
     if (!insert?.dataset['insert']) return;
     event.preventDefault();
-    event.stopPropagation();
-    onInsertColumn(insert.dataset['insert']);
-    setOpen(false);
+    onInsertIdentifier(insert.dataset['insert']);
+    flashInserted(insert);
   });
 
-  container.addEventListener(
+  inspector.addEventListener(
     'toggle',
     (event) => {
       const details = event.target as HTMLDetailsElement;
@@ -163,7 +215,18 @@ export function initSchemaPanel(onInsertColumn: (column: string) => void): Schem
   return {
     render(db) {
       currentDb = db;
-      container.innerHTML = renderGroups(getDatabaseSchema(db));
+      tables = getDatabaseSchema(db);
+      if (!selected) selected = tables[0]?.name ?? null;
+      paint();
+    },
+    toggle() {
+      setOpen(!isOpen());
+    },
+    open() {
+      setOpen(true);
+    },
+    close() {
+      setOpen(false);
     },
   };
 }

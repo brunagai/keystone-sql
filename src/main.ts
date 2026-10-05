@@ -47,17 +47,15 @@ try {
 } catch (error) {
   console.error(error);
 }
+const schema = initSchemaPanel((identifier) => editor.insertAtCursor(identifier));
 const investigation = initInvestigationPanel({
   onLoadSolution: (sql) => editor.replaceSql(sql),
   onScenarioChange: (scenario) => {
     output.clearValidation();
     void session.switchTo(scenario);
   },
-  onOpenSchema: () => {
-    document.getElementById('btn-schema')?.click();
-  },
+  onOpenSchema: () => schema.toggle(),
 });
-const schema = initSchemaPanel((column) => editor.insertAtCursor(column));
 const editor = initEditor({
   onRun: runCurrentQuery,
   onTestSelection: () => runCurrentQuery({ inspectCte: true }),

@@ -62,8 +62,10 @@ export function initEditor({ onRun, onTestSelection, onValidate, onChange, onRes
   };
 
   const insertAtCursor = (text: string): void => {
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    textarea.setRangeText(text, start, end, 'end');
     textarea.focus();
-    textarea.setRangeText(text, textarea.selectionStart, textarea.selectionEnd, 'end');
     onChange();
     syncSelectionAffordance();
   };
