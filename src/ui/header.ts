@@ -2,13 +2,14 @@ import { PROVIDERS } from '../agent/settingsStore.ts';
 import type { AiSettings } from '../agent/types.ts';
 import { byId } from './dom.ts';
 import { formatInteiro } from './format.ts';
+import { bindPopover } from './popover.ts';
 
 export type ConnectionState = 'loading' | 'ready' | 'error';
 
 const STATUS_VIEW: Record<ConnectionState, { dot: string; ping: boolean; label: string; text: string }> = {
-  loading: { dot: 'bg-amber-400', ping: true, label: 'WASM carregando…', text: 'text-amber-300' },
-  ready: { dot: 'bg-emerald-400', ping: true, label: 'WASM conectado', text: 'text-emerald-300' },
-  error: { dot: 'bg-rose-500', ping: false, label: 'WASM indisponível', text: 'text-rose-300' },
+  loading: { dot: 'bg-amber-400', ping: true, label: 'Carregando', text: 'text-amber-300' },
+  ready: { dot: 'bg-emerald-400', ping: false, label: 'Online', text: 'text-emerald-400' },
+  error: { dot: 'bg-rose-500', ping: false, label: 'Offline', text: 'text-rose-300' },
 };
 
 export interface DatasetCounts {
@@ -36,21 +37,25 @@ export function initHeader({ onReset, onOpenAiSettings }: HeaderHandlers): Heade
   const aiIndicator = byId('ai-key-indicator');
 
   resetButton.addEventListener('click', onReset);
-  aiButton.addEventListener('click', onOpenAiSettings);
+  const settingsMenu = bindPopover(byId<HTMLButtonElement>('btn-settings'), byId('settings-menu'));
+  aiButton.addEventListener('click', () => {
+    settingsMenu.close();
+    onOpenAiSettings();
+  });
 
   const badge = (label: string, value: number): string => `
-    <span class="flex items-center gap-1.5 rounded border border-slate-700 bg-slate-900 px-2 py-0.5 text-[11px]">
+    <span class="flex items-center gap-1.5 rounded-md bg-slate-900 px-2 py-1 text-[11px]">
       <span class="text-slate-500">${label}</span>
-      <span class="font-mono font-semibold tabular-nums text-slate-200">${formatInteiro(value)}</span>
+      <span class="font-mono tabular-nums text-slate-200">${formatInteiro(value)}</span>
     </span>`;
 
   return {
     setConnectionState(state) {
       const view = STATUS_VIEW[state];
       status.innerHTML = `
-        <span class="relative flex size-2.5">
+        <span class="relative flex size-2">
           ${view.ping ? `<span class="absolute inline-flex size-full animate-ping rounded-full ${view.dot} opacity-60"></span>` : ''}
-          <span class="relative inline-flex size-2.5 rounded-full ${view.dot}"></span>
+          <span class="relative inline-flex size-2 rounded-full ${view.dot}"></span>
         </span>
         <span class="text-[11px] font-medium ${view.text}">${view.label}</span>`;
     },

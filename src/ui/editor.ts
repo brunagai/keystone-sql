@@ -62,7 +62,7 @@ export function initEditor({ onRun, onTestSelection, onValidate, onChange }: Edi
   };
 
   runButton.title = 'Executa a consulta no banco local (Ctrl+Enter)';
-  validateButton.title = 'Compara o resultado da sua query com o gabarito do desafio';
+  validateButton.title = 'Confere se o resultado bate com o gabarito do desafio';
   runButton.addEventListener('click', onRun);
   selectionButton.addEventListener('click', onTestSelection);
   validateButton.addEventListener('click', onValidate);

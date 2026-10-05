@@ -16,8 +16,8 @@ function renderColumn(table: string, col: ColumnSchema): string {
   return `
     <li>
       <button type="button" data-insert="${escapeHtml(col.name)}" title="${escapeHtml(hint)}"
-        class="group flex w-full items-center rounded px-1.5 py-1 text-left hover:bg-slate-800/70">
-        <span class="truncate font-mono text-[12px] text-slate-200 group-hover:text-emerald-300">${escapeHtml(col.name)}</span>
+        class="group flex w-full items-center rounded-lg px-2 py-1.5 text-left hover:bg-slate-800/70">
+        <span class="truncate font-mono text-[13px] text-slate-200 group-hover:text-emerald-300">${escapeHtml(col.name)}</span>
       </button>
     </li>`;
 }
@@ -25,56 +25,55 @@ function renderColumn(table: string, col: ColumnSchema): string {
 function renderTable(table: TableSchema): string {
   const descricao = DATA_DICTIONARY[table.name]?.descricao ?? '';
   return `
-    <details open class="group/table rounded border border-slate-800 bg-slate-900/40">
-      <summary class="flex cursor-pointer select-none items-center gap-2 px-2 py-1.5 hover:bg-slate-800/50">
+    <details open class="group/table rounded-xl border border-slate-800 bg-slate-900/30">
+      <summary class="flex cursor-pointer select-none items-center gap-2 px-3 py-2 hover:bg-slate-800/40">
         <span class="text-[10px] text-slate-500 transition-transform group-open/table:rotate-90">▶</span>
-        <span class="font-mono text-xs font-semibold text-emerald-300">${escapeHtml(table.name)}</span>
-        <span class="ml-auto rounded bg-slate-800 px-1.5 font-mono text-[10px] tabular-nums text-slate-400">${formatInteiro(table.rowCount)} linhas</span>
+        <span class="font-mono text-sm font-semibold text-emerald-300">${escapeHtml(table.name)}</span>
+        <span class="ml-auto font-mono text-[11px] tabular-nums text-slate-500">${formatInteiro(table.rowCount)} linhas</span>
       </summary>
-      <div class="border-t border-slate-800 px-1 pb-2 pt-1">
-        ${descricao ? `<p class="px-1.5 pb-1.5 text-[11px] leading-snug text-slate-500">${escapeHtml(descricao)}</p>` : ''}
+      <div class="border-t border-slate-800 px-2 pb-3 pt-2">
+        ${descricao ? `<p class="px-2 pb-2 text-[12px] leading-relaxed text-slate-500">${escapeHtml(descricao)}</p>` : ''}
         <ul class="space-y-px">${table.columns.map((c) => renderColumn(table.name, c)).join('')}</ul>
-        <details data-preview="${escapeHtml(table.name)}" class="group/preview mt-2 px-1">
-          <summary class="flex cursor-pointer items-center justify-center gap-1.5 rounded-md border border-sky-800/70 bg-sky-950/40 px-2 py-1.5 text-[12px] font-medium text-sky-200 hover:border-sky-600 hover:bg-sky-950/70 hover:text-white">
+        <details data-preview="${escapeHtml(table.name)}" class="mt-3 px-1">
+          <summary class="flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-sky-800/60 bg-sky-950/30 px-2 py-2 text-[12px] font-medium text-sky-200 hover:border-sky-600 hover:bg-sky-950/60">
             <span aria-hidden="true">👁</span>
             Ver 3 exemplos práticos desta tabela
           </summary>
-          <div data-preview-body class="mt-1 max-h-48 overflow-auto rounded border border-slate-800"></div>
+          <div data-preview-body class="mt-2 max-h-48 overflow-auto rounded-lg border border-slate-800"></div>
         </details>
       </div>
     </details>`;
 }
 
 export function initSchemaPanel(onInsertColumn: (column: string) => void): SchemaPanelController {
-  const panel = byId('schema-panel');
+  const drawer = byId('schema-drawer');
   const container = byId('schema-tree');
-  const toggle = byId<HTMLButtonElement>('schema-toggle');
-  const toggleIcon = byId('schema-toggle-icon');
-  const title = byId('schema-panel-title');
+  const openButton = byId<HTMLButtonElement>('btn-schema');
+  const closeButton = byId<HTMLButtonElement>('schema-toggle');
+  const backdrop = byId('schema-backdrop');
   let currentDb: Database | null = null;
 
-  const applyCollapsed = (collapsed: boolean): void => {
-    panel.dataset['collapsed'] = collapsed ? 'true' : 'false';
-    panel.classList.toggle('w-11', collapsed);
-    panel.classList.toggle('w-80', !collapsed);
-    container.hidden = collapsed;
-    title.classList.toggle('hidden', collapsed);
-    toggle.setAttribute('aria-expanded', String(!collapsed));
-    toggle.title = collapsed ? 'Expandir dicionário de dados' : 'Recolher dicionário de dados';
-    toggleIcon.textContent = collapsed ? '▶' : '◀';
-    const sr = toggle.querySelector('.sr-only');
-    if (sr) sr.textContent = collapsed ? 'Expandir dicionário de dados' : 'Recolher dicionário de dados';
+  const setOpen = (open: boolean): void => {
+    drawer.hidden = !open;
+    openButton.setAttribute('aria-expanded', String(open));
+    if (open) closeButton.focus();
   };
 
-  applyCollapsed(true);
+  setOpen(false);
 
-  toggle.addEventListener('click', () => {
-    applyCollapsed(panel.dataset['collapsed'] !== 'true');
+  openButton.addEventListener('click', () => setOpen(true));
+  closeButton.addEventListener('click', () => setOpen(false));
+  backdrop.addEventListener('click', () => setOpen(false));
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || drawer.hidden || document.querySelector('dialog[open]')) return;
+    setOpen(false);
   });
 
   container.addEventListener('click', (event) => {
     const target = (event.target as HTMLElement).closest<HTMLElement>('[data-insert]');
-    if (target?.dataset['insert']) onInsertColumn(target.dataset['insert']);
+    if (!target?.dataset['insert']) return;
+    onInsertColumn(target.dataset['insert']);
+    setOpen(false);
   });
 
   container.addEventListener(
@@ -88,7 +87,7 @@ export function initSchemaPanel(onInsertColumn: (column: string) => void): Schem
       const preview = previewTable(currentDb, table);
       body.innerHTML = preview
         ? renderResultTable(preview, { compact: true })
-        : '<p class="p-2 text-[11px] text-slate-500">Tabela vazia.</p>';
+        : '<p class="p-2 text-[12px] text-slate-500">Tabela vazia.</p>';
     },
     true,
   );

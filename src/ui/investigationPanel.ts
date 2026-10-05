@@ -11,6 +11,7 @@ import type { ErrorHighlight } from '../challenges/sqlErrors.ts';
 import type { ValidationResult, ValidationStatus } from '../challenges/validator.ts';
 import { byId } from './dom.ts';
 import { escapeHtml, formatInline } from './format.ts';
+import { bindPopover } from './popover.ts';
 
 export interface InvestigationPanelController {
   getSelectedScenario(): InvestigationScenario;
@@ -34,14 +35,17 @@ const STATUS_STYLE: Record<ValidationStatus, { box: string; title: string; icon:
 
 const levelLabel = (nivel: TrailLevel): string => `Nível ${nivel} — ${TRAIL_LEVELS[nivel].titulo}`;
 
-function renderLevelBadge(s: InvestigationScenario): string {
-  return `
-    <div class="flex items-center gap-2 text-[10px]">
-      <span class="rounded bg-sky-500/15 px-1.5 py-0.5 font-mono font-bold text-sky-300">N${s.nivel}</span>
-      <span class="font-semibold uppercase tracking-wider text-slate-400">${escapeHtml(TRAIL_LEVELS[s.nivel].titulo)}</span>
-      <span class="ml-auto truncate font-mono text-slate-500" title="Técnica-alvo">${escapeHtml(TRAIL_LEVELS[s.nivel].tecnica)}</span>
-    </div>`;
-}
+type TrailBand = 'todos' | 'iniciante' | 'intermediario' | 'avancado';
+
+const BAND_LEVELS: Record<TrailBand, readonly TrailLevel[]> = {
+  todos: TRAIL_ORDER,
+  iniciante: [1, 2],
+  intermediario: [3],
+  avancado: [4, 5],
+};
+
+const BAND_BUTTON_ON = 'rounded-full bg-slate-800 px-2.5 py-1 text-[11px] font-medium text-slate-100';
+const BAND_BUTTON_OFF = 'rounded-full px-2.5 py-1 text-[11px] font-medium text-slate-400 hover:bg-slate-800 hover:text-slate-200';
 
 function renderOriginBadge(s: InvestigationScenario): string {
   if (s.origem === 'base') return '';
@@ -59,75 +63,65 @@ function renderTwoPhase(s: InvestigationScenario): string {
   const phases = resolveTwoPhase(s);
   if (!phases) return '';
   const step = (n: '1' | '2', phase: TwoPhaseReasoning['fase1']): string => `
-    <div class="rounded border border-violet-900/50 bg-violet-950/20 px-2.5 py-2">
-      <p class="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-violet-300">
-        <span class="flex size-4 items-center justify-center rounded-full bg-violet-500/20 font-mono text-[10px]">${n}</span>
-        ${formatInline(phase.titulo)}
-      </p>
-      <p class="text-[11px] leading-relaxed text-slate-300">${formatInline(phase.texto)}</p>
+    <div class="rounded-xl bg-slate-900/50 px-3 py-2.5">
+      <p class="mb-1 text-[11px] font-semibold text-violet-300">${n}. ${formatInline(phase.titulo)}</p>
+      <p class="text-[13px] leading-relaxed text-slate-300">${formatInline(phase.texto)}</p>
     </div>`;
   return `
-    <details class="group rounded border border-violet-700/50 bg-violet-950/15">
-      <summary class="flex cursor-pointer select-none items-center gap-2 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-violet-300 hover:text-violet-200">
-        <span class="transition-transform group-open:rotate-90">▶</span>
-        Decomposição em 2 Fases (Esteira Analítica)
-      </summary>
-      <div class="space-y-2 border-t border-violet-900/40 px-3 py-2">
-        ${step('1', phases.fase1)}
-        ${step('2', phases.fase2)}
-        <p class="text-[10px] leading-relaxed text-slate-500">
-          Selecione o miolo do <code class="font-mono text-slate-400">WITH</code> no editor e clique em
-          <span class="text-sky-400">Testar CTE</span> (Ctrl+Enter) para inspecionar os dados intermediários.
-        </p>
-      </div>
-    </details>`;
+    <div class="mt-4 space-y-2">
+      ${step('1', phases.fase1)}
+      ${step('2', phases.fase2)}
+      <p class="text-[12px] leading-relaxed text-slate-500">
+        Para ver o meio do caminho, selecione o trecho do <code class="font-mono text-slate-400">WITH</code> e use
+        <span class="text-sky-300">Testar CTE</span>.
+      </p>
+    </div>`;
 }
 
 function missionLine(objetivo: string): string {
   const text = objetivo.replace(/`/g, '').replace(/\s+/g, ' ').trim();
   const sentence = text.split(/(?<=[.!?])\s+/)[0] ?? text;
-  return sentence.length > 200 ? `${sentence.slice(0, 197)}…` : sentence;
+  return sentence.length > 220 ? `${sentence.slice(0, 217)}…` : sentence;
 }
+
+const tabButton = (id: string, label: string, selected: boolean): string => `
+  <button type="button" data-tab="${id}" aria-selected="${String(selected)}"
+    class="rounded-lg px-3 py-1.5 text-[12px] font-medium ${
+      selected ? 'bg-slate-800 text-slate-50' : 'text-slate-500 hover:text-slate-200'
+    }">
+    ${label}
+  </button>`;
 
 function renderScenario(s: InvestigationScenario): string {
   return `
-    ${renderLevelBadge(s)}
     ${renderOriginBadge(s)}
-    <h3 class="text-sm font-semibold text-slate-100">${escapeHtml(s.titulo)}</h3>
-    <section class="rounded-lg border border-sky-600/50 bg-sky-950/35 p-3 shadow-sm shadow-sky-950/20">
-      <p class="text-[10px] font-semibold uppercase tracking-wider text-sky-300">🎯 Sua Missão</p>
-      <p class="mt-1.5 text-sm font-medium leading-snug text-slate-50">${escapeHtml(missionLine(s.objetivo))}</p>
-      <p class="mt-2 text-[11px] text-sky-200/70">Ordene o resultado: ${formatInline(`\`ORDER BY ${s.ordenacao}\``)}</p>
+    <p class="text-[11px] font-medium uppercase tracking-wider text-slate-500">Nível ${s.nivel} · ${escapeHtml(TRAIL_LEVELS[s.nivel].titulo)}</p>
+    <section class="rounded-2xl bg-slate-900/40 p-5">
+      <h3 class="text-lg font-semibold leading-snug text-slate-50">${escapeHtml(s.titulo)}</h3>
+      <p class="mt-4 text-[11px] font-semibold uppercase tracking-wider text-sky-400">Sua Missão</p>
+      <p class="mt-2 text-[15px] leading-relaxed text-slate-100">${escapeHtml(missionLine(s.objetivo))}</p>
     </section>
-    <details class="rounded border border-slate-800 bg-slate-900/40">
-      <summary class="cursor-pointer select-none px-3 py-1.5 text-[11px] font-medium text-slate-500 hover:text-slate-300">
-        Contexto da Denúncia / Dossiê Policial e Bacen
-      </summary>
-      <div class="space-y-2 border-t border-slate-800 px-3 py-2">
-        <span class="inline-block rounded border border-amber-700/60 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-300">${escapeHtml(s.enquadramento)}</span>
-        <p class="text-xs leading-relaxed text-slate-400">${escapeHtml(s.dossie)}</p>
+    <div>
+      <div role="tablist" aria-label="Detalhes do desafio" class="flex flex-wrap gap-1">
+        ${tabButton('dica', '💡 Dica de SQL passo a passo', true)}
+        ${tabButton('dossie', '📋 Dossiê / Contexto Policial', false)}
+        ${tabButton('colunas', 'Colunas esperadas', false)}
       </div>
-    </details>
-    <details class="rounded border border-slate-800 bg-slate-900/40">
-      <summary class="cursor-pointer select-none px-3 py-1.5 text-[11px] font-medium text-slate-500 hover:text-slate-300">
-        O que sua consulta deve devolver (colunas)
-      </summary>
-      <div class="border-t border-slate-800 px-3 py-2 text-xs leading-relaxed text-slate-300">
+      <div data-tab-panel="dica" class="mt-3 space-y-3">
+        <p class="text-[13px] leading-relaxed text-slate-300">${escapeHtml(s.dicaTexto)}</p>
+        <pre class="overflow-x-auto rounded-xl bg-slate-950 p-3 font-mono text-[12px] leading-6 text-emerald-200">${escapeHtml(s.dicaSql)}</pre>
+        ${renderTwoPhase(s)}
+      </div>
+      <div data-tab-panel="dossie" hidden class="mt-3 space-y-3">
+        <p class="text-[12px] font-medium text-amber-200/90">${escapeHtml(s.enquadramento)}</p>
+        <p class="text-[13px] leading-relaxed text-slate-400">${escapeHtml(s.dossie)}</p>
+      </div>
+      <div data-tab-panel="colunas" hidden class="mt-3 space-y-2 text-[13px] leading-relaxed text-slate-300">
         <p>${formatInline(s.objetivo)}</p>
-        <p class="mt-2 text-[11px] text-slate-500">Colunas: ${formatInline(s.colunasEsperadas.map((c) => `\`${c}\``).join(', '))}</p>
+        <p class="text-slate-400">Colunas: ${formatInline(s.colunasEsperadas.map((c) => `\`${c}\``).join(', '))}</p>
+        <p class="text-slate-500">Ordene com ${formatInline(`\`ORDER BY ${s.ordenacao}\``)}.</p>
       </div>
-    </details>
-    ${renderTwoPhase(s)}
-    <details class="group rounded-lg border border-amber-700/40 bg-amber-950/20">
-      <summary class="flex cursor-pointer select-none items-start gap-2 px-3 py-2.5 text-[13px] font-medium leading-snug text-amber-100 hover:bg-amber-950/40">
-        <span class="mt-0.5 text-base" aria-hidden="true">💡</span>
-        Precisa de ajuda com SQL? Clique aqui para ver a dica passo a passo
-      </summary>
-      <div class="space-y-2 border-t border-amber-900/40 px-3 py-2">
-        <p class="text-xs leading-relaxed text-slate-300">${escapeHtml(s.dicaTexto)}</p>
-        <pre class="overflow-x-auto rounded bg-slate-950 p-2 font-mono text-[11px] leading-5 text-emerald-200">${escapeHtml(s.dicaSql)}</pre>
-      </div>
-    </details>`;
+    </div>`;
 }
 
 function renderHighlight({ lineNumber, line, token }: ErrorHighlight): string {
@@ -168,13 +162,17 @@ export function initInvestigationPanel({ onLoadSolution, onScenarioChange }: Inv
   const card = byId('scenario-card');
   const feedback = byId('validation-feedback');
   const solution = byId('solution-panel');
+  const trailLabel = byId('trail-menu-label');
+  const trailMenu = bindPopover(byId<HTMLButtonElement>('btn-trail'), byId('trail-menu'));
+  const trailBands = byId('trail-bands');
+  let trailBand: TrailBand = 'todos';
 
   const firstScenario = baseScenarios()[0];
   if (!firstScenario) throw new Error('Nenhum cenário investigativo cadastrado.');
 
   const renderOptions = (): void => {
     const all = [...baseScenarios(), ...generatedScenarios()];
-    select.innerHTML = TRAIL_ORDER.map((nivel) => {
+    select.innerHTML = BAND_LEVELS[trailBand].map((nivel) => {
       const items = all.filter((s) => s.nivel === nivel);
       const options = items.length
         ? items
@@ -200,16 +198,15 @@ export function initInvestigationPanel({ onLoadSolution, onScenarioChange }: Inv
       return;
     }
     solution.innerHTML = `
-      <details class="group rounded border border-slate-700 bg-slate-900/60">
-        <summary class="flex cursor-pointer select-none items-center gap-2 px-3 py-2 text-xs font-medium text-sky-300 hover:bg-slate-800/60">
-          <span class="text-[10px] transition-transform group-open:rotate-90">▶</span>
-          Ver Gabarito Comentado
-          <span class="ml-auto text-[10px] font-normal text-slate-500">${count} tentativa${count > 1 ? 's' : ''}</span>
+      <details class="group rounded-xl bg-slate-900/40">
+        <summary class="flex cursor-pointer select-none items-center gap-2 px-4 py-2.5 text-sm font-medium text-sky-300 hover:bg-slate-800/40">
+          Ver gabarito comentado
+          <span class="ml-auto text-[12px] font-normal text-slate-500">${count} tentativa${count > 1 ? 's' : ''}</span>
         </summary>
-        <div class="space-y-2 border-t border-slate-800 p-2">
-          <pre class="max-h-96 overflow-auto rounded bg-slate-950 p-2 font-mono text-[11px] leading-5">${renderCommentedSql(selected.gabaritoSql)}</pre>
+        <div class="space-y-2 border-t border-slate-800 p-3">
+          <pre class="max-h-80 overflow-auto rounded-xl bg-slate-950 p-3 font-mono text-[12px] leading-6">${renderCommentedSql(selected.gabaritoSql)}</pre>
           <button type="button" data-load-solution
-            class="w-full rounded border border-slate-700 px-2 py-1 text-[11px] text-slate-300 hover:border-sky-700 hover:text-sky-200">
+            class="w-full rounded-lg border border-slate-700 px-3 py-2 text-[12px] text-slate-300 hover:border-sky-600 hover:text-sky-200">
             Abrir gabarito no editor
           </button>
         </div>
@@ -222,28 +219,53 @@ export function initInvestigationPanel({ onLoadSolution, onScenarioChange }: Inv
 
   const clearFeedback = (): void => {
     feedback.innerHTML = `
-      <div class="rounded border border-dashed border-slate-800 px-3 py-2 text-[11px] text-slate-600">
-        Escreva sua query e clique em <span class="text-sky-400">Validar Desafio</span> para receber o feedback.
-      </div>`;
+      <p class="text-[12px] leading-relaxed text-slate-500">
+        Quando terminar, clique em <span class="text-sky-300">Validar Resposta</span> para conferir se a consulta encontrou as movimentações certas.
+      </p>`;
   };
 
   const show = (scenario: InvestigationScenario, notify = true): void => {
     const changed = scenario.id !== selected.id;
     selected = scenario;
     select.value = scenario.id;
+    trailLabel.textContent = `${scenario.nivel} · ${scenario.titulo}`;
     card.innerHTML = renderScenario(scenario);
     clearFeedback();
     renderSolutionToggle();
     if (notify && changed) onScenarioChange(scenario);
   };
 
+  trailBands.addEventListener('click', (event) => {
+    const band = (event.target as HTMLElement).closest<HTMLElement>('[data-trail-band]')?.dataset['trailBand'];
+    if (band !== 'todos' && band !== 'iniciante' && band !== 'intermediario' && band !== 'avancado') return;
+    trailBand = band;
+    for (const button of trailBands.querySelectorAll<HTMLElement>('[data-trail-band]')) {
+      button.className = button.dataset['trailBand'] === trailBand ? BAND_BUTTON_ON : BAND_BUTTON_OFF;
+    }
+    renderOptions();
+  });
+
   select.addEventListener('change', () => {
     const scenario = findScenario(select.value);
     if (scenario) show(scenario);
+    trailMenu.close();
   });
 
   card.addEventListener('click', (event) => {
-    const id = (event.target as HTMLElement).closest<HTMLElement>('[data-remove-scenario]')?.dataset['removeScenario'];
+    const target = event.target as HTMLElement;
+    const tab = target.closest<HTMLElement>('[data-tab]')?.dataset['tab'];
+    if (tab) {
+      for (const button of card.querySelectorAll<HTMLElement>('[data-tab]')) {
+        const on = button.dataset['tab'] === tab;
+        button.setAttribute('aria-selected', String(on));
+        button.className = `rounded-lg px-3 py-1.5 text-[12px] font-medium ${on ? 'bg-slate-800 text-slate-50' : 'text-slate-500 hover:text-slate-200'}`;
+      }
+      for (const panel of card.querySelectorAll<HTMLElement>('[data-tab-panel]')) {
+        panel.hidden = panel.dataset['tabPanel'] !== tab;
+      }
+      return;
+    }
+    const id = target.closest<HTMLElement>('[data-remove-scenario]')?.dataset['removeScenario'];
     if (id && confirm('Remover este desafio gerado?')) removeGenerated(id);
   });
 
@@ -264,7 +286,7 @@ export function initInvestigationPanel({ onLoadSolution, onScenarioChange }: Inv
     },
     showPending() {
       feedback.innerHTML = `
-        <div class="flex items-center gap-2 rounded border border-slate-700 bg-slate-900/60 px-3 py-2 text-xs text-slate-400">
+        <div class="flex items-center gap-2 rounded-xl bg-slate-900/50 px-4 py-3 text-sm text-slate-400">
           <span class="size-3 animate-spin rounded-full border-2 border-slate-600 border-t-sky-400"></span>
           Comparando seu resultado com o gabarito…
         </div>`;
@@ -305,7 +327,7 @@ export function initInvestigationPanel({ onLoadSolution, onScenarioChange }: Inv
           : '';
 
       feedback.innerHTML = `
-        <div role="alert" class="rounded border px-3 py-2.5 ${style.box}">
+        <div role="alert" class="rounded-xl px-4 py-3 ${style.box}">
           <div class="flex items-start gap-2">
             <span class="mt-px flex size-4 shrink-0 items-center justify-center rounded-full border border-current text-[9px] font-bold ${style.title}">${style.icon}</span>
             <div class="min-w-0 flex-1">

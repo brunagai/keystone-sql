@@ -45,12 +45,33 @@ export function initAgentPanel({ onGenerate, onCancel }: AgentPanelHandlers): Ag
   const generateButton = byId<HTMLButtonElement>('btn-generate');
   const cancelButton = byId<HTMLButtonElement>('btn-generate-cancel');
   const progress = byId('agent-progress');
+  const drawer = byId('agent-drawer');
+  const openButton = byId<HTMLButtonElement>('btn-agent');
+  const closeButton = byId<HTMLButtonElement>('btn-agent-close');
+  const backdrop = byId('agent-backdrop');
 
   fillSelect<ChallengeFocus>(focusSelect, FOCUS_LABELS, 'livre');
   fillSelect<ChallengeDifficulty>(difficultySelect, DIFFICULTY_LABELS, 'intermediario');
 
   let enabled = false;
   let busy = false;
+  const setOpen = (open: boolean): void => {
+    drawer.hidden = !open;
+    openButton.setAttribute('aria-expanded', String(open));
+  };
+  setOpen(false);
+  openButton.addEventListener('click', () => setOpen(true));
+  closeButton.addEventListener('click', () => {
+    if (!busy) setOpen(false);
+  });
+  backdrop.addEventListener('click', () => {
+    if (!busy) setOpen(false);
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || drawer.hidden || busy || document.querySelector('dialog[open]')) return;
+    setOpen(false);
+  });
+
   const syncButtons = (): void => {
     generateButton.disabled = !enabled || busy;
     cancelButton.hidden = !busy;
@@ -71,7 +92,7 @@ export function initAgentPanel({ onGenerate, onCancel }: AgentPanelHandlers): Ag
            <span class="text-slate-300">${escapeHtml(PROVIDERS[settings.provider].label)}</span>
            · <span class="font-mono">${escapeHtml(settings.model)}</span>
            · <span class="font-mono text-slate-600">${escapeHtml(maskApiKey(settings.apiKey))}</span>`
-        : '<span class="inline-block size-1.5 rounded-full bg-slate-500 align-middle"></span> Modo offline (templates locais). Use <span class="text-slate-300">⚙ Configurar IA</span> no topo para conectar uma LLM.';
+        : '<span class="inline-block size-1.5 rounded-full bg-slate-500 align-middle"></span> Modo offline (templates locais). Abra ⚙ e escolha <span class="text-slate-300">Chave de IA</span> para conectar uma LLM.';
     },
     setEnabled(value) {
       enabled = value;
