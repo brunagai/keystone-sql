@@ -48,7 +48,10 @@ const dossier = initDossierExport();
 initLabGuide();
 const investigation = initInvestigationPanel({
   onLoadSolution: (sql) => editor.replaceSql(sql),
-  onScenarioChange: (scenario) => void session.switchTo(scenario),
+  onScenarioChange: (scenario) => {
+    output.clearValidation();
+    void session.switchTo(scenario);
+  },
 });
 const schema = initSchemaPanel((column) => editor.insertAtCursor(column));
 const editor = initEditor({
@@ -73,7 +76,6 @@ function recordExecution(origin: HistoryOrigin, sql: string, executedAt: Date, e
 const totalRows = (results: readonly QueryExecResult[]): number => results.reduce((acc, r) => acc + r.values.length, 0);
 const header = initHeader({
   onReset: () => void handleReset(),
-  onOpenAiSettings: () => settingsModal.open(),
 });
 
 let aiSettings = loadAiSettings();
@@ -82,14 +84,13 @@ let generation: AbortController | null = null;
 const settingsModal = initAiSettingsModal((settings) => {
   aiSettings = settings;
   agent.setSettings(settings);
-  header.setAiSettings(settings);
 });
 const agent = initAgentPanel({
   onGenerate: (focus, difficulty) => void generateNewChallenge(focus, difficulty),
   onCancel: () => generation?.abort(),
+  onOpenAiSettings: () => settingsModal.open(),
 });
 agent.setSettings(aiSettings);
-header.setAiSettings(aiSettings);
 
 async function generateNewChallenge(focus: ChallengeFocus, difficulty: ChallengeDifficulty): Promise<void> {
   if (!db || generation) return;
@@ -132,17 +133,12 @@ function runCurrentQuery(options?: { inspectCte?: boolean }): boolean {
     output.showMessage('O editor está vazio.');
     return false;
   }
-  const prepared = prepareExecutableSql(source);
-  if (options?.inspectCte && !selection && !prepared.inspectedCte) {
-    editor.flashStatus('Selecione o miolo do WITH (a CTE) para inspecionar o envelope. Ctrl+Enter executa a seleção ou a consulta inteira.');
+  if (options?.inspectCte && !selection) {
+    editor.showSelectionHelp();
     return false;
   }
+  const prepared = prepareExecutableSql(source);
   const sql = prepared.sql;
-  if (prepared.inspectedCte) {
-    editor.flashStatus(`Inspecionando a CTE \`${prepared.inspectedCte}\` (SELECT * FROM ${prepared.inspectedCte}).`);
-  } else if (selection) {
-    editor.flashStatus('Executando o trecho selecionado.');
-  }
   const start = performance.now();
   const executedAt = new Date();
   try {
@@ -151,6 +147,8 @@ function runCurrentQuery(options?: { inspectCte?: boolean }): boolean {
     header.setDatasetCounts(countRows(db));
     dossier.setData({ scenario: investigation.getSelectedScenario(), sql, results, executedAt, elapsedMs });
     recordExecution('execucao', sql, executedAt, elapsedMs, totalRows(results));
+    if (selection) editor.showSnippetHint(totalRows(results));
+    else editor.clearHint();
     return true;
   } catch (error) {
     const elapsedMs = performance.now() - start;
@@ -165,7 +163,7 @@ async function validateCurrentQuery(): Promise<void> {
   if (!db || validating) return;
   validating = true;
   editor.setActionsEnabled(false);
-  investigation.showPending();
+  output.showValidationPending();
   try {
     const scenario = investigation.getSelectedScenario();
     const sql = editor.getSql();
@@ -173,25 +171,29 @@ async function validateCurrentQuery(): Promise<void> {
     const result = await validateChallenge(db, scenario, sql);
     const run = result.studentRun;
     if (run?.ok) {
-      output.showResults(run.results, run.elapsedMs);
+      output.showResults(run.results, run.elapsedMs, true);
       dossier.setData({ scenario, sql, results: run.results, executedAt, elapsedMs: run.elapsedMs });
       recordExecution('validacao', sql, executedAt, run.elapsedMs, totalRows(run.results));
     } else if (run) {
-      output.showError(run.error, run.elapsedMs);
+      output.showError(run.error, run.elapsedMs, true);
       dossier.setData(null);
       recordExecution('validacao', sql, executedAt, run.elapsedMs, null);
     }
-    investigation.showValidation(result);
+    output.showValidation(result, scenario.colunasEsperadas);
+    investigation.showValidation();
   } catch (error) {
-    investigation.showValidation({
-      status: 'error',
+    const scenario = investigation.getSelectedScenario();
+    const result = {
+      status: 'error' as const,
       title: 'Falha interna na validação',
       message: errorMessage(error),
       details: [],
       entities: [],
       highlight: null,
       studentRun: null,
-    });
+    };
+    output.showValidation(result, scenario.colunasEsperadas);
+    investigation.showValidation();
   } finally {
     validating = false;
     editor.setActionsEnabled(true);
@@ -215,7 +217,7 @@ async function handleReset(): Promise<void> {
   header.setConnectionState('loading');
   try {
     applyDatabase(await resetDatabase());
-    investigation.clearFeedback();
+    output.clearValidation();
     dossier.setData(null);
     output.showMessage('Banco recriado a partir do dataset original.');
   } catch (error) {

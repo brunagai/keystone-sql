@@ -12,6 +12,7 @@ import { escapeHtml, formatInline } from './format.ts';
 export interface AgentPanelHandlers {
   onGenerate: (focus: ChallengeFocus, difficulty: ChallengeDifficulty) => void;
   onCancel: () => void;
+  onOpenAiSettings: () => void;
 }
 
 export type AgentNoticeTone = 'success' | 'warning' | 'error';
@@ -37,7 +38,7 @@ const fillSelect = <T extends string>(select: HTMLSelectElement, labels: Record<
     .join('');
 };
 
-export function initAgentPanel({ onGenerate, onCancel }: AgentPanelHandlers): AgentPanelController {
+export function initAgentPanel({ onGenerate, onCancel, onOpenAiSettings }: AgentPanelHandlers): AgentPanelController {
   const panel = byId('agent-panel');
   const providerStatus = byId('agent-provider-status');
   const focusSelect = byId<HTMLSelectElement>('agent-focus');
@@ -49,6 +50,8 @@ export function initAgentPanel({ onGenerate, onCancel }: AgentPanelHandlers): Ag
   const openButton = byId<HTMLButtonElement>('btn-agent');
   const closeButton = byId<HTMLButtonElement>('btn-agent-close');
   const backdrop = byId('agent-backdrop');
+  const settingsButton = byId<HTMLButtonElement>('btn-ai-settings');
+  const settingsIndicator = byId('ai-key-indicator');
 
   fillSelect<ChallengeFocus>(focusSelect, FOCUS_LABELS, 'livre');
   fillSelect<ChallengeDifficulty>(difficultySelect, DIFFICULTY_LABELS, 'intermediario');
@@ -84,15 +87,20 @@ export function initAgentPanel({ onGenerate, onCancel }: AgentPanelHandlers): Ag
     onGenerate(focusSelect.value as ChallengeFocus, difficultySelect.value as ChallengeDifficulty),
   );
   cancelButton.addEventListener('click', onCancel);
+  settingsButton.addEventListener('click', onOpenAiSettings);
 
   return {
     setSettings(settings) {
+      settingsIndicator.className = `inline-block size-1.5 rounded-full ${settings ? 'bg-emerald-400' : 'bg-slate-500'}`;
+      settingsButton.title = settings
+        ? `Chave ${PROVIDERS[settings.provider].label} salva (modelo ${settings.model})`
+        : 'Nenhuma chave salva: agente em modo offline';
       providerStatus.innerHTML = settings
         ? `<span class="inline-block size-1.5 rounded-full bg-violet-400 align-middle"></span>
            <span class="text-slate-300">${escapeHtml(PROVIDERS[settings.provider].label)}</span>
            · <span class="font-mono">${escapeHtml(settings.model)}</span>
            · <span class="font-mono text-slate-600">${escapeHtml(maskApiKey(settings.apiKey))}</span>`
-        : '<span class="inline-block size-1.5 rounded-full bg-slate-500 align-middle"></span> Modo offline (templates locais). Abra ⚙ e escolha <span class="text-slate-300">Chave de IA</span> para conectar uma LLM.';
+        : '<span class="inline-block size-1.5 rounded-full bg-slate-500 align-middle"></span> Modo offline (templates locais). Use <span class="text-slate-300">⚙ Configurar Chave de API</span> para conectar uma LLM.';
     },
     setEnabled(value) {
       enabled = value;

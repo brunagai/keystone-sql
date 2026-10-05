@@ -7,18 +7,13 @@ import {
 } from '../challenges/registry.ts';
 import { TRAIL_LEVELS, TRAIL_ORDER, type InvestigationScenario, type ScenarioId, type TrailLevel, type TwoPhaseReasoning } from '../challenges/scenarios.ts';
 import { resolveTwoPhase } from '../challenges/twoPhase.ts';
-import type { ErrorHighlight } from '../challenges/sqlErrors.ts';
-import type { ValidationResult, ValidationStatus } from '../challenges/validator.ts';
 import { byId } from './dom.ts';
 import { escapeHtml, formatInline } from './format.ts';
-import { bindPopover } from './popover.ts';
 
 export interface InvestigationPanelController {
   getSelectedScenario(): InvestigationScenario;
   selectScenario(id: ScenarioId): void;
-  showPending(): void;
-  showValidation(result: ValidationResult): void;
-  clearFeedback(): void;
+  showValidation(): void;
 }
 
 export interface InvestigationPanelHandlers {
@@ -26,12 +21,6 @@ export interface InvestigationPanelHandlers {
   /** Disparado a cada troca de cenário (seleção manual, desafio gerado ou remoção do atual), exceto na carga inicial. */
   onScenarioChange: (scenario: InvestigationScenario) => void;
 }
-
-const STATUS_STYLE: Record<ValidationStatus, { box: string; title: string; icon: string; label: string }> = {
-  success: { box: 'bg-emerald-950/40 border-emerald-500/50', title: 'text-emerald-300', icon: '✓', label: 'Esteira em conformidade' },
-  error: { box: 'bg-rose-950/40 border-rose-500/50', title: 'text-rose-300', icon: '✕', label: 'Inconsistência' },
-  warning: { box: 'bg-amber-950/40 border-amber-500/50', title: 'text-amber-300', icon: '!', label: 'Parcial' },
-};
 
 const levelLabel = (nivel: TrailLevel): string => `Nível ${nivel} — ${TRAIL_LEVELS[nivel].titulo}`;
 
@@ -44,8 +33,8 @@ const BAND_LEVELS: Record<TrailBand, readonly TrailLevel[]> = {
   avancado: [4, 5],
 };
 
-const BAND_BUTTON_ON = 'rounded-full bg-slate-800 px-2.5 py-1 text-[11px] font-medium text-slate-100';
-const BAND_BUTTON_OFF = 'rounded-full px-2.5 py-1 text-[11px] font-medium text-slate-400 hover:bg-slate-800 hover:text-slate-200';
+const BAND_BUTTON_ON = 'rounded-full bg-sky-600 px-3 py-1 text-[12px] font-medium text-white';
+const BAND_BUTTON_OFF = 'rounded-full px-3 py-1 text-[12px] font-medium text-slate-400 hover:bg-slate-800 hover:text-slate-100';
 
 function renderOriginBadge(s: InvestigationScenario): string {
   if (s.origem === 'base') return '';
@@ -73,7 +62,7 @@ function renderTwoPhase(s: InvestigationScenario): string {
       ${step('2', phases.fase2)}
       <p class="text-[12px] leading-relaxed text-slate-500">
         Para ver o meio do caminho, selecione o trecho do <code class="font-mono text-slate-400">WITH</code> e use
-        <span class="text-sky-300">Testar CTE</span>.
+        <span class="text-sky-300">Testar Trecho</span>.
       </p>
     </div>`;
 }
@@ -96,7 +85,7 @@ function renderScenario(s: InvestigationScenario): string {
   return `
     ${renderOriginBadge(s)}
     <p class="text-[11px] font-medium uppercase tracking-wider text-slate-500">Nível ${s.nivel} · ${escapeHtml(TRAIL_LEVELS[s.nivel].titulo)}</p>
-    <section class="rounded-2xl bg-slate-900/40 p-5">
+    <section id="mission-card" class="rounded-2xl bg-slate-900/40 p-5">
       <h3 class="text-lg font-semibold leading-snug text-slate-50">${escapeHtml(s.titulo)}</h3>
       <p class="mt-4 text-[11px] font-semibold uppercase tracking-wider text-sky-400">Sua Missão</p>
       <p class="mt-2 text-[15px] leading-relaxed text-slate-100">${escapeHtml(missionLine(s.objetivo))}</p>
@@ -124,18 +113,6 @@ function renderScenario(s: InvestigationScenario): string {
     </div>`;
 }
 
-function renderHighlight({ lineNumber, line, token }: ErrorHighlight): string {
-  const start = line.toLowerCase().indexOf(token.toLowerCase());
-  const marked =
-    start < 0
-      ? escapeHtml(line)
-      : `${escapeHtml(line.slice(0, start))}<mark class="rounded bg-rose-500/30 px-0.5 text-rose-100 underline decoration-rose-400 decoration-wavy">${escapeHtml(
-          line.slice(start, start + token.length),
-        )}</mark>${escapeHtml(line.slice(start + token.length))}`;
-  return `
-    <pre class="mt-2 overflow-x-auto rounded border border-rose-900/60 bg-slate-950 px-2 py-1 font-mono text-[11px] text-slate-300"><span class="mr-2 select-none text-slate-600">${lineNumber}</span>${marked}</pre>`;
-}
-
 function splitSqlComment(line: string): [code: string, comment: string] {
   let inString = false;
   for (let i = 0; i < line.length - 1; i++) {
@@ -160,10 +137,7 @@ function renderCommentedSql(sql: string): string {
 export function initInvestigationPanel({ onLoadSolution, onScenarioChange }: InvestigationPanelHandlers): InvestigationPanelController {
   const select = byId<HTMLSelectElement>('scenario-select');
   const card = byId('scenario-card');
-  const feedback = byId('validation-feedback');
   const solution = byId('solution-panel');
-  const trailLabel = byId('trail-menu-label');
-  const trailMenu = bindPopover(byId<HTMLButtonElement>('btn-trail'), byId('trail-menu'));
   const trailBands = byId('trail-bands');
   let trailBand: TrailBand = 'todos';
 
@@ -217,20 +191,11 @@ export function initInvestigationPanel({ onLoadSolution, onScenarioChange }: Inv
     if ((event.target as HTMLElement).closest('[data-load-solution]')) onLoadSolution(selected.gabaritoSql);
   });
 
-  const clearFeedback = (): void => {
-    feedback.innerHTML = `
-      <p class="text-[12px] leading-relaxed text-slate-500">
-        Quando terminar, clique em <span class="text-sky-300">Validar Resposta</span> para conferir se a consulta encontrou as movimentações certas.
-      </p>`;
-  };
-
   const show = (scenario: InvestigationScenario, notify = true): void => {
     const changed = scenario.id !== selected.id;
     selected = scenario;
     select.value = scenario.id;
-    trailLabel.textContent = `${scenario.nivel} · ${scenario.titulo}`;
     card.innerHTML = renderScenario(scenario);
-    clearFeedback();
     renderSolutionToggle();
     if (notify && changed) onScenarioChange(scenario);
   };
@@ -248,7 +213,6 @@ export function initInvestigationPanel({ onLoadSolution, onScenarioChange }: Inv
   select.addEventListener('change', () => {
     const scenario = findScenario(select.value);
     if (scenario) show(scenario);
-    trailMenu.close();
   });
 
   card.addEventListener('click', (event) => {
@@ -284,65 +248,9 @@ export function initInvestigationPanel({ onLoadSolution, onScenarioChange }: Inv
       const scenario = findScenario(id);
       if (scenario) show(scenario);
     },
-    showPending() {
-      feedback.innerHTML = `
-        <div class="flex items-center gap-2 rounded-xl bg-slate-900/50 px-4 py-3 text-sm text-slate-400">
-          <span class="size-3 animate-spin rounded-full border-2 border-slate-600 border-t-sky-400"></span>
-          Comparando seu resultado com o gabarito…
-        </div>`;
-    },
-    showValidation(result) {
+    showValidation() {
       attempts.set(selected.id, (attempts.get(selected.id) ?? 0) + 1);
-      const style = STATUS_STYLE[result.status];
-      const details = result.details.length
-        ? `<ul class="mt-2 list-disc space-y-1 pl-4 text-[11px] leading-relaxed text-slate-300">${result.details
-            .map((d) => `<li>${formatInline(d)}</li>`)
-            .join('')}</ul>`
-        : '';
-      const entities = result.entities.length
-        ? `<div class="mt-2 flex flex-wrap gap-1">${result.entities
-            .map(
-              (e) =>
-                `<span class="rounded border border-emerald-500/40 bg-emerald-500/10 px-1.5 py-px font-mono text-[10px] text-emerald-200">${escapeHtml(e)}</span>`,
-            )
-            .join('')}</div>`
-        : '';
-
-      const metrics =
-        result.status === 'success' && result.compliance
-          ? `<div class="mt-2 grid grid-cols-3 gap-1 font-mono text-[10px] leading-tight">
-              <div class="rounded border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-1">
-                <p class="text-[9px] uppercase tracking-wider text-emerald-400/80">Alertas</p>
-                <p class="font-semibold text-emerald-200">${result.compliance.captured}/${result.compliance.expected} (${result.compliance.recallPct}%)</p>
-              </div>
-              <div class="rounded border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-1">
-                <p class="text-[9px] uppercase tracking-wider text-emerald-400/80">Falsos +</p>
-                <p class="font-semibold text-emerald-200">${result.compliance.falsePositives}</p>
-              </div>
-              <div class="rounded border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-1">
-                <p class="text-[9px] uppercase tracking-wider text-emerald-400/80">Eficiência</p>
-                <p class="font-semibold text-emerald-200">${result.compliance.efficiencyPct}%</p>
-              </div>
-            </div>`
-          : '';
-
-      feedback.innerHTML = `
-        <div role="alert" class="rounded-xl px-4 py-3 ${style.box}">
-          <div class="flex items-start gap-2">
-            <span class="mt-px flex size-4 shrink-0 items-center justify-center rounded-full border border-current text-[9px] font-bold ${style.title}">${style.icon}</span>
-            <div class="min-w-0 flex-1">
-              <p class="text-[10px] font-semibold uppercase tracking-wider ${style.title} opacity-70">${style.label}</p>
-              <p class="text-xs font-semibold leading-snug ${style.title}">${escapeHtml(result.title)}</p>
-              <p class="mt-1 text-[11px] leading-relaxed text-slate-200">${formatInline(result.message)}</p>
-              ${metrics}
-              ${result.highlight ? renderHighlight(result.highlight) : ''}
-              ${entities}
-              ${details}
-            </div>
-          </div>
-        </div>`;
       renderSolutionToggle();
     },
-    clearFeedback,
   };
 }

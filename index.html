@@ -14,73 +14,51 @@
       details > summary { list-style: none; }
       details > summary::-webkit-details-marker { display: none; }
       .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+      .tour-spotlight { position: relative; z-index: 70; box-shadow: 0 0 0 4px rgb(16 185 129 / 0.7), 0 25px 50px -12px rgb(0 0 0 / 0.5); }
     </style>
   </head>
   <body class="h-screen overflow-hidden bg-slate-950 text-[14px] text-slate-200 antialiased">
     <div id="app" class="flex h-screen flex-col overflow-hidden">
-      <header id="app-header" class="flex h-14 shrink-0 items-center gap-2 border-b border-slate-800/80 bg-zinc-950/95 px-4">
-        <div class="flex min-w-0 items-center gap-2.5">
+      <header id="app-header" class="flex h-16 shrink-0 items-center gap-4 border-b border-slate-800/80 bg-zinc-950/95 px-4">
+        <div class="flex shrink-0 items-center gap-2.5">
           <span class="rounded-md bg-emerald-500/15 px-1.5 py-0.5 font-mono text-[11px] font-bold tracking-wide text-emerald-400">AML</span>
-          <h1 class="truncate text-[15px] font-semibold text-slate-50">AML SQL Lab</h1>
+          <h1 class="text-[15px] font-semibold text-slate-50">AML SQL Lab</h1>
           <div id="wasm-status" role="status" aria-live="polite" class="flex items-center gap-1.5"></div>
         </div>
 
-        <nav class="ml-auto flex min-w-0 items-center gap-1.5" aria-label="Navegação do laboratório">
-          <div class="relative">
-            <button id="btn-trail" type="button"
-              class="flex max-w-[16rem] items-center gap-2 rounded-lg border border-slate-700/80 bg-slate-900/60 px-3 py-1.5 text-left text-xs text-slate-200 hover:border-sky-600 hover:bg-slate-900">
-              <span class="text-slate-500">Nível / Trilha</span>
-              <span id="trail-menu-label" class="min-w-0 truncate font-medium text-slate-100">Escolher caso</span>
-              <span class="text-[10px] text-slate-500" aria-hidden="true">▾</span>
-            </button>
-            <div id="trail-menu" class="absolute right-0 top-full z-40 mt-1.5 w-[min(28rem,calc(100vw-2rem))] rounded-xl border border-slate-700 bg-zinc-950 p-3 shadow-2xl shadow-black/60">
-              <p class="mb-2 text-[11px] leading-relaxed text-slate-500">Comece pelo nível que combina com você e depois escolha o caso.</p>
-              <div id="trail-bands" class="mb-3 flex flex-wrap gap-1">
-                <button type="button" data-trail-band="todos" class="rounded-full bg-slate-800 px-2.5 py-1 text-[11px] font-medium text-slate-100">Todos</button>
-                <button type="button" data-trail-band="iniciante" class="rounded-full px-2.5 py-1 text-[11px] font-medium text-slate-400 hover:bg-slate-800 hover:text-slate-200">Iniciante</button>
-                <button type="button" data-trail-band="intermediario" class="rounded-full px-2.5 py-1 text-[11px] font-medium text-slate-400 hover:bg-slate-800 hover:text-slate-200">Intermediário</button>
-                <button type="button" data-trail-band="avancado" class="rounded-full px-2.5 py-1 text-[11px] font-medium text-slate-400 hover:bg-slate-800 hover:text-slate-200">Avançado</button>
-              </div>
-              <label for="scenario-select" class="mb-1 block text-[11px] font-medium text-slate-400">Caso investigativo</label>
-              <select id="scenario-select"
-                class="w-full rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-2 text-xs text-slate-200 outline-none focus:border-sky-500"></select>
-            </div>
+        <div class="flex min-w-0 flex-1 items-center gap-3">
+          <div id="trail-bands" role="tablist" aria-label="Nível da trilha" class="flex shrink-0 items-center gap-1 rounded-full bg-slate-900/80 p-1">
+            <button type="button" data-trail-band="todos" class="rounded-full bg-sky-600 px-3 py-1 text-[12px] font-medium text-white">Todos</button>
+            <button type="button" data-trail-band="iniciante" class="rounded-full px-3 py-1 text-[12px] font-medium text-slate-400 hover:bg-slate-800 hover:text-slate-100">Iniciante</button>
+            <button type="button" data-trail-band="intermediario" class="rounded-full px-3 py-1 text-[12px] font-medium text-slate-400 hover:bg-slate-800 hover:text-slate-100">Intermediário</button>
+            <button type="button" data-trail-band="avancado" class="rounded-full px-3 py-1 text-[12px] font-medium text-slate-400 hover:bg-slate-800 hover:text-slate-100">Avançado</button>
           </div>
+          <label for="scenario-select" class="sr-only">Caso investigativo</label>
+          <select id="scenario-select"
+            class="min-w-0 flex-1 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-[13px] text-slate-100 outline-none hover:border-slate-500 focus:border-sky-500"></select>
+        </div>
 
+        <nav class="flex shrink-0 items-center gap-2" aria-label="Navegação do laboratório">
           <button id="btn-agent" type="button" aria-haspopup="dialog" aria-controls="agent-drawer"
-            class="rounded-lg px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-violet-950/50 hover:text-violet-100">
+            class="rounded-lg px-3 py-2 text-xs font-medium text-slate-200 hover:bg-violet-950/50 hover:text-violet-100">
             🤖 Agente IA
           </button>
 
           <button id="btn-schema" type="button" aria-haspopup="dialog" aria-controls="schema-drawer"
-            class="rounded-lg px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-slate-800">
+            class="rounded-lg px-3 py-2 text-xs font-medium text-slate-200 hover:bg-slate-800">
             📖 Dicionário de Tabelas
           </button>
 
           <button id="btn-lab-help" type="button" aria-haspopup="dialog" aria-controls="lab-help-dialog"
-            class="rounded-lg border border-sky-700/50 bg-sky-950/40 px-3 py-1.5 text-xs font-medium text-sky-100 hover:border-sky-500 hover:bg-sky-950/70">
+            class="rounded-lg border border-sky-700/50 bg-sky-950/40 px-3 py-2 text-xs font-medium text-sky-100 hover:border-sky-500 hover:bg-sky-950/70">
             ❓ Entenda o Laboratório
           </button>
 
-          <div class="relative">
-            <button id="btn-settings" type="button" aria-label="Configurações e ações extras"
-              class="flex size-9 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800 hover:text-slate-100">
-              <span aria-hidden="true">⚙</span>
-            </button>
-            <div id="settings-menu" class="absolute right-0 top-full z-40 mt-1.5 w-72 rounded-xl border border-slate-700 bg-zinc-950 p-2 shadow-2xl shadow-black/60">
-              <p class="px-2 pb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Ações extras</p>
-              <div id="dataset-meta" class="mb-2 flex flex-wrap gap-1.5 px-1"></div>
-              <button id="btn-ai-settings" type="button" aria-haspopup="dialog" aria-controls="ai-settings-dialog"
-                class="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs text-slate-200 hover:bg-slate-800">
-                <span id="ai-key-indicator" aria-hidden="true" class="inline-block size-1.5 rounded-full bg-slate-500"></span>
-                Chave de IA
-              </button>
-              <button id="btn-reset" type="button" disabled
-                class="mt-0.5 w-full rounded-lg px-2.5 py-2 text-left text-xs text-slate-300 hover:bg-rose-950/40 hover:text-rose-200 disabled:cursor-not-allowed disabled:opacity-40">
-                Resetar Banco
-              </button>
-            </div>
-          </div>
+          <button id="btn-reset" type="button" disabled
+            title="Restaura as tabelas e transações para o estado inicial"
+            class="rounded-lg px-3 py-2 text-xs font-medium text-slate-400 hover:bg-rose-950/40 hover:text-rose-200 disabled:cursor-not-allowed disabled:opacity-40">
+            ↻ Restaurar Dados Originais
+          </button>
         </nav>
       </header>
 
@@ -92,36 +70,16 @@
           </div>
           <div class="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 pb-6">
             <article id="scenario-card" class="space-y-4"></article>
-            <div id="validation-feedback" aria-live="polite"></div>
             <section id="solution-panel" aria-label="Gabarito comentado"></section>
           </div>
         </section>
 
         <section id="query-panel" aria-label="Editor SQL e resultados" class="flex min-w-0 flex-1 flex-col bg-slate-950">
-          <div id="editor-pane" class="flex min-h-0 flex-[1.15] flex-col">
+          <div id="editor-container" class="flex min-h-0 flex-[1.15] flex-col">
             <div class="flex h-12 shrink-0 items-center gap-3 px-5">
               <h2 class="text-xs font-semibold tracking-wide text-slate-400">Mão na massa</h2>
-              <span id="editor-status" role="status" aria-live="polite" class="min-w-0 truncate text-[12px] text-sky-300"></span>
               <div class="ml-auto flex items-center gap-2">
-                <div class="flex items-center gap-0.5">
-                  <div class="relative">
-                    <button id="btn-history" type="button"
-                      class="rounded-md px-2 py-1 text-[11px] text-slate-500 hover:bg-slate-800 hover:text-slate-300 aria-expanded:bg-slate-800 aria-expanded:text-slate-200">
-                      Histórico
-                      <span id="history-count" hidden class="ml-1 rounded-full bg-slate-700 px-1.5 font-mono text-[10px] text-slate-200"></span>
-                    </button>
-                    <div id="history-panel" role="dialog" aria-label="Últimas queries executadas"
-                      class="absolute right-0 top-full z-30 mt-1 w-[30rem] max-w-[60vw] rounded-xl border border-slate-700 bg-zinc-950 p-1.5 shadow-2xl shadow-black/60">
-                      <p class="px-2 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Últimas 10 execuções (sessão)</p>
-                      <div id="history-list" class="max-h-80 overflow-y-auto"></div>
-                    </div>
-                  </div>
-                  <button id="btn-run-selection" type="button" disabled
-                    title="Selecione o miolo do WITH (a CTE) e execute só esse trecho."
-                    class="rounded-md px-2 py-1 text-[11px] text-slate-500 hover:bg-slate-800 hover:text-slate-300 disabled:cursor-not-allowed disabled:opacity-40">
-                    Testar CTE
-                  </button>
-                </div>
+                <div id="action-buttons-group" class="flex items-center gap-2">
                 <button id="btn-run" type="button" disabled
                   class="rounded-lg bg-emerald-600 px-3.5 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40">
                   ▶ Executar Consulta
@@ -130,6 +88,31 @@
                   class="rounded-lg bg-sky-600 px-3.5 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-40">
                   ✓ Validar Resposta
                 </button>
+                </div>
+                <span class="mx-1 h-5 w-px bg-slate-800" aria-hidden="true"></span>
+                <div class="relative">
+                  <button id="btn-run-selection" type="button" disabled
+                    title="Executa apenas o pedaço de código selecionado com o cursor no editor (ideal para testar subqueries e blocos WITH/CTE)."
+                    class="rounded-md px-2.5 py-1.5 text-[12px] text-slate-400 hover:bg-slate-800 hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-40">
+                    ✂ Testar Trecho
+                  </button>
+                  <div id="selection-help" hidden role="status"
+                    class="absolute right-0 top-full z-30 mt-1.5 w-72 rounded-xl border border-sky-800/60 bg-zinc-950 p-3 text-[12px] leading-relaxed text-slate-200 shadow-2xl shadow-black/60">
+                    💡 Dica: Selecione com o mouse qualquer parte do seu código SQL para testar apenas esse trecho isoladamente.
+                  </div>
+                </div>
+                <div class="relative">
+                  <button id="btn-history" type="button"
+                    class="rounded-md px-2.5 py-1.5 text-[12px] text-slate-400 hover:bg-slate-800 hover:text-slate-200 aria-expanded:bg-slate-800 aria-expanded:text-slate-200">
+                    🕘 Histórico
+                    <span id="history-count" hidden class="ml-1 rounded-full bg-slate-700 px-1.5 font-mono text-[10px] text-slate-200"></span>
+                  </button>
+                  <div id="history-panel" role="dialog" aria-label="Últimas queries executadas"
+                    class="absolute right-0 top-full z-30 mt-1 w-[30rem] max-w-[60vw] rounded-xl border border-slate-700 bg-zinc-950 p-1.5 shadow-2xl shadow-black/60">
+                    <p class="px-2 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Últimas 10 execuções (sessão)</p>
+                    <div id="history-list" class="max-h-80 overflow-y-auto"></div>
+                  </div>
+                </div>
               </div>
             </div>
             <div id="editor-banner" hidden aria-live="assertive"
@@ -138,6 +121,8 @@
             <textarea id="sql-editor" spellcheck="false" autocomplete="off" autocapitalize="off" autofocus
               class="min-h-0 flex-1 resize-none bg-slate-950 px-6 py-5 font-mono text-[14px] leading-7 text-emerald-200 caret-emerald-400 outline-none placeholder:text-slate-600"
               placeholder="-- Escreva sua consulta SQL aqui"></textarea>
+            <p id="editor-hint" hidden role="status" aria-live="polite"
+              class="shrink-0 border-t border-slate-800/60 px-5 py-1.5 text-[12px] text-slate-400"></p>
           </div>
 
           <div id="output-pane" class="flex min-h-0 flex-1 flex-col border-t border-slate-800/80">
@@ -165,6 +150,7 @@
                 </div>
               </div>
             </div>
+            <div id="validation-banner" hidden aria-live="polite" class="shrink-0 px-5 pb-3"></div>
             <div id="output-body" class="min-h-0 flex-1 overflow-auto"></div>
           </div>
         </section>
@@ -199,6 +185,11 @@
           <h3 id="agent-panel-title" class="sr-only">Gerar desafio com IA</h3>
           <p class="text-sm leading-relaxed text-slate-400">Peça um caso novo. Sem chave, o laboratório usa o gerador local.</p>
           <p id="agent-provider-status" class="mt-3 text-[12px] text-slate-500"></p>
+          <button id="btn-ai-settings" type="button" aria-haspopup="dialog" aria-controls="ai-settings-dialog"
+            class="mt-3 inline-flex items-center gap-2 rounded-lg px-0 py-1 text-[12px] text-slate-400 hover:text-violet-200">
+            <span id="ai-key-indicator" aria-hidden="true" class="inline-block size-1.5 rounded-full bg-slate-500"></span>
+            ⚙ Configurar Chave de API
+          </button>
           <div class="mt-5 grid gap-3">
             <label class="block">
               <span class="mb-1 block text-[12px] text-slate-400">Foco da tipologia</span>
@@ -235,7 +226,7 @@
             <span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-sky-500/15 text-sm font-semibold text-sky-300">1</span>
             <div>
               <p class="font-medium text-slate-100">Escolha um caso no menu superior</p>
-              <p class="mt-1 text-sm leading-relaxed text-slate-400">Abra <span class="text-slate-200">Nível / Trilha</span> e selecione o desafio. Cada caso é uma história de movimentação suspeita.</p>
+              <p class="mt-1 text-sm leading-relaxed text-slate-400">No topo, escolha o nível (Iniciante, Intermediário ou Avançado) e depois o caso no seletor ao lado. Cada caso é uma história de movimentação suspeita.</p>
             </div>
           </li>
           <li class="flex gap-3">

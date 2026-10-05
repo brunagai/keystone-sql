@@ -24,6 +24,9 @@ export interface EditorController {
   confirmReplace(prompt: ReplacePrompt): Promise<boolean>;
   dismissPrompt(): void;
   flashStatus(message: string): void;
+  showSelectionHelp(): void;
+  showSnippetHint(rowCount: number): void;
+  clearHint(): void;
 }
 
 export interface EditorHandlers {
@@ -34,7 +37,8 @@ export interface EditorHandlers {
 }
 
 const INDENT = '  ';
-const STATUS_TIMEOUT_MS = 3500;
+const HINT_TIMEOUT_MS = 6000;
+const HELP_TIMEOUT_MS = 8000;
 
 export function initEditor({ onRun, onTestSelection, onValidate, onChange }: EditorHandlers): EditorController {
   const textarea = byId<HTMLTextAreaElement>('sql-editor');
@@ -42,7 +46,8 @@ export function initEditor({ onRun, onTestSelection, onValidate, onChange }: Edi
   const validateButton = byId<HTMLButtonElement>('btn-validate');
   const selectionButton = byId<HTMLButtonElement>('btn-run-selection');
   const banner = byId('editor-banner');
-  const status = byId('editor-status');
+  const hint = byId('editor-hint');
+  const selectionHelp = byId('selection-help');
 
   const hasSelection = (): boolean => textarea.selectionStart !== textarea.selectionEnd;
 
@@ -63,6 +68,8 @@ export function initEditor({ onRun, onTestSelection, onValidate, onChange }: Edi
 
   runButton.title = 'Executa a consulta no banco local (Ctrl+Enter)';
   validateButton.title = 'Confere se o resultado bate com o gabarito do desafio';
+  selectionButton.title =
+    'Executa apenas o pedaço de código selecionado com o cursor no editor (ideal para testar subqueries e blocos WITH/CTE).';
   runButton.addEventListener('click', onRun);
   selectionButton.addEventListener('click', onTestSelection);
   validateButton.addEventListener('click', onValidate);
@@ -103,7 +110,37 @@ export function initEditor({ onRun, onTestSelection, onValidate, onChange }: Edi
     if (event.key === 'Escape') settlePrompt(false);
   });
 
-  let statusTimer: ReturnType<typeof setTimeout> | undefined;
+  let hintTimer: ReturnType<typeof setTimeout> | undefined;
+  let helpTimer: ReturnType<typeof setTimeout> | undefined;
+
+  const setHint = (message: string): void => {
+    clearTimeout(hintTimer);
+    hint.hidden = !message;
+    hint.textContent = message;
+    if (!message) return;
+    hintTimer = setTimeout(() => {
+      hint.hidden = true;
+      hint.textContent = '';
+    }, HINT_TIMEOUT_MS);
+  };
+
+  const hideSelectionHelp = (): void => {
+    clearTimeout(helpTimer);
+    selectionHelp.hidden = true;
+  };
+
+  const openSelectionHelp = (): void => {
+    selectionHelp.hidden = false;
+    clearTimeout(helpTimer);
+    helpTimer = setTimeout(hideSelectionHelp, HELP_TIMEOUT_MS);
+  };
+
+  document.addEventListener('pointerdown', (event) => {
+    const target = event.target as Node;
+    if (!selectionHelp.hidden && !selectionHelp.contains(target) && !selectionButton.contains(target)) {
+      hideSelectionHelp();
+    }
+  });
 
   return {
     getSql() {
@@ -157,11 +194,21 @@ export function initEditor({ onRun, onTestSelection, onValidate, onChange }: Edi
     },
     dismissPrompt: () => settlePrompt(false),
     flashStatus(message) {
-      clearTimeout(statusTimer);
-      status.textContent = message;
-      statusTimer = setTimeout(() => {
-        status.textContent = '';
-      }, STATUS_TIMEOUT_MS);
+      hideSelectionHelp();
+      setHint(message);
+    },
+    showSelectionHelp() {
+      setHint('');
+      openSelectionHelp();
+    },
+    showSnippetHint(rowCount) {
+      hideSelectionHelp();
+      const linhas = rowCount === 1 ? '1 linha' : `${rowCount} linhas`;
+      setHint(`Executando trecho selecionado (${linhas}).`);
+    },
+    clearHint() {
+      hideSelectionHelp();
+      setHint('');
     },
   };
 }
