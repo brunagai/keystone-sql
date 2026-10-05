@@ -72,12 +72,24 @@ function renderTwoPhase(s: InvestigationScenario): string {
     </div>`;
 }
 
+/** Primeira frase, sem cortar em milhares/decimais (ex.: R$ 9.700,00). */
+function firstSentence(text: string): string {
+  for (let i = 0; i < text.length; i += 1) {
+    const ch = text[i];
+    if (ch !== '.' && ch !== '!' && ch !== '?') continue;
+    const prev = text[i - 1];
+    const next = text[i + 1];
+    if (ch === '.' && prev !== undefined && next !== undefined && /\d/.test(prev) && /\d/.test(next)) continue;
+    return text.slice(0, i + 1).trim();
+  }
+  return text;
+}
+
 function missionLine(objetivo: string | undefined): string {
   const text = (objetivo ?? '').replace(/`/g, '').replace(/\s+/g, ' ').trim();
   if (!text) return 'Produza as evidências pedidas neste caso.';
-  const stop = text.search(/[.!?]/);
-  const sentence = stop >= 0 ? text.slice(0, stop + 1).trim() : text;
-  return sentence.length > 220 ? `${sentence.slice(0, 217)}…` : sentence;
+  const sentence = firstSentence(text);
+  return sentence.length > 280 ? `${sentence.slice(0, 277)}…` : sentence;
 }
 
 function expectedColumns(s: InvestigationScenario): readonly string[] {

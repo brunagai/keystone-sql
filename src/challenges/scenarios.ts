@@ -99,8 +99,8 @@ const CATALOG: readonly InvestigationScenario[] = [
       'com faturamento declarado de R$ 18 mil. Em poucos dias ela recebeu dezenas de milhares de reais de pessoas físicas ' +
       'recém-cadastradas, sempre em valores logo abaixo do limiar de comunicação de R$ 10.000,00.',
     objetivo:
-      'Identifique os remetentes que enviaram PIX individuais entre R$ 9.700,00 e R$ 9.999,00 para a conta `C025`, ' +
-      'com pelo menos 2 operações (`HAVING COUNT(*) >= 2`). Retorne `conta_origem` (alias de `id_conta_origem`), ' +
+      'Identifique os remetentes que enviaram PIX individuais entre R$ 9.700,00 e R$ 9.999,00 para a conta C025, ' +
+      'com pelo menos 2 operações (HAVING COUNT(*) >= 2). Retorne `conta_origem` (alias de `id_conta_origem`), ' +
       '`total_operacoes` e `valor_total`.',
     colunasEsperadas: ['conta_origem', 'total_operacoes', 'valor_total'],
     ordenacao: 'valor_total DESC',
