@@ -5,7 +5,7 @@ export type ScenarioId = string;
 
 export type ScenarioOrigin = 'base' | 'ia' | 'offline';
 
-/** Degraus da trilha pedagógica; o nível 5 agrupa os desafios gerados pelo agente. */
+/** Degraus da trilha pedagógica; o nível 5 cobre QSA/telemetria/produtos e, em seguida, desafios gerados. */
 export type TrailLevel = 1 | 2 | 3 | 4 | 5;
 
 export interface TrailLevelInfo {
@@ -19,7 +19,7 @@ export const TRAIL_LEVELS: Record<TrailLevel, TrailLevelInfo> = {
   2: { titulo: 'Janelas e Classificação', tecnica: 'ROW_NUMBER() OVER (PARTITION BY …)' },
   3: { titulo: 'Análise Temporal e Mudança de Padrão', tecnica: 'LAG / LEAD e recorte horário (strftime)' },
   4: { titulo: 'Composição Analítica com CTEs', tecnica: 'WITH + janelas, LAG e ROWS BETWEEN' },
-  5: { titulo: 'Laboratório Aberto (Agente IA)', tecnica: 'Desafios gerados por LLM ou offline' },
+  5: { titulo: 'Casos Avançados de PLD/FT', tecnica: 'JOIN em QSA, telemetria de acesso e produtos financeiros' },
 };
 
 export const TRAIL_ORDER: readonly TrailLevel[] = [1, 2, 3, 4, 5];
@@ -811,6 +811,200 @@ ORDER BY acumulado_movel_pep DESC, id_transacao ASC;`,
         entities: titulares,
         details: [
           'Compare o 4.2 (`>= 25000`, qualquer titular) com este corte (`> 20000` só em `eh_pep = 1`): o limiar cai porque o risco do cargo público justifica alerta mais cedo.',
+        ],
+      };
+    },
+  },
+  {
+    id: 'ubo-aurora',
+    origem: 'base',
+    nivel: 5,
+    titulo: 'Rastreio de UBO: Sócios Relevantes em Empresas Suspeitas',
+    enquadramento: 'Carta Circular Bacen 4.001/2020 · empresas de fachada, laranjas e beneficiário final (UBO)',
+    dossie:
+      'A Aurora (C025) concentrou dezenas de PIX logo abaixo de R$ 10 mil e integrou capital na holding. A Circular 3.978/2020 ' +
+      'exige conhecer o beneficiário final; a Carta Circular 4.001 cita uso de laranjas e sociedades de fachada para ocultar ' +
+      'o controlador. Cruze o QSA (`socios_empresas`) da conta investigada e isole quem de fato manda na empresa: participação ' +
+      'relevante e poderes de administrador.',
+    objetivo:
+      'Identifique os sócios da empresa vinculada à conta `C025` com participação societária `>= 25%` que constam como ' +
+      'administradores (`eh_administrador = 1`). Retorne `nome_socio`, `cpf_socio`, `percentual_participacao` e `cnpj_empresa`. ' +
+      'Ordene por `percentual_participacao DESC, nome_socio`.',
+    colunasEsperadas: ['nome_socio', 'cpf_socio', 'percentual_participacao', 'cnpj_empresa'],
+    ordenacao: 'percentual_participacao DESC, nome_socio',
+    dicaTexto:
+      'A tabela `socios_empresas` liga o sócio à conta PJ por `id_conta_empresa`. Filtre a Aurora (`C025`), o piso de 25% e o flag de administrador. Um `JOIN contas c ON c.id_conta = s.id_conta_empresa` ajuda a conferir a razão social, mas as colunas pedidas saem do QSA.',
+    dicaSql: `SELECT s.nome_socio,
+       s.cpf_socio,
+       s.percentual_participacao,
+       s.cnpj_empresa
+FROM socios_empresas AS s
+JOIN contas AS c ON c.id_conta = s.id_conta_empresa
+WHERE s.id_conta_empresa = 'C025'
+  AND s.percentual_participacao >= ...
+  AND s.eh_administrador = ...
+ORDER BY ...;`,
+    gabaritoSql: `-- Gabarito · UBO / QSA da receptora Aurora (C025)
+SELECT
+  s.nome_socio,
+  s.cpf_socio,
+  s.percentual_participacao,
+  s.cnpj_empresa
+FROM socios_empresas AS s
+WHERE s.id_conta_empresa = 'C025'          -- empresa do smurfing
+  AND s.percentual_participacao >= 25      -- sócio relevante (CC 4.001 / UBO)
+  AND s.eh_administrador = 1               -- poderes de gestão
+ORDER BY s.percentual_participacao DESC, s.nome_socio;`,
+    colunaChave: 'cpf_socio',
+    rotuloEntidade: { singular: 'sócio', plural: 'sócios' },
+    dicasDivergencia: {
+      excesso:
+        'Há sócios a mais. Mantenha `id_conta_empresa = \'C025\'`, `percentual_participacao >= 25` e `eh_administrador = 1`. Laranjas com 1% não entram.',
+      falta:
+        'Faltam sócios. Confira a tabela `socios_empresas`, o piso inclusivo de 25% e se o administrador de fato da Aurora foi marcado com `eh_administrador = 1`.',
+      valores:
+        'Os sócios estão certos, mas algum campo diverge. Projete `nome_socio`, `cpf_socio`, `percentual_participacao` e `cnpj_empresa` sem arredondar o percentual.',
+      ordenacao: 'Os dados estão corretos, mas a ordem não. Ordene por `percentual_participacao DESC, nome_socio`.',
+    },
+    resumirSucesso(gabarito) {
+      const nomes = distinct(columnValues(gabarito, 'nome_socio'));
+      return {
+        message: `UBO localizado: ${gabarito.values.length} sócio(s) relevante(s) e administrador(es) no QSA da Aurora (${nomes.join(', ') || '—'}).`,
+        entities: nomes,
+        details: [
+          'Os laranjas com participação residual continuam no QSA, mas o corte de 25% + administrador aponta o controlador econômico.',
+        ],
+      };
+    },
+  },
+  {
+    id: 'ato-dispositivo',
+    origem: 'base',
+    nivel: 5,
+    titulo: 'Account Takeover (ATO): Dispositivo Inédito e Transação Atípica',
+    enquadramento: 'Circular Bacen 3.978/2020 · canais eletrônicos, dispositivo e geolocalização incompatíveis (ATO)',
+    dossie:
+      'A esteira de canais eletrônicos cruzou telemetria com o PIX. Há relato de sessão autenticada a partir de cidade e IP ' +
+      'incompatíveis com o cadastro (exemplo plantado: Manaus) minutos antes de uma originação de alto valor. A Circular 3.978 ' +
+      'pede monitoramento de transações e de meios de acesso; a Carta Circular 4.001 cita uso atípico de canais e de dispositivos ' +
+      'como indício de fraude / account takeover.',
+    objetivo:
+      'Identifique contas com login bem-sucedido (`acessos_digitais.sucesso = 1`) cuja cidade do acesso diverge da cidade ' +
+      'cadastral, imediatamente antes (até 15 minutos) de uma saída PIX de alto valor (`valor >= 10000`). Retorne `id_conta`, ' +
+      '`device_id`, `geolocalizacao_cidade` e `valor_transacao`. Ordene por `valor_transacao DESC, id_conta`.',
+    colunasEsperadas: ['id_conta', 'device_id', 'geolocalizacao_cidade', 'valor_transacao'],
+    ordenacao: 'valor_transacao DESC, id_conta',
+    dicaTexto:
+      'Correlacione `acessos_digitais` com `transacoes_pix` (origem) e `contas` (cidade KYC). A divergência é `a.geolocalizacao_cidade <> c.cidade`. A janela “imediatamente antes” usa `unixepoch(t.data_hora) - unixepoch(a.data_hora)` entre 0 e 900 segundos.',
+    dicaSql: `SELECT a.id_conta,
+       a.device_id,
+       a.geolocalizacao_cidade,
+       t.valor AS valor_transacao
+FROM acessos_digitais AS a
+JOIN contas AS c ON c.id_conta = a.id_conta
+JOIN transacoes_pix AS t ON t.id_conta_origem = a.id_conta
+WHERE a.sucesso = 1
+  AND a.geolocalizacao_cidade <> c.cidade
+  AND t.valor >= ...
+  AND unixepoch(t.data_hora) - unixepoch(a.data_hora) BETWEEN 0 AND 900
+ORDER BY ...;`,
+    gabaritoSql: `-- Gabarito · ATO (telemetria × PIX de alto valor)
+SELECT
+  a.id_conta,
+  a.device_id,
+  a.geolocalizacao_cidade,
+  t.valor AS valor_transacao
+FROM acessos_digitais AS a
+JOIN contas AS c
+  ON c.id_conta = a.id_conta
+JOIN transacoes_pix AS t
+  ON t.id_conta_origem = a.id_conta
+WHERE a.sucesso = 1
+  AND a.geolocalizacao_cidade <> c.cidade
+  AND t.valor >= 10000
+  AND unixepoch(t.data_hora) - unixepoch(a.data_hora) BETWEEN 0 AND 900
+ORDER BY t.valor DESC, a.id_conta;`,
+    colunaChave: 'id_conta',
+    rotuloEntidade: { singular: 'conta', plural: 'contas' },
+    dicasDivergencia: {
+      excesso:
+        'Há linhas a mais. Exija login com sucesso, cidade diferente do cadastro, PIX de saída `>= 10000` e intervalo de no máximo 900 s após o acesso.',
+      falta:
+        'Faltam eventos. Faça JOIN de `acessos_digitais` com `contas` e `transacoes_pix` na origem; o caso plantado é o device inédito em Manaus minutos antes do PIX alto.',
+      valores:
+        'As contas estão certas, mas `device_id`, cidade ou `valor_transacao` divergem. Alias `t.valor AS valor_transacao` e use a cidade do log, não a do KYC.',
+      ordenacao: 'Os dados estão corretos, mas a ordem não. Ordene por `valor_transacao DESC, id_conta`.',
+    },
+    resumirSucesso(gabarito) {
+      const contas = distinct(columnValues(gabarito, 'id_conta'));
+      const cidades = distinct(columnValues(gabarito, 'geolocalizacao_cidade'));
+      return {
+        message: `ATO confirmado: ${gabarito.values.length} sessão(ões) em ${cidades.join(', ') || 'cidade atípica'} imediatamente antes de saídas de alto valor (${contas.join(', ')}).`,
+        entities: contas,
+        details: [
+          'Compare com o histórico de device habitual da mesma conta: o salto geográfico + canal API no PIX é o padrão clássico de takeover.',
+        ],
+      };
+    },
+  },
+  {
+    id: 'consorcio-especie',
+    origem: 'base',
+    nivel: 5,
+    titulo: 'Ocultação Patrimonial: Lance de Consórcio em Espécie',
+    enquadramento: 'Carta Circular Bacen 4.001/2020 · integralização atípica e uso de espécie em produtos',
+    dossie:
+      'Consórcios contemplados e aplicações de renda fixa são veículos clássicos de conversão de numerário. A Circular 3.978/2020 ' +
+      'trata da abordagem baseada em risco sobre produtos; a Carta Circular 4.001 aponta pagamentos em espécie sem fundamento e ' +
+      'integralizações incompatíveis com o perfil. A esteira deve achar lances de consórcio liquidados em `ESPECIE` para obtenção ' +
+      'de bem contemplado (`status_contemplacao = 1`).',
+    objetivo:
+      "Localize contas que liquidaram lances de consórcio (`tipo_produto = 'CONSORCIO_LANCE'`) em espécie (`forma_liquidacao = 'ESPECIE'`) " +
+      'já contempladas (`status_contemplacao = 1`). Retorne `id_conta`, `tipo_produto`, `valor_aporte` e `forma_liquidacao`. ' +
+      'Ordene por `valor_aporte DESC, id_conta`.',
+    colunasEsperadas: ['id_conta', 'tipo_produto', 'valor_aporte', 'forma_liquidacao'],
+    ordenacao: 'valor_aporte DESC, id_conta',
+    dicaTexto:
+      'Tudo está em `operacoes_produtos`. Não precisa de JOIN para o recorte mínimo. Combine os três filtros no `WHERE` e projete as quatro colunas pedidas. Um `JOIN contas` só é necessário se você quiser o titular no rascunho — a esteira não exige isso.',
+    dicaSql: `SELECT id_conta,
+       tipo_produto,
+       valor_aporte,
+       forma_liquidacao
+FROM operacoes_produtos
+WHERE tipo_produto = 'CONSORCIO_LANCE'
+  AND forma_liquidacao = 'ESPECIE'
+  AND status_contemplacao = ...
+ORDER BY ...;`,
+    gabaritoSql: `-- Gabarito · consórcio contemplado liquidado em espécie
+SELECT
+  id_conta,
+  tipo_produto,
+  valor_aporte,
+  forma_liquidacao
+FROM operacoes_produtos
+WHERE tipo_produto = 'CONSORCIO_LANCE'
+  AND forma_liquidacao = 'ESPECIE'
+  AND status_contemplacao = 1
+ORDER BY valor_aporte DESC, id_conta;`,
+    colunaChave: 'id_conta',
+    rotuloEntidade: { singular: 'conta', plural: 'contas' },
+    dicasDivergencia: {
+      excesso:
+        'Há operações a mais. Restrinja a `CONSORCIO_LANCE`, `ESPECIE` e `status_contemplacao = 1`. Aportes em PIX/TED ou consórcios não contemplados ficam de fora.',
+      falta:
+        'Faltam operações. Use a tabela `operacoes_produtos` (não o PIX). A Aurora (C025) tem lance contemplado em espécie; outras contas com o mesmo padrão também entram.',
+      valores:
+        'As contas estão certas, mas `tipo_produto`, `valor_aporte` ou `forma_liquidacao` divergem. Não arredonde o aporte; projete as colunas cruas da tabela.',
+      ordenacao: 'Os dados estão corretos, mas a ordem não. Ordene por `valor_aporte DESC, id_conta`.',
+    },
+    resumirSucesso(gabarito) {
+      const contas = distinct(columnValues(gabarito, 'id_conta'));
+      const total = sum(columnValues(gabarito, 'valor_aporte'));
+      return {
+        message: `Ocultação via produto: ${gabarito.values.length} lance(s) de consórcio contemplado(s) em espécie, somando ${formatBRL(total)} (${contas.join(', ')}).`,
+        entities: contas,
+        details: [
+          'O numerário entra como “lance” e sai como bem ou carta de crédito — caminho clássico de layering fora do PIX.',
         ],
       };
     },

@@ -23,8 +23,66 @@ function wrapComment(text: string, prefix: string): string[] {
 
 function missionLine(objetivo: string): string {
   const text = plain(objetivo);
-  const sentence = text.split(/(?<=[.!?])\s+/)[0] ?? text;
+  const stop = text.search(/[.!?]/);
+  const sentence = (stop >= 0 ? text.slice(0, stop + 1) : text).trim();
   return sentence;
+}
+
+const LEVEL5_SKELETON: Readonly<Record<string, string>> = {
+  'ubo-aurora': `SELECT
+    s.nome_socio,
+    s.cpf_socio,
+    s.percentual_participacao,
+    s.cnpj_empresa
+FROM socios_empresas AS s
+JOIN contas AS c
+    ON c.id_conta = s.id_conta_empresa
+WHERE
+    -- 2. Empresa do smurfing, piso de participação e administrador
+    s.id_conta_empresa = '...'
+    AND s.percentual_participacao >= ...
+    AND s.eh_administrador = ...
+ORDER BY s.percentual_participacao DESC, s.nome_socio;`,
+  'ato-dispositivo': `SELECT
+    a.id_conta,
+    a.device_id,
+    a.geolocalizacao_cidade,
+    t.valor AS valor_transacao
+FROM acessos_digitais AS a
+JOIN contas AS c
+    ON c.id_conta = a.id_conta
+JOIN transacoes_pix AS t
+    ON t.id_conta_origem = a.id_conta
+WHERE
+    -- 2. Login ok, cidade diferente do KYC, PIX alto e janela de minutos
+    a.sucesso = 1
+    AND a.geolocalizacao_cidade <> c.cidade
+    AND t.valor >= ...
+    AND unixepoch(t.data_hora) - unixepoch(a.data_hora) BETWEEN 0 AND ...
+ORDER BY t.valor DESC, a.id_conta;`,
+  'consorcio-especie': `SELECT
+    id_conta,
+    tipo_produto,
+    valor_aporte,
+    forma_liquidacao
+FROM operacoes_produtos
+WHERE
+    -- 2. Lance de consórcio, espécie e bem já contemplado
+    tipo_produto = '...'
+    AND forma_liquidacao = '...'
+    AND status_contemplacao = ...
+ORDER BY valor_aporte DESC, id_conta;`,
+};
+
+function headerComments(scenario: InvestigationScenario): string[] {
+  const columns = scenario.colunasEsperadas.join(', ');
+  return [
+    ...wrapComment(scenario.titulo, '-- Desafio: '),
+    ...wrapComment(missionLine(scenario.objetivo), '-- Objetivo: '),
+    ...wrapComment(columns, '-- Colunas esperadas na resposta: '),
+    `-- Nível ${scenario.nivel} — ${TRAIL_LEVELS[scenario.nivel].titulo}`,
+    '',
+  ];
 }
 
 /** Primeira tabela real do gabarito (ignora o nome da CTE quando o FROM interno vem antes). */
@@ -36,14 +94,12 @@ export function principalTableOf(scenario: InvestigationScenario): string {
 
 /** Cabeçalho e esqueleto SQL guiado para o desafio ativo. */
 export function buildStarterTemplate(scenario: InvestigationScenario): string {
+  const skeleton = LEVEL5_SKELETON[scenario.id];
+  if (skeleton) return `${headerComments(scenario).join('\n')}${skeleton}`;
+
   const table = principalTableOf(scenario);
-  const columns = scenario.colunasEsperadas.join(', ');
   return [
-    ...wrapComment(scenario.titulo, '-- Desafio: '),
-    ...wrapComment(missionLine(scenario.objetivo), '-- Objetivo: '),
-    ...wrapComment(columns, '-- Colunas esperadas na resposta: '),
-    `-- Nível ${scenario.nivel} — ${TRAIL_LEVELS[scenario.nivel].titulo}`,
-    '',
+    ...headerComments(scenario),
     'SELECT',
     '    -- 1. Quais colunas e agregações foram pedidas?',
     '    ',

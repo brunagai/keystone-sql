@@ -507,7 +507,7 @@ const rafael = contaPorId.get('C026');
 const sandra = contaPorId.get('C027');
 addSocio('C025', rafael.titular, rafael.documento, 1, 1, aurora.data_abertura);
 addSocio('C025', sandra.titular, sandra.documento, 1, 0, aurora.data_abertura);
-addSocio('C025', 'Cláudio Henrique Vilela', cpfSerial(cpfLivre++), 98, 0, aurora.data_abertura);
+addSocio('C025', 'Cláudio Henrique Vilela', cpfSerial(cpfLivre++), 98, 1, aurora.data_abertura);
 
 const vertice = contaPorId.get('C038');
 const gerente = contaPorId.get('C016');

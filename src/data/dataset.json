@@ -4293,7 +4293,7 @@
       "cpf_socio": "10000001686",
       "nome_socio": "Cláudio Henrique Vilela",
       "percentual_participacao": 98,
-      "eh_administrador": 0,
+      "eh_administrador": 1,
       "data_entrada": "2026-06-15"
     },
     {
