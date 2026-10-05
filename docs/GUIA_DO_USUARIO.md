@@ -36,72 +36,77 @@ npm run dev
 
 Depois abra **http://localhost:5173** no navegador (Chrome, Edge ou Firefox atualizados).
 
-Quando o canto superior esquerdo mostrar **● WASM conectado** em verde, o banco está pronto. Ao lado aparecem os contadores de contas e transações.
+Quando o canto superior esquerdo mostrar **● Online** em verde, o banco está pronto. As duas tabelas (`contas` e `transacoes_pix`) e as contagens de linhas ficam no **Dicionário de Tabelas**.
 
-Se você atualizou o gerador (por exemplo, para o desafio 4.3 de PEP), rode **`npm run generate:dataset`** e recarregue a página (ou **Resetar Banco**) para o SQLite em memória refletir o JSON novo.
+Se você atualizou o gerador (por exemplo, para o desafio 4.3 de PEP), rode **`npm run generate:dataset`** e recarregue a página (ou **↻ Restaurar Dados Originais**) para o SQLite em memória refletir o JSON novo.
 
 ---
 
 ## 2. Conhecendo a tela
 
-A tela é dividida em um cabeçalho e três painéis.
+A tela é um laboratório em **duas colunas**, com a missão à esquerda e o trabalho SQL à direita. O dicionário e o agente de IA abrem em **gavetas**, para não quebrar a leitura do caso.
 
 ### Cabeçalho
 
-- **WASM conectado / carregando / indisponível** — estado do banco de dados.
-- **contas / transações** — quantas linhas existem em cada tabela.
-- **⚙ Configurar IA (Groq / OpenAI)** — conecta o agente a uma IA. A bolinha fica **verde** quando há uma chave salva e **cinza** no modo offline.
-- **Resetar Banco** — recria o banco original. Use se você alterou ou apagou dados sem querer.
+- **● Online / Carregando / Offline** — estado do SQLite (WebAssembly) no navegador.
+- **Filtro da trilha** — **Todos**, **Iniciante** (níveis 1–2), **Intermediário** (nível 3) ou **Avançado** (níveis 4–5).
+- **Seletor de caso** — o desafio ativo (na primeira carga: **1.1 · Smurfing para a receptora Aurora**).
+- **🤖 Agente IA** — gera novos desafios (nível 5) e abre a configuração da chave.
+- **📖 Dicionário de Tabelas** — consulta as **2 tabelas** do banco (`contas` e `transacoes_pix`). A IA não adiciona tabelas.
+- **❓ Entenda o Laboratório** — reabre o tour guiado.
+- **↻ Restaurar Dados Originais** — recria o banco sintético. Use se você alterou ou apagou dados sem querer.
 
-### Painel 1 — Dicionário de Dados (esquerda)
+### Coluna esquerda — O que fazer
 
-Mostra as duas tabelas do banco:
+Redimensionável (arraste a faixa entre as colunas). Contém:
 
-- **`contas`** — o cadastro KYC (nome, PF/PJ, ocupação, **renda mensal declarada**, banco, chave PIX, cidade, data de abertura, indicador **PEP** `eh_pep` e **`cargo_pep`**). Duas contas são PEP de exemplo: **C013** (Deputado Estadual) e **C004** (Prefeito).
-- **`transacoes_pix`** — as transferências (conta de origem, conta de destino, **valor**, **data e hora**, canal: APP, INTERNET_BANKING ou API).
+- o card **Sua Missão** (o que investigar, em uma frase);
+- o atalho **📊 Consultar Tabelas Disponíveis** (abre o mesmo dicionário da navbar);
+- as abas de apoio:
+  - **💡 Dica de SQL passo a passo** — texto pedagógico e esqueleto SQL (sem o gabarito completo);
+  - **📋 Dossiê / Contexto Policial** — enquadramento regulatório e narrativa do caso;
+  - **Colunas esperadas** — primeiro o **objetivo de negócio da saída** (linguagem conceitual). Os nomes técnicos (`conta_origem`, `total_operacoes`, …) e o `ORDER BY` ficam atrás de **👁️ Revelar Nomes Técnicos e Aliases Esperados**, recolhido por padrão;
+- nos níveis 3, 4 e nos desafios gerados, a **decomposição em 2 fases** (envelope `WITH` e corte no `WHERE` externo);
+- depois da primeira validação, **Ver gabarito comentado**.
 
-Dicas:
+### Coluna direita — Mão na massa
 
-- **Clique no nome de uma coluna** para inseri-lo no editor, na posição do cursor.
-- Os selos indicam: **PK** (chave primária), **FK** (chave estrangeira, com a tabela de referência) e **NN** (não pode ser vazio).
-- Abra **▶ Pré-visualizar 3 primeiras linhas** para ver exemplos reais dos dados.
+- **Editor SQL**, com modelo inicial comentado (tabelas, filtros e `SELECT` a completar).
+- **▶ Rodar Teste** — executa a consulta em **modo exploratório** (mostra a tabela e um aviso: ainda não pontua).
+- **✓ Validar Resposta** — submete o resultado à esteira AML (compara com o gabarito).
+- **↺ Restaurar Modelo Inicial** — recoloca o esqueleto SQL deste desafio.
+- **✂ Testar Trecho** — executa só o pedaço selecionado no editor (útil para o miolo de um `WITH`).
+- **🕘 Histórico** — últimas 10 execuções desta sessão (o menu começa fechado).
+- **Resultados** — banner de validação ou de exploração, tabela ou card de erro (um quadro só), com rolagem vertical. **Exportar** (Markdown/CSV) fica nesta barra.
 
-### Painel 2 — Editor SQL e Resultados (centro)
+Valores em reais aparecem como **R$ 9.850,00** e datas como **dd/mm/aaaa hh:mm:ss**.
 
-- No **editor**, você escreve as consultas.
-- **▶ Executar Query** (ou **Ctrl+Enter**) roda a consulta inteira — ou só o trecho selecionado.
-- **Testar Seleção / CTE** — selecione o miolo do `WITH` (a CTE, mesmo sem o `SELECT` externo) para inspecionar os dados intermediários antes de filtrar. O botão acende quando há texto selecionado.
-- **Validar Desafio** compara seu resultado com o gabarito do desafio selecionado.
-- **🕘 Histórico** mostra as últimas consultas executadas.
-- **⤓ Exportar Dossiê** baixa sua evidência em Markdown ou CSV.
+### Gaveta Dicionário de Tabelas
 
-Valores em reais aparecem formatados como **R$ 9.850,00** e datas como **dd/mm/aaaa hh:mm:ss**.
+Há exatamente **duas tabelas**:
 
-### Painel 3 — Investigação Regulatória (direita)
+- **`contas`** — cadastro KYC (nome, PF/PJ, ocupação, **renda mensal declarada**, banco, chave PIX, cidade, data de abertura, indicador **PEP** `eh_pep` e **`cargo_pep`**). Duas contas PEP de exemplo: **C013** (Deputado Estadual) e **C004** (Prefeito).
+- **`transacoes_pix`** — transferências (origem, destino, **valor**, **data e hora**, canal: APP, INTERNET_BANKING ou API).
 
-- **✨ Agente Educador IA** — cria novos desafios.
-- **Cenário investigativo** — escolha o caso a investigar.
-- Para cada caso você vê o **enquadramento regulatório** (selo âmbar), o **Contexto da Denúncia / Dossiê**, o **Objetivo da Análise SQL** (o que sua consulta deve retornar e em que ordem) e a **Dica de Sintaxe SQL** (abra só se precisar).
-- Nos níveis 3, 4 e nos desafios gerados, o card **Decomposição em 2 Fases (Esteira Analítica)** mostra o raciocínio: (1) o envelope `WITH` que carimba métricas linha a linha e (2) o `WHERE` externo que aplica o corte regulatório.
-- Abaixo aparecem o **feedback da validação** (vocabulário de esteira: falsos negativos, ruído, ordem do compilador; no acerto, **Esteira Aprovada em Conformidade** com chips de alertas, falsos positivos e eficiência) e, depois da primeira tentativa, o **Ver Gabarito Comentado**.
+Cada tabela mostra a **quantidade de linhas**. Clique no nome de uma coluna para inseri-lo no editor. Abra **👁 Ver 3 exemplos práticos desta tabela** para ver dados reais.
 
 ---
 
 ## 3. Resolvendo seu primeiro desafio
 
-1. No Painel 3, escolha um cenário — por exemplo, **1.1 · Smurfing para a receptora Aurora (C025)**.
-2. Leia o **Objetivo da Análise SQL** com atenção: ele diz quais **colunas** retornar e qual **ordenação** usar.
-3. Escreva sua consulta no editor. Use o Painel 1 para lembrar os nomes das colunas.
-4. Pressione **Ctrl+Enter** para conferir o resultado enquanto escreve.
-5. Quando achar que está certo, clique em **Validar Desafio**.
-6. Leia o feedback. Se errar, ajuste e valide de novo — não há limite de tentativas.
-7. Depois de tentar, você pode abrir **Ver Gabarito Comentado** para comparar com a solução de referência e clicar em **Abrir gabarito no editor** para estudá-la.
+1. No seletor da navbar (ou deixe o caso padrão), escolha um cenário — por exemplo, **1.1 · Smurfing para a receptora Aurora (C025)**.
+2. Leia **Sua Missão**. Use **📊 Consultar Tabelas Disponíveis** para lembrar quais tabelas e colunas existem, em vez de adivinhar nomes.
+3. Na aba **Colunas esperadas**, leia o objetivo de negócio. Só abra **Revelar Nomes Técnicos** se precisar conferir os aliases da esteira.
+4. Complete o modelo no editor. **↺ Restaurar Modelo Inicial** recoloca o esqueleto se você se perder.
+5. Clique em **▶ Rodar Teste** (ou **Ctrl+Enter**) para explorar os dados. Isso **não** pontua o desafio.
+6. Quando achar que está certo, clique em **✓ Validar Resposta**. O feedback aparece no painel **Resultados**.
+7. Se errar, ajuste e valide de novo — não há limite de tentativas. Depois de tentar, você pode abrir **Ver gabarito comentado**.
 
-> **Dica:** se você selecionar um trecho do editor, apenas esse trecho é executado. Útil para testar uma subconsulta isoladamente.
+> **Dica:** selecione um trecho e use **✂ Testar Trecho** para inspecionar só aquele bloco (por exemplo, o miolo de um `WITH`).
 
 ### A trilha de aprendizagem
 
-Os desafios estão organizados em **níveis progressivos**: cada nível introduz uma técnica de SQL nova, aplicada a uma tipologia de lavagem. No seletor de cenários, os desafios aparecem agrupados por nível e numerados (1.1, 1.2, 2.1…). No cartão do desafio, o selo **N1** a **N5** mostra o nível e a técnica-alvo. A sugestão é seguir a ordem.
+Os desafios estão organizados em **níveis progressivos**: cada nível introduz uma técnica de SQL nova, aplicada a uma tipologia de lavagem. No seletor da navbar eles aparecem agrupados por nível e numerados (1.1, 1.2, 2.1…). Use o filtro **Todos / Iniciante / Intermediário / Avançado** para enxugar a lista. No card da missão, o texto **Nível N · título da técnica** indica o degrau. A sugestão é seguir a ordem.
 
 | Nível | Técnica | Desafio | O que investigar |
 | --- | --- | --- | --- |
@@ -119,7 +124,9 @@ Os desafios estão organizados em **níveis progressivos**: cada nível introduz
 
 ## 4. Entendendo o feedback (modo Investigador / esteira de risco)
 
-O validador não exige que sua consulta seja **igual** ao gabarito: compara o **resultado**. As mensagens falam a língua de uma **esteira de monitoramento PLD** — o analista que decide o que entra na fila de alertas.
+O validador não exige que sua consulta seja **igual** ao gabarito: compara o **resultado**. As mensagens falam a língua de uma **esteira de monitoramento PLD** e aparecem no painel **Resultados** (à direita), não na coluna da missão.
+
+Em caso de **erro de SQL** ou de validação, você vê **apenas** o card de erro — a tabela vazia não fica duplicada embaixo. Conteúdos longos (dica de correção + tabela) rolam nesse painel.
 
 | Cor | Significado |
 | --- | --- |
@@ -171,13 +178,13 @@ O SQLite **não deixa** filtrar `LAG()`, `ROW_NUMBER()` ou qualquer `OVER (...)`
 
 Isso é o mesmo raciocínio do card **Decomposição em 2 Fases** nos níveis 3, 4 e nos desafios gerados. Use **Testar Seleção / CTE** para inspecionar o envelope antes do corte.
 
-> A validação aceita apenas consultas de leitura (`SELECT` / `WITH`). Para experimentar `INSERT`, `UPDATE` ou `DELETE`, use **Executar Query** e depois **Resetar Banco**.
+> A validação aceita apenas consultas de leitura (`SELECT` / `WITH`). Para experimentar `INSERT`, `UPDATE` ou `DELETE`, use **Rodar Teste** e depois **↻ Restaurar Dados Originais**.
 
 ---
 
 ## 5. Gerando novos desafios com IA
 
-1. No Painel 3, em **✨ Agente Educador IA**, escolha o **Foco da tipologia** (ou "Livre") e a **Dificuldade**:
+1. Clique em **🤖 Agente IA** na navbar. Escolha o **Foco da tipologia** (ou "Livre") e a **Dificuldade**:
    - **Iniciante** — `GROUP BY`, `HAVING` e `WHERE` (sem `WITH` e sem funções de janela).
    - **Intermediário** — `WITH` + `ROW_NUMBER()` / `RANK()` para ranquear e cortar (maior PIX, top-N). O gabarito da IA vem comentado em **Fase 1 (envelope)** e **Fase 2 (inspetor)**.
    - **Avançado** — `WITH` + `LAG()`/`LEAD()` (burst, intervalo entre PIX) e corte no `WHERE` externo, no mesmo esquema de duas fases.
@@ -200,7 +207,7 @@ Outras informações:
 
 ## 6. Configurando a IA (Groq ou OpenAI)
 
-1. Clique em **⚙ Configurar IA (Groq / OpenAI)** no cabeçalho.
+1. Clique em **🤖 Agente IA** e depois em **Configurar IA (Groq / OpenAI)** (bolinha **verde** = chave salva, **cinza** = modo offline).
 2. Escolha o **Provedor**:
    - **Groq** — tem plano gratuito. Crie a chave em [console.groq.com/keys](https://console.groq.com/keys). Chaves começam com `gsk_`. Modelo padrão: `llama-3.3-70b-versatile`.
    - **OpenAI** — pago por uso. Crie a chave em [platform.openai.com/api-keys](https://platform.openai.com/api-keys). Chaves começam com `sk-`. Modelo padrão: `gpt-4o-mini`.
@@ -228,7 +235,7 @@ Cada desafio guarda **o seu próprio rascunho** automaticamente, enquanto você 
   - **Substituir** — sua consulta fica guardada como rascunho do desafio anterior, e o editor recebe o template do novo desafio.
   - **Manter minha query** — sua consulta continua no editor, agora associada ao novo desafio (útil para reaproveitar uma consulta). Pressionar **Esc** no aviso tem o mesmo efeito.
 
-Para começar um desafio do zero, apague o conteúdo do editor: o template volta na próxima vez que você abrir aquele desafio.
+Para começar um desafio do zero, clique em **↺ Restaurar Modelo Inicial** ou apague o editor: o template volta na próxima vez que você abrir aquele desafio (se não houver rascunho próprio).
 
 ---
 
@@ -246,7 +253,7 @@ Cada item mostra o início da consulta, o horário, se deu certo (✓ e o númer
 
 ## 9. Exportando o dossiê
 
-Depois de executar ou validar uma consulta **com sucesso**, clique em **⤓ Exportar Dossiê (CSV / Markdown)** na barra de resultados e escolha o formato:
+Depois de executar ou validar uma consulta **com sucesso**, clique em **Exportar** na barra de **Resultados** e escolha o formato:
 
 - **Markdown (.md)** — relatório legível, ótimo para guardar anotações ou compartilhar (abre no VS Code, Obsidian, GitHub, Notion…). No **final** do arquivo há a seção **Parecer do Analista de Compliance**, com caixas para marcar Arquivar (falso positivo) ou Encaminhar comunicação ao COAF e um campo de justificativa técnica — preencha à mão depois de exportar.
 - **CSV (.csv)** — para abrir em planilhas (Excel, Google Sheets, LibreOffice).
@@ -263,7 +270,7 @@ O botão fica desabilitado enquanto não houver um resultado válido (por exempl
 
 | Atalho | Onde | Ação |
 | --- | --- | --- |
-| **Ctrl+Enter** | Editor | Executa a consulta inteira, ou só o trecho selecionado (útil para inspecionar a CTE) |
+| **Ctrl+Enter** | Editor | **Rodar Teste**: executa a consulta inteira, ou só o trecho selecionado |
 | **Tab** | Editor | Indenta com 2 espaços |
 | **Ctrl+Z** | Editor | Desfaz (inclusive após carregar do histórico ou o gabarito) |
 | **Esc** | Histórico, exportação, aviso do editor, modal de IA | Fecha / mantém sua query |
@@ -273,14 +280,14 @@ O botão fica desabilitado enquanto não houver um resultado válido (por exempl
 
 ## 11. Perguntas frequentes e problemas comuns
 
-**Aparece "WASM indisponível".**
+**Aparece "Offline" / "WASM indisponível".**
 O arquivo do banco não foi encontrado. Pare o servidor, rode `npm install` (ou `node scripts/copy-wasm.mjs`) e depois `npm run dev` de novo.
 
 **A tela aparece sem cores/estilo.**
 Os estilos vêm da internet. Verifique a conexão e recarregue a página.
 
 **Apaguei ou alterei dados sem querer.**
-Clique em **Resetar Banco**. O banco volta ao estado original (seus rascunhos são mantidos).
+Clique em **↻ Restaurar Dados Originais**. O banco volta ao estado original (seus rascunhos são mantidos).
 
 **Minha consulta está certa, mas a fila de priorização está desalinhada (antes: "ordenação divergente").**
 Os registros batem com o gabarito; falta só o `ORDER BY` do objetivo, inclusive o desempate (por exemplo, `ORDER BY valor_total DESC, conta_origem`).
@@ -305,6 +312,12 @@ Use **Testar conexão** no modal. Mensagens comuns: chave recusada (confira se c
 
 **Posso usar sem internet?**
 Depois que a página estiver aberta, sim — exceto a geração com IA, que cai automaticamente no modo offline.
+
+**Quantas tabelas o banco tem?**
+Sempre **duas** (`contas` e `transacoes_pix`), com ou sem IA. O agente só cria **desafios** novos (nível 5), não tabelas.
+
+**O menu de Histórico ou Exportar ficou aberto sozinho.**
+Eles devem nascer fechados. Recarregue a página. Eles só abrem ao clicar nos respectivos botões.
 
 **Os dados são reais?**
 Não. Todos os nomes, documentos e transações são **fictícios**, criados para fins educacionais.

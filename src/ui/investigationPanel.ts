@@ -7,8 +7,11 @@ import {
 } from '../challenges/registry.ts';
 import { TRAIL_LEVELS, TRAIL_ORDER, type InvestigationScenario, type ScenarioId, type TrailLevel, type TwoPhaseReasoning } from '../challenges/scenarios.ts';
 import { resolveTwoPhase } from '../challenges/twoPhase.ts';
-import { byId } from './dom.ts';
 import { escapeHtml, formatInline } from './format.ts';
+
+function el<T extends HTMLElement>(id: string): T | null {
+  return document.getElementById(id) as T | null;
+}
 
 export interface InvestigationPanelController {
   getSelectedScenario(): InvestigationScenario;
@@ -21,7 +24,7 @@ export interface InvestigationPanelHandlers {
   /** Disparado a cada troca de cenário (seleção manual, desafio gerado ou remoção do atual), exceto na carga inicial. */
   onScenarioChange: (scenario: InvestigationScenario) => void;
   /** Abre a gaveta do Dicionário de Tabelas sem o estudante sair da missão. */
-  onOpenSchema: () => void;
+  onOpenSchema?: () => void;
 }
 
 const levelLabel = (nivel: TrailLevel): string => `Nível ${nivel} — ${TRAIL_LEVELS[nivel].titulo}`;
@@ -69,10 +72,17 @@ function renderTwoPhase(s: InvestigationScenario): string {
     </div>`;
 }
 
-function missionLine(objetivo: string): string {
-  const text = objetivo.replace(/`/g, '').replace(/\s+/g, ' ').trim();
-  const sentence = text.split(/(?<=[.!?])\s+/)[0] ?? text;
+function missionLine(objetivo: string | undefined): string {
+  const text = (objetivo ?? '').replace(/`/g, '').replace(/\s+/g, ' ').trim();
+  if (!text) return 'Produza as evidências pedidas neste caso.';
+  const stop = text.search(/[.!?]/);
+  const sentence = stop >= 0 ? text.slice(0, stop + 1).trim() : text;
   return sentence.length > 220 ? `${sentence.slice(0, 217)}…` : sentence;
+}
+
+function expectedColumns(s: InvestigationScenario): readonly string[] {
+  if (!Array.isArray(s.colunasEsperadas)) return [];
+  return s.colunasEsperadas.filter((name): name is string => typeof name === 'string' && name.length > 0);
 }
 
 const COLUMN_ROLES: Readonly<Record<string, string>> = {
@@ -130,7 +140,7 @@ function describeOutputGoal(columns: readonly string[]): string {
   const known: string[] = [];
   let unknown = 0;
   for (const column of columns) {
-    const role = COLUMN_ROLES[column.toLowerCase()];
+    const role = COLUMN_ROLES[column.toLowerCase()] ?? '';
     if (role) known.push(role);
     else unknown += 1;
   }
@@ -140,10 +150,12 @@ function describeOutputGoal(columns: readonly string[]): string {
 }
 
 function renderExpectedOutput(s: InvestigationScenario): string {
-  const aliases = s.colunasEsperadas.map((c) => `\`${c}\``).join(', ');
+  const columns = expectedColumns(s);
+  const aliases = columns.map((c) => `\`${c}\``).join(', ') || '`—`';
+  const ordenacao = s.ordenacao?.trim() || 'as colunas da evidência';
   return `
     <p class="text-[11px] font-semibold uppercase tracking-wider text-sky-400">Objetivo de negócio da saída</p>
-    <p class="mt-1.5">${escapeHtml(describeOutputGoal(s.colunasEsperadas))}</p>
+    <p class="mt-1.5">${escapeHtml(describeOutputGoal(columns))}</p>
     <p class="text-[12px] leading-relaxed text-slate-500">
       Use o dicionário de tabelas para escolher as colunas reais. Os nomes técnicos abaixo só são necessários na hora de validar.
     </p>
@@ -153,7 +165,7 @@ function renderExpectedOutput(s: InvestigationScenario): string {
       </summary>
       <div class="space-y-2 border-t border-slate-800 px-3 py-2.5 text-[12px] text-slate-400">
         <p>A esteira compara o resultado nesta ordem: ${formatInline(aliases)}.</p>
-        <p>Ordene com ${formatInline(`\`ORDER BY ${s.ordenacao}\``)}.</p>
+        <p>Ordene com ${formatInline(`\`ORDER BY ${ordenacao}\``)}.</p>
       </div>
     </details>`;
 }
@@ -167,11 +179,13 @@ const tabButton = (id: string, label: string, selected: boolean): string => `
   </button>`;
 
 function renderScenario(s: InvestigationScenario): string {
+  const nivelMeta = TRAIL_LEVELS[s.nivel];
+  const nivelTitulo = nivelMeta?.titulo ?? 'Trilha';
   return `
     ${renderOriginBadge(s)}
-    <p class="text-[11px] font-medium uppercase tracking-wider text-slate-500">Nível ${s.nivel} · ${escapeHtml(TRAIL_LEVELS[s.nivel].titulo)}</p>
+    <p class="text-[11px] font-medium uppercase tracking-wider text-slate-500">Nível ${escapeHtml(String(s.nivel))} · ${escapeHtml(nivelTitulo)}</p>
     <section id="mission-card" class="rounded-2xl bg-slate-900/40 p-5">
-      <h3 class="text-lg font-semibold leading-snug text-slate-50">${escapeHtml(s.titulo)}</h3>
+      <h3 class="text-lg font-semibold leading-snug text-slate-50">${escapeHtml(s.titulo ?? 'Caso investigativo')}</h3>
       <p class="mt-4 text-[11px] font-semibold uppercase tracking-wider text-sky-400">Sua Missão</p>
       <p class="mt-2 text-[15px] leading-relaxed text-slate-100">${escapeHtml(missionLine(s.objetivo))}</p>
     </section>
@@ -186,13 +200,13 @@ function renderScenario(s: InvestigationScenario): string {
         ${tabButton('colunas', 'Colunas esperadas', false)}
       </div>
       <div data-tab-panel="dica" class="mt-3 space-y-3">
-        <p class="text-[13px] leading-relaxed text-slate-300">${escapeHtml(s.dicaTexto)}</p>
-        <pre class="overflow-x-auto rounded-xl bg-slate-950 p-3 font-mono text-[12px] leading-6 text-emerald-200">${escapeHtml(s.dicaSql)}</pre>
+        <p class="text-[13px] leading-relaxed text-slate-300">${escapeHtml(s.dicaTexto ?? '')}</p>
+        <pre class="overflow-x-auto rounded-xl bg-slate-950 p-3 font-mono text-[12px] leading-6 text-emerald-200">${escapeHtml(s.dicaSql ?? '')}</pre>
         ${renderTwoPhase(s)}
       </div>
       <div data-tab-panel="dossie" hidden class="mt-3 space-y-3">
-        <p class="text-[12px] font-medium text-amber-200/90">${escapeHtml(s.enquadramento)}</p>
-        <p class="text-[13px] leading-relaxed text-slate-400">${escapeHtml(s.dossie)}</p>
+        <p class="text-[12px] font-medium text-amber-200/90">${escapeHtml(s.enquadramento ?? '')}</p>
+        <p class="text-[13px] leading-relaxed text-slate-400">${escapeHtml(s.dossie ?? '')}</p>
       </div>
       <div data-tab-panel="colunas" hidden class="mt-3 space-y-3 text-[13px] leading-relaxed text-slate-300">
         ${renderExpectedOutput(s)}
@@ -226,37 +240,42 @@ export function initInvestigationPanel({
   onScenarioChange,
   onOpenSchema,
 }: InvestigationPanelHandlers): InvestigationPanelController {
-  const select = byId<HTMLSelectElement>('scenario-select');
-  const card = byId('scenario-card');
-  const solution = byId('solution-panel');
-  const trailBands = byId('trail-bands');
+  const select = el<HTMLSelectElement>('scenario-select');
+  const card = el('scenario-card');
+  const solution = el('solution-panel');
+  const trailBands = el('trail-bands');
   let trailBand: TrailBand = 'todos';
 
   const firstScenario = baseScenarios()[0];
   if (!firstScenario) throw new Error('Nenhum cenário investigativo cadastrado.');
 
-  const renderOptions = (): void => {
-    const all = [...baseScenarios(), ...generatedScenarios()];
-    select.innerHTML = BAND_LEVELS[trailBand].map((nivel) => {
-      const items = all.filter((s) => s.nivel === nivel);
-      const options = items.length
-        ? items
-            .map((s, i) => {
-              const marker = s.origem === 'base' ? '' : `${s.origem === 'ia' ? '✨' : '⚙'} `;
-              const label = `${nivel}.${i + 1} · ${marker}${s.titulo}`;
-              return `<option value="${escapeHtml(s.id)}"${s.id === selected.id ? ' selected' : ''}>${escapeHtml(label)}</option>`;
-            })
-            .join('')
-        : '<option disabled>Use “✨ Gerar Novo Desafio com IA” para abrir este nível</option>';
-      const count = nivel === 5 && items.length ? ` (${items.length})` : '';
-      return `<optgroup label="${escapeHtml(levelLabel(nivel))}${count}">${options}</optgroup>`;
-    }).join('');
-  };
-
   let selected = firstScenario;
   const attempts = new Map<ScenarioId, number>();
 
+  const renderOptions = (): void => {
+    if (!select) return;
+    const all = [...baseScenarios(), ...generatedScenarios()];
+    select.innerHTML = BAND_LEVELS[trailBand]
+      .map((nivel) => {
+        const items = all.filter((s) => s.nivel === nivel);
+        const options = items.length
+          ? items
+              .map((s, i) => {
+                const marker = s.origem === 'base' ? '' : `${s.origem === 'ia' ? '✨' : '⚙'} `;
+                const label = `${nivel}.${i + 1} · ${marker}${s.titulo ?? s.id}`;
+                return `<option value="${escapeHtml(s.id)}"${s.id === selected.id ? ' selected' : ''}>${escapeHtml(label)}</option>`;
+              })
+              .join('')
+          : '<option disabled>Use “✨ Gerar Novo Desafio com IA” para abrir este nível</option>';
+        const count = nivel === 5 && items.length ? ` (${items.length})` : '';
+        return `<optgroup label="${escapeHtml(levelLabel(nivel))}${count}">${options}</optgroup>`;
+      })
+      .join('');
+    select.value = selected.id;
+  };
+
   const renderSolutionToggle = (): void => {
+    if (!solution) return;
     const count = attempts.get(selected.id) ?? 0;
     if (count === 0) {
       solution.innerHTML = '';
@@ -269,7 +288,7 @@ export function initInvestigationPanel({
           <span class="ml-auto text-[12px] font-normal text-slate-500">${count} tentativa${count > 1 ? 's' : ''}</span>
         </summary>
         <div class="space-y-2 border-t border-slate-800 p-3">
-          <pre class="max-h-80 overflow-auto rounded-xl bg-slate-950 p-3 font-mono text-[12px] leading-6">${renderCommentedSql(selected.gabaritoSql)}</pre>
+          <pre class="max-h-80 overflow-auto rounded-xl bg-slate-950 p-3 font-mono text-[12px] leading-6">${renderCommentedSql(selected.gabaritoSql ?? '')}</pre>
           <button type="button" data-load-solution
             class="w-full rounded-lg border border-slate-700 px-3 py-2 text-[12px] text-slate-300 hover:border-sky-600 hover:text-sky-200">
             Abrir gabarito no editor
@@ -278,55 +297,74 @@ export function initInvestigationPanel({
       </details>`;
   };
 
-  solution.addEventListener('click', (event) => {
-    if ((event.target as HTMLElement).closest('[data-load-solution]')) onLoadSolution(selected.gabaritoSql);
-  });
+  if (solution) {
+    solution.addEventListener('click', (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      if (target.closest('[data-load-solution]')) onLoadSolution(selected.gabaritoSql);
+    });
+  }
 
   const show = (scenario: InvestigationScenario, notify = true): void => {
     const changed = scenario.id !== selected.id;
     selected = scenario;
-    select.value = scenario.id;
-    card.innerHTML = renderScenario(scenario);
+    if (select) select.value = scenario.id;
+    if (card) {
+      try {
+        card.innerHTML = renderScenario(scenario);
+      } catch (error) {
+        card.innerHTML = `<p class="text-sm text-rose-300">${escapeHtml(error instanceof Error ? error.message : String(error))}</p>`;
+      }
+    }
     renderSolutionToggle();
     if (notify && changed) onScenarioChange(scenario);
   };
 
-  trailBands.addEventListener('click', (event) => {
-    const band = (event.target as HTMLElement).closest<HTMLElement>('[data-trail-band]')?.dataset['trailBand'];
-    if (band !== 'todos' && band !== 'iniciante' && band !== 'intermediario' && band !== 'avancado') return;
-    trailBand = band;
-    for (const button of trailBands.querySelectorAll<HTMLElement>('[data-trail-band]')) {
-      button.className = button.dataset['trailBand'] === trailBand ? BAND_BUTTON_ON : BAND_BUTTON_OFF;
-    }
-    renderOptions();
-  });
-
-  select.addEventListener('change', () => {
-    const scenario = findScenario(select.value);
-    if (scenario) show(scenario);
-  });
-
-  card.addEventListener('click', (event) => {
-    const target = event.target as HTMLElement;
-    if (target.closest('[data-open-schema]')) {
-      onOpenSchema();
-      return;
-    }
-    const tab = target.closest<HTMLElement>('[data-tab]')?.dataset['tab'];
-    if (tab) {
-      for (const button of card.querySelectorAll<HTMLElement>('[data-tab]')) {
-        const on = button.dataset['tab'] === tab;
-        button.setAttribute('aria-selected', String(on));
-        button.className = `rounded-lg px-3 py-1.5 text-[12px] font-medium ${on ? 'bg-slate-800 text-slate-50' : 'text-slate-500 hover:text-slate-200'}`;
+  if (trailBands) {
+    trailBands.addEventListener('click', (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const band = target.closest<HTMLElement>('[data-trail-band]')?.dataset['trailBand'];
+      if (band !== 'todos' && band !== 'iniciante' && band !== 'intermediario' && band !== 'avancado') return;
+      trailBand = band;
+      for (const button of trailBands.querySelectorAll<HTMLElement>('[data-trail-band]')) {
+        button.className = button.dataset['trailBand'] === trailBand ? BAND_BUTTON_ON : BAND_BUTTON_OFF;
       }
-      for (const panel of card.querySelectorAll<HTMLElement>('[data-tab-panel]')) {
-        panel.hidden = panel.dataset['tabPanel'] !== tab;
+      renderOptions();
+    });
+  }
+
+  if (select) {
+    select.addEventListener('change', () => {
+      const scenario = findScenario(select.value);
+      if (scenario) show(scenario);
+    });
+  }
+
+  if (card) {
+    card.addEventListener('click', (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      if (target.closest('[data-open-schema]')) {
+        onOpenSchema?.();
+        return;
       }
-      return;
-    }
-    const id = target.closest<HTMLElement>('[data-remove-scenario]')?.dataset['removeScenario'];
-    if (id && confirm('Remover este desafio gerado?')) removeGenerated(id);
-  });
+      const tab = target.closest<HTMLElement>('[data-tab]')?.dataset['tab'];
+      if (tab) {
+        for (const button of card.querySelectorAll<HTMLElement>('[data-tab]')) {
+          const on = button.dataset['tab'] === tab;
+          button.setAttribute('aria-selected', String(on));
+          button.className = `rounded-lg px-3 py-1.5 text-[12px] font-medium ${on ? 'bg-slate-800 text-slate-50' : 'text-slate-500 hover:text-slate-200'}`;
+        }
+        for (const panel of card.querySelectorAll<HTMLElement>('[data-tab-panel]')) {
+          panel.hidden = panel.dataset['tabPanel'] !== tab;
+        }
+        return;
+      }
+      const id = target.closest<HTMLElement>('[data-remove-scenario]')?.dataset['removeScenario'];
+      if (id && confirm('Remover este desafio gerado?')) removeGenerated(id);
+    });
+  }
 
   onScenariosChange(() => {
     const current = findScenario(selected.id);

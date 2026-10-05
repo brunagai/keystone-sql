@@ -1,3 +1,5 @@
+import type { AcessoDigital, OperacaoProduto, SocioEmpresa } from './database.ts';
+
 export type TipoPessoa = 'PF' | 'PJ';
 
 export type TipoChavePix = 'CPF' | 'CNPJ' | 'EMAIL' | 'ALEATORIA';
@@ -70,4 +72,7 @@ export interface Dataset {
   metadata: DatasetMetadata;
   contas: Conta[];
   transacoes_pix: TransacaoPix[];
+  socios_empresas: SocioEmpresa[];
+  acessos_digitais: AcessoDigital[];
+  operacoes_produtos: OperacaoProduto[];
 }

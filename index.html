@@ -116,7 +116,7 @@
                     🕘 Histórico
                     <span id="history-count" hidden class="ml-1 rounded-full bg-slate-700 px-1.5 font-mono text-[10px] text-slate-200"></span>
                   </button>
-                  <div id="history-panel" role="dialog" aria-label="Últimas queries executadas"
+                  <div id="history-panel" hidden role="dialog" aria-label="Últimas queries executadas"
                     class="absolute right-0 top-full z-30 mt-1 w-[30rem] max-w-[60vw] rounded-xl border border-slate-700 bg-zinc-950 p-1.5 shadow-2xl shadow-black/60">
                     <p class="px-2 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Últimas 10 execuções (sessão)</p>
                     <div id="history-list" class="max-h-80 overflow-y-auto"></div>
@@ -143,7 +143,7 @@
                   class="rounded-md px-2 py-1 text-[11px] text-slate-500 hover:bg-slate-800 hover:text-slate-300 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent aria-expanded:bg-slate-800">
                   Exportar
                 </button>
-                <div id="export-menu" role="menu" aria-label="Formato do dossiê"
+                <div id="export-menu" hidden role="menu" aria-label="Formato do dossiê"
                   class="absolute right-0 top-full z-30 mt-1 w-64 rounded-xl border border-slate-700 bg-zinc-950 p-1.5 shadow-2xl shadow-black/60">
                   <p id="export-summary" class="px-2 pb-1.5 text-[10px] leading-relaxed text-slate-500"></p>
                   <button type="button" role="menuitem" data-format="markdown"

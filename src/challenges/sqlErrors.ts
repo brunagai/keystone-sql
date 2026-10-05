@@ -72,7 +72,7 @@ const RULES: readonly ErrorRule[] = [
   {
     pattern: /no such table: ([\w.]+)/i,
     title: 'Tabela inexistente',
-    explain: (t) => `A tabela \`${t}\` não existe. As tabelas disponíveis são \`contas\` e \`transacoes_pix\`.`,
+    explain: (t) => `A tabela \`${t}\` não existe. As tabelas disponíveis são \`contas\`, \`transacoes_pix\`, \`socios_empresas\`, \`acessos_digitais\` e \`operacoes_produtos\`.`,
   },
   {
     pattern: /no such function: (\w+)/i,

@@ -15,6 +15,7 @@ import { createEditorSession } from './ui/editorSession.ts';
 import { initHeader, type DatasetCounts } from './ui/header.ts';
 import { initInvestigationPanel } from './ui/investigationPanel.ts';
 import { initWorkspaceSplit } from './ui/layout.ts';
+import { hideFloatingMenus, initNavbar } from './ui/navbar.ts';
 import { initLabGuide, startOnboardingTour } from './ui/onboardingTour.ts';
 import { initOutputPanel } from './ui/outputPanel.ts';
 import { initQueryHistory, type HistoryOrigin } from './ui/queryHistory.ts';
@@ -31,10 +32,21 @@ let db: Database | null = null;
 
 let validating = false;
 
+hideFloatingMenus();
+initNavbar();
+
 const output = initOutputPanel();
 const dossier = initDossierExport();
-initLabGuide();
-initWorkspaceSplit();
+try {
+  initLabGuide();
+} catch (error) {
+  console.error(error);
+}
+try {
+  initWorkspaceSplit();
+} catch (error) {
+  console.error(error);
+}
 const investigation = initInvestigationPanel({
   onLoadSolution: (sql) => editor.replaceSql(sql),
   onScenarioChange: (scenario) => {

@@ -2,6 +2,7 @@ import type { Database, QueryExecResult, SqlJsStatic } from 'sql.js';
 import initSqlJs from 'sql.js/dist/sql-wasm.js';
 import rawDataset from '../data/dataset.json';
 import type { Conta, Dataset, TransacaoPix } from '../types/domain.ts';
+import type { AcessoDigital, OperacaoProduto, SocioEmpresa } from '../types/database.ts';
 import { SCHEMA_SQL } from './schema.ts';
 
 const dataset = rawDataset as Dataset;
@@ -100,11 +101,99 @@ function insertTransacoes(db: Database, transacoes: readonly TransacaoPix[]): vo
   }
 }
 
+function insertSocios(db: Database, socios: readonly SocioEmpresa[]): void {
+  const stmt = db.prepare(`
+    INSERT INTO socios_empresas (
+      id_socio, id_conta_empresa, cnpj_empresa, cpf_socio, nome_socio,
+      percentual_participacao, eh_administrador, data_entrada
+    ) VALUES (
+      $id_socio, $id_conta_empresa, $cnpj_empresa, $cpf_socio, $nome_socio,
+      $percentual_participacao, $eh_administrador, $data_entrada
+    )
+  `);
+  try {
+    for (const s of socios) {
+      stmt.run({
+        $id_socio: s.id_socio,
+        $id_conta_empresa: s.id_conta_empresa,
+        $cnpj_empresa: s.cnpj_empresa,
+        $cpf_socio: s.cpf_socio,
+        $nome_socio: s.nome_socio,
+        $percentual_participacao: s.percentual_participacao,
+        $eh_administrador: s.eh_administrador,
+        $data_entrada: s.data_entrada,
+      });
+    }
+  } finally {
+    stmt.free();
+  }
+}
+
+function insertAcessos(db: Database, acessos: readonly AcessoDigital[]): void {
+  const stmt = db.prepare(`
+    INSERT INTO acessos_digitais (
+      id_acesso, id_conta, device_id, ip, geolocalizacao_cidade, geolocalizacao_uf,
+      latitude, longitude, sucesso, data_hora
+    ) VALUES (
+      $id_acesso, $id_conta, $device_id, $ip, $geolocalizacao_cidade, $geolocalizacao_uf,
+      $latitude, $longitude, $sucesso, $data_hora
+    )
+  `);
+  try {
+    for (const a of acessos) {
+      stmt.run({
+        $id_acesso: a.id_acesso,
+        $id_conta: a.id_conta,
+        $device_id: a.device_id,
+        $ip: a.ip,
+        $geolocalizacao_cidade: a.geolocalizacao_cidade,
+        $geolocalizacao_uf: a.geolocalizacao_uf,
+        $latitude: a.latitude,
+        $longitude: a.longitude,
+        $sucesso: a.sucesso,
+        $data_hora: a.data_hora,
+      });
+    }
+  } finally {
+    stmt.free();
+  }
+}
+
+function insertOperacoes(db: Database, operacoes: readonly OperacaoProduto[]): void {
+  const stmt = db.prepare(`
+    INSERT INTO operacoes_produtos (
+      id_operacao, id_conta, tipo_produto, valor_aporte, forma_liquidacao,
+      status_contemplacao, data_operacao
+    ) VALUES (
+      $id_operacao, $id_conta, $tipo_produto, $valor_aporte, $forma_liquidacao,
+      $status_contemplacao, $data_operacao
+    )
+  `);
+  try {
+    for (const o of operacoes) {
+      stmt.run({
+        $id_operacao: o.id_operacao,
+        $id_conta: o.id_conta,
+        $tipo_produto: o.tipo_produto,
+        $valor_aporte: o.valor_aporte,
+        $forma_liquidacao: o.forma_liquidacao,
+        $status_contemplacao: o.status_contemplacao,
+        $data_operacao: o.data_operacao,
+      });
+    }
+  } finally {
+    stmt.free();
+  }
+}
+
 export function seedDatabase(db: Database, data: Dataset = dataset): void {
   db.exec('BEGIN TRANSACTION;');
   try {
     insertContas(db, data.contas);
     insertTransacoes(db, data.transacoes_pix);
+    insertSocios(db, data.socios_empresas ?? []);
+    insertAcessos(db, data.acessos_digitais ?? []);
+    insertOperacoes(db, data.operacoes_produtos ?? []);
     db.exec('COMMIT;');
   } catch (error) {
     db.exec('ROLLBACK;');

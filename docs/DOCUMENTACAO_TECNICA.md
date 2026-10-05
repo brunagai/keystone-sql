@@ -58,7 +58,7 @@ Os scripts `predev`, `prebuild` e `postinstall` executam `scripts/copy-wasm.mjs`
 ## 3. Estrutura de pastas
 
 ```text
-index.html                 Layout completo (header, 3 painéis, modal de IA)
+index.html                 Layout: navbar, duas colunas, gavetas, modal de IA
 scripts/
   copy-wasm.mjs            Copia o binário WASM do sql.js para public/
   generate-dataset.mjs     Gera o dataset sintético (PRNG com semente fixa)
@@ -67,9 +67,9 @@ src/
   types/                   Tipos de domínio (Conta, TransacaoPix, Dataset) e d.ts do sql.js
   data/
     dataset.json           38 contas + transações PIX (agosto/2026); regenerar com npm run generate:dataset após mudar o gerador
-    dictionary.ts          Descrições de tabelas/colunas exibidas no Painel 1
+    dictionary.ts          Descrições das 2 tabelas/colunas (gaveta Dicionário)
   database/
-    schema.ts              DDL (CREATE TABLE/INDEX)
+    schema.ts              DDL (CREATE TABLE/INDEX) — somente `contas` e `transacoes_pix`
     sqlite.ts              Carga do WASM, criação, seed e reset do banco
     introspection.ts       Leitura do schema (PRAGMA) e pré-visualização de tabelas
     safeQuery.ts           Bloqueio de escrita, execução isolada (SAVEPOINT), extração do ORDER BY
@@ -98,18 +98,21 @@ src/
     dossier.ts             Construção do dossiê em Markdown/CSV (funções puras)
   ui/
     dom.ts, format.ts      Helpers de DOM, escape de HTML e formatação pt-BR
-    header.ts              Status do WASM, contadores, botão de IA, reset
-    schemaPanel.ts         Painel 1: dicionário de dados
+    navbar.ts              Fecha popovers órfãos e localiza o seletor de casos
+    header.ts              Status Online/Offline e botão Restaurar Dados
+    layout.ts              Splitter da coluna esquerda (largura no localStorage)
+    schemaPanel.ts         Gaveta Dicionário de Tabelas
     editor.ts              Editor SQL, banner de confirmação, status
     editorSession.ts       Dono do texto do editor, rascunhos e troca de desafio
-    queryHistory.ts        Gaveta com as últimas 10 execuções
-    outputPanel.ts         Console de resultados
+    queryHistory.ts        Popover com as últimas 10 execuções
+    outputPanel.ts         Painel Resultados (banner, erro exclusivo, tabela, scroll)
     resultTable.ts         Renderização tabular (moeda, datas, números)
     dossierExport.ts       Menu de exportação e download
-    investigationPanel.ts  Painel 3: cenário, feedback, gabarito comentado
-    agentPanel.ts          Controles do Agente Educador
+    investigationPanel.ts  Coluna "O que fazer": missão, abas, atalho do dicionário
+    agentPanel.ts          Gaveta do Agente Educador
     aiSettingsModal.ts     Modal BYOK (Groq/OpenAI)
-    popover.ts             Comportamento comum de popovers (Esc, clique fora, ARIA)
+    onboardingTour.ts      Tour ancorado (Entenda o Laboratório)
+    popover.ts             Comportamento comum de popovers (Esc, clique fora, ARIA; começam `hidden`)
 ```
 
 ---
@@ -120,7 +123,7 @@ src/
 
 Cada módulo de interface expõe uma função `initX(handlers)` que:
 
-1. busca seus elementos por `id` (via `byId`, que falha cedo se o HTML divergir);
+1. busca seus elementos por `id` (`byId` falha cedo; o painel de investigação e a navbar tratam ausência de nós de forma defensiva);
 2. registra os listeners;
 3. devolve um **controller** tipado (`setEnabled`, `showResults`, …).
 
@@ -156,7 +159,7 @@ sequenceDiagram
   participant M as main.ts
   participant V as validator
   participant DB as SQLite
-  U->>M: clique em Validar
+  U->>M: clique em Validar Resposta
   M->>V: validateChallenge(db, cenário, sql)
   V->>V: editor vazio? comando de escrita?
   V->>DB: SAVEPOINT
@@ -173,7 +176,7 @@ sequenceDiagram
 
 ### 5.1 Schema
 
-Duas tabelas (ver `src/database/schema.ts`):
+Duas tabelas **fixas** (ver `src/database/schema.ts`). O agente de IA **não** altera o DDL: só gera desafios (nível 5) contra este schema.
 
 - **`contas`** — cadastro KYC: `id_conta` (PK, formato `C001`), `titular`, `tipo_pessoa` (`PF`/`PJ`), `documento` (único), `ocupacao`, `renda_mensal_declarada` (renda da PF ou faturamento da PJ), dados bancários (`banco_ispb`, `banco_nome`, `agencia`, `numero_conta`), chave PIX (`tipo_chave_pix`, `chave_pix`), `cidade`, `uf`, `data_abertura`, **`eh_pep`** (0/1) e **`cargo_pep`**. PEP plantado de forma determinística: **C013** (Deputado Estadual) e **C004** (Prefeito).
 - **`transacoes_pix`** — liquidações: `id_transacao` (PK), `id_conta_origem`/`id_conta_destino` (FK → `contas`), `valor` (> 0), `data_hora` (`TEXT 'YYYY-MM-DD HH:MM:SS'`, horário de Brasília), `tipo_chave_destino`, `chave_pix_destino`, `descricao`, `canal` (`APP`, `INTERNET_BANKING`, `API`).
@@ -199,7 +202,7 @@ Além do "ruído" de transações legítimas, as tipologias plantadas são:
 ### 5.3 Ciclo de vida
 
 - `getDatabase()` cria o banco sob demanda (singleton por promessa) e faz o seed em uma transação.
-- `resetDatabase()` fecha a instância e recria tudo a partir do JSON (botão **Resetar Banco**).
+- `resetDatabase()` fecha a instância e recria tudo a partir do JSON (botão **↻ Restaurar Dados Originais**).
 - O WASM é localizado por URL **absoluta** (`new URL(BASE_URL + arquivo, document.baseURI)`), porque o Emscripten resolveria caminhos relativos a partir do script do sql.js.
 
 ---
@@ -210,7 +213,7 @@ Existem dois caminhos com regras diferentes:
 
 | Ação | Restrições | Efeito no banco |
 | --- | --- | --- |
-| **Executar Query** (Ctrl+Enter) | Nenhuma: aceita DML/DDL | Alterações persistem até o reset |
+| **Rodar Teste** (Ctrl+Enter) | Nenhuma: aceita DML/DDL | Alterações persistem até o reset |
 | **Validar Desafio** | Apenas `SELECT` / `WITH` / `VALUES` | Nenhum (rollback garantido) |
 
 `src/database/safeQuery.ts`:
@@ -229,7 +232,7 @@ Existem dois caminhos com regras diferentes:
 
 1. Editor vazio → erro.
 2. Comando proibido → erro "Apenas consultas de leitura".
-3. Erro do SQLite → mensagem didática (`sqlErrors.ts`) com a linha e o token destacados. **Prioridade:** Window Function no `WHERE`/`HAVING` (ver 7.3).
+3. Erro do SQLite → mensagem didática (`sqlErrors.ts`) com a linha e o token destacados. **Prioridade:** Window Function no `WHERE`/`HAVING` (ver 7.3). No UI, o painel Resultados mostra **somente** o card de erro (sem tabela vazia residual).
 4. Zero linhas → **aviso** de falsos negativos / alertas não capturados (`describeRowAudit` em `compare.ts`).
 5. Menos colunas que o gabarito → erro "Colunas faltando".
 6. Quantidade de linhas diferente → vocabulário de **esteira de risco** (falsos negativos, falsos positivos ou ambos), com IDs/contas da `colunaChave`. As `dicasDivergencia` do cenário vão em `details` (dica SQL específica).
@@ -237,7 +240,7 @@ Existem dois caminhos com regras diferentes:
    - se as linhas batem ignorando a ordem → **aviso** "Fila de priorização desalinhada";
    - se as entidades diferem → erro de esteira (FN+FP) quando a chave foi identificada; senão "Entidades divergentes";
    - senão → **aviso** "Divergência nas métricas calculadas".
-8. Tudo confere → **sucesso**, com título `🟢 Esteira Aprovada em Conformidade | Alertas Capturados: X/X (100%) | Falsos Positivos: 0 | Eficiência: 100%` (`formatComplianceBanner` em `compare.ts`), chips de métrica no Painel 3 e observações de boas práticas.
+8. Tudo confere → **sucesso**, com título `🟢 Esteira Aprovada em Conformidade | Alertas Capturados: X/X (100%) | Falsos Positivos: 0 | Eficiência: 100%` (`formatComplianceBanner` em `compare.ts`), chips de métrica no painel **Resultados** e observações de boas práticas.
 
 ### 7.2 Comparação e modo Investigador (`compare.ts`)
 
@@ -258,7 +261,7 @@ Mensagens de auditoria (funções `describeFalseNegatives`, `describeFalsePositi
 
 Se faltam **e** sobram entidades, as duas explicações são concatenadas.
 
-No **sucesso**, `computeComplianceMetrics(X, X, 0)` alimenta `formatComplianceBanner`: recall 100%, zero falsos positivos, eficiência 100%. O `ValidationResult` leva `compliance` (capturados, esperados, FP, percentuais) para o Painel 3 desenhar os chips **Alertas / Falsos + / Eficiência**. `resumirSucesso` continua sendo a narrativa pedagógica em `message` (o que o resultado revela).
+No **sucesso**, `computeComplianceMetrics(X, X, 0)` alimenta `formatComplianceBanner`: recall 100%, zero falsos positivos, eficiência 100%. O `ValidationResult` leva `compliance` (capturados, esperados, FP, percentuais) para o `outputPanel` desenhar os chips **Alertas / Falsos + / Eficiência**. `resumirSucesso` continua sendo a narrativa pedagógica em `message` (o que o resultado revela).
 
 ### 7.3 Erros didáticos (`sqlErrors.ts`)
 
@@ -282,8 +285,8 @@ Todo desafio — base ou gerado — implementa `InvestigationScenario` (`src/cha
 | Campo | Uso |
 | --- | --- |
 | `id`, `origem` (`base`/`ia`/`offline`), `modelo?` | Identificação e selo de origem |
-| `titulo`, `enquadramento`, `dossie`, `objetivo` | Conteúdo exibido no Painel 3 |
-| `colunasEsperadas`, `ordenacao` | Enunciado e template inicial |
+| `titulo`, `enquadramento`, `dossie`, `objetivo` | Missão (frase) + aba Dossiê; `objetivo` técnico não é despejado na aba de colunas |
+| `colunasEsperadas`, `ordenacao` | Objetivo de negócio derivado + spoiler de aliases; template inicial |
 | `dicaTexto`, `dicaSql` | "Dica de Sintaxe SQL" |
 | `decomposicao?` | Card **Decomposição em 2 Fases** (N3/N4 explícito; gerados inferem via `twoPhase.ts`) |
 | `gabaritoSql` | Referência da validação e gabarito comentado |
@@ -293,7 +296,7 @@ Todo desafio — base ou gerado — implementa `InvestigationScenario` (`src/cha
 
 ### 8.2 Trilha pedagógica por níveis
 
-Todo cenário tem `nivel: TrailLevel` (`1 | 2 | 3 | 4 | 5`). `TRAIL_LEVELS` guarda o título e a técnica-alvo de cada nível, e `TRAIL_ORDER` define a ordem de exibição. O `<select>` monta um `<optgroup>` por nível ("Nível N — Título"), numera as opções como `N.k` e, se um nível estiver vazio, mostra uma opção desabilitada. O cartão do cenário exibe o selo `N#` com a técnica, e o template inicial do editor começa com o nível.
+Todo cenário tem `nivel: TrailLevel` (`1 | 2 | 3 | 4 | 5`). `TRAIL_LEVELS` guarda o título e a técnica-alvo de cada nível, e `TRAIL_ORDER` define a ordem de exibição. O `<select>` da navbar monta um `<optgroup>` por nível ("Nível N — Título"), numera as opções como `N.k` e, se um nível estiver vazio, mostra uma opção desabilitada. O filtro **Todos / Iniciante / Intermediário / Avançado** restringe os grupos visíveis. A coluna esquerda mostra o nível por extenso (sem selo `N#` isolado); o template inicial do editor começa com o nível.
 
 | Nível | Tema | Técnica-alvo |
 | --- | --- | --- |
@@ -404,10 +407,11 @@ flowchart TD
 
 ### 10.1 Layout
 
-- **Header**: status do WASM, contadores do dataset, **Configurar IA (Groq / OpenAI)** com indicador de chave (verde = salva, cinza = offline) e **Resetar Banco**.
-- **Painel 1 — Dicionário de dados**: tabelas, colunas com PK/FK/NN e tipos, descrições, pré-visualização das 3 primeiras linhas; clicar numa coluna insere o nome no cursor do editor.
-- **Painel 2 — Editor + resultados**: editor (Tab indenta, Ctrl+Enter executa a seleção ou a consulta; **Testar Seleção / CTE** completa um `WITH` sem `SELECT` externo com `SELECT * FROM <cte>`), histórico, banner de confirmação e console de resultados com exportação.
-- **Painel 3 — Investigação**: Agente Educador, seletor de cenários, dossiê do caso, **Decomposição em 2 Fases** (N3, N4 e gerados: envelope `WITH` vs. `WHERE` externo), dica, feedback da validação no vocabulário de **esteira de risco** (alertas perdidos, ruído, fila de priorização; no sucesso, banner de conformidade + chips Alertas/FP/Eficiência; erros de janela no `WHERE` explicam a ordem do compilador) e gabarito comentado (liberado após a primeira tentativa).
+- **Navbar**: status Online/Offline, filtro da trilha, seletor de caso (default `smurfing`), **Agente IA**, **Dicionário de Tabelas**, **Entenda o Laboratório**, **Restaurar Dados Originais**.
+- **Coluna esquerda — O que fazer** (`investigationPanel.ts` + splitter em `layout.ts`): missão, atalho **Consultar Tabelas Disponíveis**, abas Dica / Dossiê / Colunas esperadas (objetivo de negócio + `<details>` de aliases), decomposição em 2 fases (N3/N4/gerados), gabarito após a primeira validação.
+- **Coluna direita — Mão na massa**: editor (`Rodar Teste`, `Validar Resposta`, restaurar modelo, testar trecho, histórico), painel Resultados com `#output-scroll` (`flex-1 min-h-0 overflow-auto`). Erro de SQL/AML renderiza só o card; sucesso mostra banner + tabela. Popovers de histórico e exportação nascem com `hidden`.
+- **Gaveta Dicionário**: as 2 tabelas com contagem de linhas, descrição, clique-para-inserir coluna e 3 linhas de exemplo. Sem selos PK/FK no UI atual.
+- **Gaveta Agente**: geração de desafios e atalho para o modal BYOK.
 
 ### 10.2 Sessão do editor e rascunhos (`editorSession.ts`, `drafts.ts`)
 
@@ -446,6 +450,8 @@ Regiões e painéis com `aria-labelledby`, status com `aria-live`, modal nativo 
 | `aml-lab:ai-settings` | `{ provider, model, apiKey }` | `agent/settingsStore.ts` |
 | `aml-lab:generated-challenges` | Até 20 desafios gerados (`StoredChallenge[]`) | `challenges/registry.ts` |
 | `aml-lab:drafts` | `{ [idDoCenário]: sql }` | `challenges/drafts.ts` |
+| `aml-lab:onboarding-seen` | `'1'` depois do tour | `ui/onboardingTour.ts` |
+| `aml-lab:sidebar-width` | Largura em px da coluna esquerda | `ui/layout.ts` |
 
 Tudo é lido de forma defensiva (JSON inválido é ignorado) e gravado com `try/catch` (quota ou storage indisponível não quebram a sessão). O banco SQLite **não** é persistido: cada carga parte do dataset original.
 
@@ -465,7 +471,7 @@ Tudo é lido de forma defensiva (JSON inválido é ignorado) e gravado com `try/
 
 - A chave de API fica **somente** no `localStorage` do navegador e é enviada apenas ao provedor escolhido, no header `Authorization`. Não há servidor do projeto.
 - Qualquer script executado na mesma origem consegue ler o `localStorage`. Por isso todo conteúdo dinâmico (inclusive o que vem do LLM) é escapado antes de ir ao DOM. Recomenda-se usar chaves com limite de gastos.
-- A validação nunca altera o banco (filtro léxico + `SAVEPOINT` revertido). "Executar Query" altera, de propósito, e o reset restaura.
+- A validação nunca altera o banco (filtro léxico + `SAVEPOINT` revertido). **Rodar Teste** altera, de propósito, e **Restaurar Dados Originais** restaura.
 - Dados 100% sintéticos.
 
 ---

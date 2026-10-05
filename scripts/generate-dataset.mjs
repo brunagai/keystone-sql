@@ -410,18 +410,223 @@ const transacoes = rascunhos
     };
   });
 
+// ---------------------------------------------------------------------------
+// Extensão PLD/FT (QSA, acessos digitais, produtos) — PRNG isolado
+// Não consome `rand()`: contas e transacoes_pix permanecem idênticas à v1.3.0.
+// ---------------------------------------------------------------------------
+
+function dvCpf(nums) {
+  const pesoInicial = nums.length + 1;
+  const soma = nums.reduce((acc, d, i) => acc + d * (pesoInicial - i), 0);
+  const resto = (soma * 10) % 11;
+  return resto === 10 ? 0 : resto;
+}
+
+function cpfSerial(n) {
+  const base = String(100000000 + n)
+    .slice(-9)
+    .split('')
+    .map(Number);
+  const d1 = dvCpf(base);
+  const d2 = dvCpf([...base, d1]);
+  return [...base, d1, d2].join('');
+}
+
+const seq = (prefix, i) => `${prefix}${String(i).padStart(3, '0')}`;
+
+const GEO = {
+  SP: { cidade: 'São Paulo', uf: 'SP', lat: -23.5505, lng: -46.6333 },
+  RJ: { cidade: 'Rio de Janeiro', uf: 'RJ', lat: -22.9068, lng: -43.1729 },
+  MG: { cidade: 'Belo Horizonte', uf: 'MG', lat: -19.9167, lng: -43.9345 },
+  PR: { cidade: 'Curitiba', uf: 'PR', lat: -25.4284, lng: -49.2733 },
+  RS: { cidade: 'Porto Alegre', uf: 'RS', lat: -30.0346, lng: -51.2177 },
+  BA: { cidade: 'Salvador', uf: 'BA', lat: -12.9714, lng: -38.5014 },
+  PE: { cidade: 'Recife', uf: 'PE', lat: -8.0476, lng: -34.877 },
+  CE: { cidade: 'Fortaleza', uf: 'CE', lat: -3.7172, lng: -38.5433 },
+  AM: { cidade: 'Manaus', uf: 'AM', lat: -3.119, lng: -60.0217 },
+  DF: { cidade: 'Brasília', uf: 'DF', lat: -15.7939, lng: -47.8828 },
+  SC: { cidade: 'Florianópolis', uf: 'SC', lat: -27.5954, lng: -48.548 },
+  GO: { cidade: 'Goiânia', uf: 'GO', lat: -16.6869, lng: -49.2648 },
+  PA: { cidade: 'Belém', uf: 'PA', lat: -1.4558, lng: -48.4902 },
+  ES: { cidade: 'Vitória', uf: 'ES', lat: -20.3155, lng: -40.3128 },
+  RN: { cidade: 'Natal', uf: 'RN', lat: -5.7945, lng: -35.211 },
+  MS: { cidade: 'Campo Grande', uf: 'MS', lat: -20.4697, lng: -54.6201 },
+  PB: { cidade: 'João Pessoa', uf: 'PB', lat: -7.1195, lng: -34.845 },
+  MT: { cidade: 'Cuiabá', uf: 'MT', lat: -15.6014, lng: -56.0979 },
+};
+
+function geoDaConta(conta) {
+  return GEO[conta.uf] ?? { cidade: conta.cidade, uf: conta.uf, lat: null, lng: null };
+}
+
+const QSA_FIXO = [
+  ['C019', [['Helena Pão Dourado', 70, 1], ['Mário Pão Dourado', 30, 0]]],
+  ['C020', [['Sérgio Bom Preço', 55, 1], ['Eliane Bom Preço', 45, 0]]],
+  ['C021', [['Paulo Vida Plena', 50, 1], ['Carla Vida Plena', 30, 0], ['Renato Vida Plena', 20, 0]]],
+  ['C022', [['Otávio Horizonte', 60, 1], ['Beatriz Horizonte', 40, 0]]],
+  ['C023', [['Gilberto Rota Sul', 80, 1], ['Márcia Rota Sul', 20, 0]]],
+  ['C024', [['Nina TechNova', 51, 1], ['Caio TechNova', 49, 0]]],
+  ['C032', 'C031'],
+  ['C037', [['Paulo A. Reformas', 100, 1]]],
+];
+
+const socios_empresas = [];
+let socioSeq = 0;
+let cpfLivre = 1;
+
+function addSocio(idEmpresa, nome, cpf, pct, admin, dataEntrada) {
+  const empresa = contaPorId.get(idEmpresa);
+  socioSeq += 1;
+  socios_empresas.push({
+    id_socio: seq('S', socioSeq),
+    id_conta_empresa: idEmpresa,
+    cnpj_empresa: empresa.documento,
+    cpf_socio: cpf,
+    nome_socio: nome,
+    percentual_participacao: pct,
+    eh_administrador: admin,
+    data_entrada: dataEntrada,
+  });
+}
+
+for (const [idEmpresa, quadro] of QSA_FIXO) {
+  const empresa = contaPorId.get(idEmpresa);
+  if (quadro === 'C031') {
+    const juliana = contaPorId.get('C031');
+    addSocio(idEmpresa, juliana.titular, juliana.documento, 15, 1, empresa.data_abertura);
+    addSocio(idEmpresa, 'Everton Dias Camargo', cpfSerial(cpfLivre++), 85, 0, empresa.data_abertura);
+    continue;
+  }
+  for (const [nome, pct, admin] of quadro) {
+    addSocio(idEmpresa, nome, cpfSerial(cpfLivre++), pct, admin, empresa.data_abertura);
+  }
+}
+
+const aurora = contaPorId.get('C025');
+const rafael = contaPorId.get('C026');
+const sandra = contaPorId.get('C027');
+addSocio('C025', rafael.titular, rafael.documento, 1, 1, aurora.data_abertura);
+addSocio('C025', sandra.titular, sandra.documento, 1, 0, aurora.data_abertura);
+addSocio('C025', 'Cláudio Henrique Vilela', cpfSerial(cpfLivre++), 98, 0, aurora.data_abertura);
+
+const vertice = contaPorId.get('C038');
+const gerente = contaPorId.get('C016');
+addSocio('C038', gerente.titular, gerente.documento, 10, 0, vertice.data_abertura);
+addSocio('C038', 'UBO Offshore Vértice', cpfSerial(cpfLivre++), 90, 1, vertice.data_abertura);
+
+const contasComPix = [...new Set(transacoes.flatMap((t) => [t.id_conta_origem, t.id_conta_destino]))];
+const acessos_digitais = [];
+let acessoSeq = 0;
+
+function addAcesso(idConta, device, ip, cidade, uf, lat, lng, sucesso, dataHora) {
+  acessoSeq += 1;
+  acessos_digitais.push({
+    id_acesso: seq('A', acessoSeq),
+    id_conta: idConta,
+    device_id: device,
+    ip,
+    geolocalizacao_cidade: cidade,
+    geolocalizacao_uf: uf,
+    latitude: lat,
+    longitude: lng,
+    sucesso,
+    data_hora: dataHora,
+  });
+}
+
+for (const id of contasComPix) {
+  const conta = contaPorId.get(id);
+  const geo = geoDaConta(conta);
+  const n = Number(id.slice(1));
+  const deviceHab = `DEV-${id}-HAB`;
+  const ipHab = `187.44.${n}.10`;
+  addAcesso(id, deviceHab, ipHab, geo.cidade, geo.uf, geo.lat, geo.lng, 1, '2026-08-02 08:15:00');
+  addAcesso(id, deviceHab, ipHab, geo.cidade, geo.uf, geo.lat, geo.lng, 1, '2026-08-10 19:02:11');
+}
+
+addAcesso('C001', 'DEV-C001-HAB', '187.44.1.10', 'São Paulo', 'SP', -23.5505, -46.6333, 0, '2026-08-21 14:04:02');
+addAcesso('C001', 'DEV-C001-ATO', '191.5.80.12', 'Manaus', 'AM', -3.119, -60.0217, 1, '2026-08-21 14:05:18');
+addAcesso('C005', 'DEV-C005-COA', '177.22.91.44', 'Recife', 'PE', -8.0476, -34.877, 1, '2026-08-23 23:38:40');
+addAcesso('C013', 'DEV-C013-HAB', '187.44.13.10', 'Brasília', 'DF', -15.7939, -47.8828, 1, '2026-08-27 08:55:00');
+
+const operacoes_produtos = [
+  {
+    id_operacao: 'O001',
+    id_conta: 'C025',
+    tipo_produto: 'CONSORCIO_LANCE',
+    valor_aporte: 85000,
+    forma_liquidacao: 'ESPECIE',
+    status_contemplacao: 1,
+    data_operacao: '2026-08-12',
+  },
+  {
+    id_operacao: 'O002',
+    id_conta: 'C025',
+    tipo_produto: 'CONSORCIO_LANCE',
+    valor_aporte: 42000,
+    forma_liquidacao: 'ESPECIE',
+    status_contemplacao: 0,
+    data_operacao: '2026-08-18',
+  },
+  {
+    id_operacao: 'O003',
+    id_conta: 'C038',
+    tipo_produto: 'PREVIDENCIA_VGBL',
+    valor_aporte: 150000,
+    forma_liquidacao: 'PIX',
+    status_contemplacao: 0,
+    data_operacao: '2026-08-11',
+  },
+  {
+    id_operacao: 'O004',
+    id_conta: 'C032',
+    tipo_produto: 'CDB_LIQUIDEZ_DIARIA',
+    valor_aporte: 55000,
+    forma_liquidacao: 'TED',
+    status_contemplacao: 0,
+    data_operacao: '2026-08-19',
+  },
+  {
+    id_operacao: 'O005',
+    id_conta: 'C037',
+    tipo_produto: 'FUNDOS_RENDA_FIXA',
+    valor_aporte: 92000,
+    forma_liquidacao: 'PIX',
+    status_contemplacao: 0,
+    data_operacao: '2026-08-12',
+  },
+  {
+    id_operacao: 'O006',
+    id_conta: 'C009',
+    tipo_produto: 'CONSORCIO_LANCE',
+    valor_aporte: 20000,
+    forma_liquidacao: 'ESPECIE',
+    status_contemplacao: 1,
+    data_operacao: '2026-08-15',
+  },
+  {
+    id_operacao: 'O007',
+    id_conta: 'C001',
+    tipo_produto: 'CDB_LIQUIDEZ_DIARIA',
+    valor_aporte: 15000,
+    forma_liquidacao: 'TED',
+    status_contemplacao: 0,
+    data_operacao: '2026-08-21',
+  },
+];
+
 const pad = (n) => String(n).padStart(2, '0');
 
 const dataset = {
   metadata: {
-    versao: '1.3.0',
+    versao: '1.4.0',
     gerado_em: '2026-09-30 21:00:00',
     moeda: 'BRL',
     fuso_horario: 'America/Sao_Paulo',
     periodo: { inicio: `${ANO}-${pad(MES)}-01`, fim: `${ANO}-${pad(MES)}-${ULTIMO_DIA}` },
     limiar_regulatorio_brl: LIMIAR_REGULATORIO,
     observacao:
-      'Dados 100% sintéticos para fins educacionais. CPFs/CNPJs possuem dígitos verificadores válidos, mas são gerados aleatoriamente e não pertencem a pessoas reais.',
+      'Dados 100% sintéticos para fins educacionais. CPFs/CNPJs possuem dígitos verificadores válidos, mas são gerados aleatoriamente e não pertencem a pessoas reais. Tabelas QSA, acessos digitais e produtos financeiros são extensão 1.4.0 e não alteram contas/PIX da v1.3.0.',
     cenarios: [
       {
         tipologia: 'SMURFING',
@@ -456,7 +661,7 @@ const dataset = {
       {
         tipologia: 'ACCOUNT_TAKEOVER',
         descricao:
-          'C001 envia micro-PIX de teste (R$ 1,50 e R$ 2,00) à C034 e, 4 minutos depois, R$ 15.000 via API (aquecimento de credencial / troca de canal).',
+          'C001 envia micro-PIX de teste (R$ 1,50 e R$ 2,00) à C034 e, 4 minutos depois, R$ 15.000 via API (aquecimento de credencial / troca de canal). Login em device/IP de Manaus imediatamente antes do PIX alto.',
         contas_envolvidas: ['C001', 'C034'],
       },
       {
@@ -465,12 +670,29 @@ const dataset = {
           'Aportes exatamente múltiplos de R$ 5.000 (R$ 20.000, R$ 10.000 e R$ 5.000), além do R$ 15.000 do ATO; valores isolados abaixo de R$ 25 mil para não alterar o gabarito da janela móvel.',
         contas_envolvidas: ['C009', 'C024', 'C007', 'C023', 'C010', 'C019', 'C001'],
       },
+      {
+        tipologia: 'QSA_LARANJA',
+        descricao:
+          'Quadro societário da Aurora (C025) com laranjas C026/C027 como administradores de 1% e UBO oculto; Vértice (C038) com sócio de fachada C016.',
+        contas_envolvidas: ['C025', 'C026', 'C027', 'C038', 'C016'],
+      },
+      {
+        tipologia: 'CONSORCIO_ESPECIE',
+        descricao:
+          'Aportes em consórcio com liquidação em espécie na receptora Aurora (C025) após o consolidado de smurfing.',
+        contas_envolvidas: ['C025'],
+      },
     ],
   },
   contas,
   transacoes_pix: transacoes,
+  socios_empresas,
+  acessos_digitais,
+  operacoes_produtos,
 };
 
 mkdirSync(dirname(OUTPUT), { recursive: true });
 writeFileSync(OUTPUT, `${JSON.stringify(dataset, null, 2)}\n`, 'utf8');
-console.log(`[generate-dataset] ${contas.length} contas e ${transacoes.length} transações gravadas em src/data/dataset.json`);
+console.log(
+  `[generate-dataset] ${contas.length} contas, ${transacoes.length} PIX, ${socios_empresas.length} sócios, ${acessos_digitais.length} acessos, ${operacoes_produtos.length} operações de produto em src/data/dataset.json`,
+);
