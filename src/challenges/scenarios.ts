@@ -100,8 +100,7 @@ const CATALOG: readonly InvestigationScenario[] = [
       'recém-cadastradas, sempre em valores logo abaixo do limiar de comunicação de R$ 10.000,00.',
     objetivo:
       'Identifique os remetentes que enviaram PIX individuais entre R$ 9.700,00 e R$ 9.999,00 para a conta C025, ' +
-      'com pelo menos 2 operações (HAVING COUNT(*) >= 2). Retorne `conta_origem` (alias de `id_conta_origem`), ' +
-      '`total_operacoes` e `valor_total`.',
+      'com pelo menos 2 operações, consolidando o volume total por conta e priorizando os maiores montantes.',
     colunasEsperadas: ['conta_origem', 'total_operacoes', 'valor_total'],
     ordenacao: 'valor_total DESC',
     dicaTexto: 'Filtre destino e faixa de valor no WHERE, agrupe por remetente e aplique a recorrência no HAVING.',
@@ -156,10 +155,8 @@ ORDER BY valor_total DESC;               -- maior exposição primeiro`,
       'pagamentos e pessoas físicas no Rio de Janeiro. O padrão sugere automação para pulverizar recursos em cadeia ' +
       '(layering) sem propósito comercial aparente.',
     objetivo:
-      'Liste todas as transações cujo intervalo para a transação imediatamente anterior da MESMA conta de origem seja ' +
-      '`<= 60` segundos. Use `LAG(data_hora) OVER (PARTITION BY id_conta_origem ORDER BY data_hora)` e calcule o delta ' +
-      "com `strftime('%s', ...)`. Retorne `id_transacao`, `conta_origem`, `conta_destino`, `valor`, `data_hora` e " +
-      '`intervalo_segundos`.',
+      'Liste as transações em que o intervalo até a operação imediatamente anterior da mesma conta de origem seja de ' +
+      'no máximo 60 segundos, evidenciando rajadas incompatíveis com uso humano habitual.',
     colunasEsperadas: ['id_transacao', 'conta_origem', 'conta_destino', 'valor', 'data_hora', 'intervalo_segundos'],
     ordenacao: 'conta_origem ASC, data_hora ASC',
     dicaTexto:
@@ -250,10 +247,8 @@ ORDER BY conta_origem ASC, data_hora ASC;`,
       'por rotina comercial. A área de PLD quer a esteira listando originações de valor relevante nesse fuso, inclusive ' +
       'a advogada C005 (perfil estritamente diurno) que passou a enviar PIX elevados a uma intermediadora (C032) após 23h30.',
     objetivo:
-      'Identifique transações com `valor >= 5000` realizadas no período noturno/madrugada, com ' +
-      "`CAST(strftime('%H', data_hora) AS INTEGER)` em `hora_transacao` e corte `hora_transacao >= 20 OR hora_transacao < 6`. " +
-      'Retorne `id_transacao`, `conta_origem`, `conta_destino`, `valor`, `data_hora` e `hora_transacao`. ' +
-      'Ordene por `valor DESC, data_hora ASC`.',
+      'Identifique originações PIX de R$ 5.000,00 ou mais ocorridas no período noturno e de madrugada (das 20h às 5h59), ' +
+      'priorizando os maiores valores e, em seguida, a ordem cronológica.',
     colunasEsperadas: ['id_transacao', 'conta_origem', 'conta_destino', 'valor', 'data_hora', 'hora_transacao'],
     ordenacao: 'valor DESC, data_hora ASC',
     dicaTexto:
@@ -341,9 +336,8 @@ ORDER BY valor DESC, data_hora ASC;`,
       'Comunicação interna aponta que clientes de baixa renda declarada (estudante, aposentada e MEI) passaram a ' +
       'movimentar centenas de milhares de reais em agosto/2026, em operações com uma holding recém-constituída.',
     objetivo:
-      'Identifique transações individuais com `valor >= 30 * renda_mensal` do titular da conta de ORIGEM. Retorne ' +
-      '`id_transacao`, `conta_origem`, `titular`, `renda_mensal` (alias de `renda_mensal_declarada`), `valor` e ' +
-      '`fator_incompatibilidade` = `ROUND(valor / renda_mensal, 2)`.',
+      'Identifique transações individuais em que o valor enviado seja igual ou superior a 30 vezes a renda mensal ' +
+      'declarada do titular da conta de origem, destacando o grau de desproporção em relação ao perfil cadastral.',
     colunasEsperadas: ['id_transacao', 'conta_origem', 'titular', 'renda_mensal', 'valor', 'fator_incompatibilidade'],
     ordenacao: 'fator_incompatibilidade DESC',
     dicaTexto: 'Faça JOIN da transação com a conta pela ORIGEM e compare o valor com um múltiplo da renda declarada.',
@@ -400,10 +394,9 @@ ORDER BY fator_incompatibilidade DESC;         -- casos mais graves primeiro`,
       'mesmas contas. Para priorizar a fila, a gestão de PLD pediu uma visão desduplicada: uma única linha por conta de ' +
       'origem, mostrando o maior PIX enviado no dia e o volume total que a conta movimentou.',
     objetivo:
-      'Considerando apenas os PIX de `2026-08-18`, retorne uma linha por conta de origem com sua MAIOR transação do dia, ' +
-      'usando `ROW_NUMBER() OVER (PARTITION BY id_conta_origem ORDER BY valor DESC, data_hora ASC)` (em caso de empate no ' +
-      'valor, vale o PIX mais antigo). Retorne `conta_origem`, `id_transacao`, `maior_pix`, `data_hora`, `qtd_no_dia` ' +
-      '(quantos PIX a conta enviou no dia) e `total_no_dia` (`ROUND(SUM(valor), 2)` do dia).',
+      'Considerando apenas os PIX de 18/08/2026, produza uma visão desduplicada: uma linha por conta de origem com a ' +
+      'maior transação do dia (em empate de valor, prevalece a operação mais antiga), além da quantidade de envios e do ' +
+      'volume total daquela conta no dia.',
     colunasEsperadas: ['conta_origem', 'id_transacao', 'maior_pix', 'data_hora', 'qtd_no_dia', 'total_no_dia'],
     ordenacao: 'maior_pix DESC, conta_origem',
     dicaTexto:
@@ -487,12 +480,9 @@ ORDER BY maior_pix DESC, conta_origem;  -- maiores picos primeiro`,
       'mercado) para simular uso normal e, poucos dias depois, passa a movimentar valores dezenas de vezes maiores. A área de ' +
       'PLD quer uma regra que combine histórico curto, salto em relação ao próprio histórico e proximidade temporal.',
     objetivo:
-      'Monte uma CTE `metricas` que calcule, para cada PIX: `intervalo_segundos` desde o PIX anterior da mesma origem (com `LAG`), ' +
-      '`media_historica` (média dos PIX ANTERIORES do remetente: `AVG(valor) OVER (... ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING)`) ' +
-      'e `qtd_historico` (quantos PIX anteriores existem). No `WHERE` externo, aplique as regras em conjunto: `qtd_historico` entre 1 e 3, ' +
-      '`valor >= 10 * media_historica`, `valor >= 5000` e intervalo de até 10 dias (`864000` s). Retorne `id_transacao`, `conta_origem`, ' +
-      '`titular`, `valor`, `data_hora`, `intervalo_horas` (`ROUND(intervalo_segundos / 3600.0, 1)`), `media_historica` (2 casas) e ' +
-      '`salto` (`ROUND(valor / media_historica, 2)`).',
+      'Encontre originações em que a conta tinha um histórico curto (de 1 a 3 PIX anteriores), o valor atual é pelo menos ' +
+      '10 vezes a média desses PIX anteriores e também igual ou superior a R$ 5.000,00, e o salto ocorre em até 10 dias ' +
+      'após a operação anterior — padrão de conta "aquecida".',
     colunasEsperadas: [
       'id_transacao',
       'conta_origem',
@@ -611,9 +601,8 @@ ORDER BY salto DESC, id_transacao;`,
       'rajadas de três PIX consecutivos da mesma origem. Cada transferência isolada pode parecer rotineira; a soma móvel ' +
       'das últimas três originações revela o acúmulo. A esteira deve carimbar essa métrica linha a linha e só então aplicar o corte.',
     objetivo:
-      'Na CTE `envelope_metricas`, calcule `acumulado_movel_3` com `SUM(valor) OVER (PARTITION BY id_conta_origem ORDER BY data_hora ROWS BETWEEN 2 PRECEDING AND CURRENT ROW)`. ' +
-      'No `WHERE` externo, mantenha apenas linhas com `acumulado_movel_3 >= 25000`. Retorne `id_transacao`, `conta_origem`, `titular`, `valor`, `data_hora` e `acumulado_movel_3` (2 casas), ' +
-      'ordenando por `acumulado_movel_3 DESC, id_transacao`.',
+      'Identifique originações em que a soma dos últimos 3 PIX da mesma conta de origem (incluindo o atual) alcance ' +
+      'R$ 25.000,00 ou mais, priorizando os maiores acúmulos.',
     colunasEsperadas: ['id_transacao', 'conta_origem', 'titular', 'valor', 'data_hora', 'acumulado_movel_3'],
     ordenacao: 'acumulado_movel_3 DESC, id_transacao',
     dicaTexto:
@@ -712,10 +701,8 @@ ORDER BY acumulado_movel_3 DESC, id_transacao;`,
       'deputado estadual (C013), cada PIX isolado abaixo de R$ 10 mil. A esteira deve cruzar `eh_pep` com a soma móvel das ' +
       'últimas três operações e só então aplicar o corte de escrutínio.',
     objetivo:
-      'Identifique transações de titulares PEP (`c.eh_pep = 1`) cujo acumulado móvel das últimas 3 originações ' +
-      '(`SUM(valor) OVER (PARTITION BY id_conta_origem ORDER BY data_hora ROWS BETWEEN 2 PRECEDING AND CURRENT ROW)`) ' +
-      'supere R$ 20.000,00. Retorne `id_transacao`, `conta_origem`, `titular`, `cargo_pep`, `valor`, `data_hora` e ' +
-      '`acumulado_movel_pep` (2 casas). Ordene por `acumulado_movel_pep DESC, id_transacao ASC`.',
+      'Identifique originações de titulares pessoas expostas politicamente (PEP) em que a soma móvel das últimas 3 ' +
+      'operações da mesma conta supere R$ 20.000,00, priorizando os maiores acúmulos no escrutínio reforçado.',
     colunasEsperadas: [
       'id_transacao',
       'conta_origem',
@@ -827,9 +814,8 @@ ORDER BY acumulado_movel_pep DESC, id_transacao ASC;`,
       'o controlador. Cruze o QSA (`socios_empresas`) da conta investigada e isole quem de fato manda na empresa: participação ' +
       'relevante e poderes de administrador.',
     objetivo:
-      'Identifique os sócios da empresa vinculada à conta `C025` com participação societária `>= 25%` que constam como ' +
-      'administradores (`eh_administrador = 1`). Retorne `nome_socio`, `cpf_socio`, `percentual_participacao` e `cnpj_empresa`. ' +
-      'Ordene por `percentual_participacao DESC, nome_socio`.',
+      'Identifique os sócios da empresa vinculada à conta C025 com participação societária de 25% ou mais que figurem ' +
+      'como administradores, priorizando as maiores fatias de capital — o beneficiário final (UBO) da receptora sob alerta.',
     colunasEsperadas: ['nome_socio', 'cpf_socio', 'percentual_participacao', 'cnpj_empresa'],
     ordenacao: 'percentual_participacao DESC, nome_socio',
     dicaTexto:
@@ -889,9 +875,8 @@ ORDER BY s.percentual_participacao DESC, s.nome_socio;`,
       'pede monitoramento de transações e de meios de acesso; a Carta Circular 4.001 cita uso atípico de canais e de dispositivos ' +
       'como indício de fraude / account takeover.',
     objetivo:
-      'Identifique contas com login bem-sucedido (`acessos_digitais.sucesso = 1`) cuja cidade do acesso diverge da cidade ' +
-      'cadastral, imediatamente antes (até 15 minutos) de uma saída PIX de alto valor (`valor >= 10000`). Retorne `id_conta`, ' +
-      '`device_id`, `geolocalizacao_cidade` e `valor_transacao`. Ordene por `valor_transacao DESC, id_conta`.',
+      'Identifique contas com login bem-sucedido cuja cidade do acesso diverge da cidade cadastral, ocorrido imediatamente ' +
+      'antes (até 15 minutos) de uma saída PIX de R$ 10.000,00 ou mais, priorizando as saídas de maior valor.',
     colunasEsperadas: ['id_conta', 'device_id', 'geolocalizacao_cidade', 'valor_transacao'],
     ordenacao: 'valor_transacao DESC, id_conta',
     dicaTexto:
@@ -959,9 +944,8 @@ ORDER BY t.valor DESC, a.id_conta;`,
       'integralizações incompatíveis com o perfil. A esteira deve achar lances de consórcio liquidados em `ESPECIE` para obtenção ' +
       'de bem contemplado (`status_contemplacao = 1`).',
     objetivo:
-      "Localize contas que liquidaram lances de consórcio (`tipo_produto = 'CONSORCIO_LANCE'`) em espécie (`forma_liquidacao = 'ESPECIE'`) " +
-      'já contempladas (`status_contemplacao = 1`). Retorne `id_conta`, `tipo_produto`, `valor_aporte` e `forma_liquidacao`. ' +
-      'Ordene por `valor_aporte DESC, id_conta`.',
+      'Localize contas que liquidaram lances de consórcio já contemplados mediante pagamento em espécie, priorizando os ' +
+      'maiores aportes — típico veículo de conversão de numerário.',
     colunasEsperadas: ['id_conta', 'tipo_produto', 'valor_aporte', 'forma_liquidacao'],
     ordenacao: 'valor_aporte DESC, id_conta',
     dicaTexto:
