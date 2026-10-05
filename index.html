@@ -44,7 +44,7 @@
             🤖 Agente IA
           </button>
 
-          <button id="btn-schema" type="button" aria-haspopup="true" aria-controls="schema-drawer"
+          <button id="btn-schema" type="button" aria-haspopup="true" aria-controls="schema-drawer" aria-expanded="false"
             class="rounded-lg px-3 py-2 text-xs font-medium text-slate-200 hover:bg-slate-800">
             📖 Dicionário de Tabelas
           </button>
@@ -65,13 +65,37 @@
       <main id="workspace" class="flex min-h-0 flex-1 overflow-hidden">
         <section id="investigation-panel" aria-labelledby="investigation-panel-title"
           class="flex min-h-0 shrink-0 flex-col overflow-hidden bg-zinc-950">
-          <div class="flex h-12 shrink-0 items-center px-5">
-            <h2 id="investigation-panel-title" class="text-xs font-semibold tracking-wide text-slate-400">O que fazer</h2>
+          <div id="investigation-mission-view" class="flex min-h-0 flex-1 flex-col overflow-hidden">
+            <div class="flex h-12 shrink-0 items-center px-5">
+              <h2 id="investigation-panel-title" class="text-xs font-semibold tracking-wide text-slate-400">O que fazer</h2>
+            </div>
+            <div id="investigation-scroll" class="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 pb-6">
+              <article id="scenario-card" class="space-y-4"></article>
+              <section id="solution-panel" aria-label="Gabarito comentado"></section>
+            </div>
           </div>
-          <div id="investigation-scroll" class="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 pb-6">
-            <article id="scenario-card" class="space-y-4"></article>
-            <section id="solution-panel" aria-label="Gabarito comentado"></section>
-          </div>
+          <aside id="schema-drawer" hidden aria-labelledby="schema-panel-title"
+            class="flex min-h-0 flex-1 flex-col overflow-hidden">
+            <div id="schema-panel" class="flex min-h-0 flex-1 flex-col">
+              <div class="flex shrink-0 items-center gap-2 border-b border-slate-800 px-4 py-2.5">
+                <button id="schema-toggle" type="button"
+                  class="inline-flex min-w-0 items-center gap-1.5 rounded-lg px-2 py-1.5 text-[12px] font-medium text-sky-300 hover:bg-slate-800 hover:text-sky-100">
+                  ← Voltar para a Missão
+                </button>
+              </div>
+              <div class="shrink-0 px-4 pb-2 pt-3">
+                <h2 id="schema-panel-title" class="text-sm font-semibold tracking-tight text-slate-100">Dicionário de Dados &amp; Tabelas</h2>
+              </div>
+              <div class="shrink-0 px-4 pb-3">
+                <label for="schema-filter" class="sr-only">Filtrar tabela ou coluna</label>
+                <input id="schema-filter" type="text" placeholder="🔍 Filtrar tabela ou coluna..."
+                  class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-[13px] text-slate-200 outline-none placeholder:text-slate-500 focus:border-sky-500" />
+              </div>
+              <nav id="schema-table-list" aria-label="Tabelas do banco"
+                class="shrink-0 max-h-44 space-y-1 overflow-y-auto border-y border-slate-800 px-2 py-2"></nav>
+              <div id="schema-tree" class="min-h-0 flex-1 overflow-y-auto px-3 py-3"></div>
+            </div>
+          </aside>
         </section>
 
         <div id="workspace-gutter" role="separator" aria-orientation="vertical" aria-controls="investigation-panel"
@@ -167,27 +191,6 @@
         </section>
       </main>
     </div>
-
-    <aside id="schema-drawer" hidden aria-labelledby="schema-panel-title"
-      class="fixed top-16 bottom-3 left-3 z-30 flex w-[24rem] max-w-[calc(100vw-1.5rem)] flex-col overflow-hidden rounded-2xl border border-slate-800 bg-zinc-950 shadow-2xl">
-      <div id="schema-panel" class="flex min-h-0 flex-1 flex-col">
-        <div class="flex h-12 shrink-0 items-center gap-2 border-b border-slate-800 px-3">
-          <h2 id="schema-panel-title" class="min-w-0 flex-1 truncate text-sm font-semibold text-slate-100">Navegador de Esquema</h2>
-          <button id="schema-toggle" type="button" aria-label="Fechar dicionário"
-            class="flex size-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800 hover:text-slate-100">
-            <span aria-hidden="true" id="schema-toggle-icon">✕</span>
-            <span class="sr-only">Fechar dicionário de dados</span>
-          </button>
-        </div>
-        <div class="shrink-0 border-b border-slate-800 p-3">
-          <label for="schema-filter" class="sr-only">Filtrar tabela ou coluna</label>
-          <input id="schema-filter" type="text" placeholder="🔍 Filtrar tabela ou coluna..."
-            class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-[13px] text-slate-200 outline-none placeholder:text-slate-500 focus:border-sky-500" />
-        </div>
-        <nav id="schema-table-list" aria-label="Tabelas do banco" class="shrink-0 max-h-48 space-y-1 overflow-y-auto border-b border-slate-800 p-2"></nav>
-        <div id="schema-tree" class="min-h-0 flex-1 overflow-y-auto p-3"></div>
-      </div>
-    </aside>
 
     <div id="agent-drawer" hidden class="fixed inset-0 z-50">
       <div id="agent-backdrop" class="absolute inset-0 bg-slate-950/70"></div>

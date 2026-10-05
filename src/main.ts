@@ -14,7 +14,7 @@ import { initEditor } from './ui/editor.ts';
 import { createEditorSession } from './ui/editorSession.ts';
 import { initHeader, type DatasetCounts } from './ui/header.ts';
 import { initInvestigationPanel } from './ui/investigationPanel.ts';
-import { initWorkspaceSplit } from './ui/layout.ts';
+import { initWorkspaceSplit, showMobilePane } from './ui/layout.ts';
 import { hideFloatingMenus, initNavbar } from './ui/navbar.ts';
 import { initLabGuide, startOnboardingTour } from './ui/onboardingTour.ts';
 import { initOutputPanel } from './ui/outputPanel.ts';
@@ -54,7 +54,10 @@ const investigation = initInvestigationPanel({
     output.clearValidation();
     void session.switchTo(scenario);
   },
-  onOpenSchema: () => schema.toggle(),
+  onOpenSchema: () => {
+    showMobilePane('mission');
+    schema.toggle();
+  },
 });
 const editor = initEditor({
   onRun: runCurrentQuery,
@@ -134,6 +137,7 @@ function runCurrentQuery(options?: { inspectCte?: boolean }): boolean {
   const source = editor.getSql();
   if (!source.trim()) {
     output.showMessage('O editor está vazio.');
+    showMobilePane('results');
     return false;
   }
   if (options?.inspectCte && !selection) {
@@ -153,12 +157,14 @@ function runCurrentQuery(options?: { inspectCte?: boolean }): boolean {
     output.showExploreBanner(totalRows(results));
     if (selection) editor.showSnippetHint(totalRows(results));
     else editor.clearHint();
+    showMobilePane('results');
     return true;
   } catch (error) {
     const elapsedMs = performance.now() - start;
     output.showError(errorMessage(error), elapsedMs);
     dossier.setData(null);
     recordExecution('execucao', sql, executedAt, elapsedMs, null);
+    showMobilePane('results');
     return false;
   }
 }
@@ -184,6 +190,7 @@ async function validateCurrentQuery(): Promise<void> {
     }
     output.showValidation(result, scenario.colunasEsperadas);
     investigation.showValidation();
+    showMobilePane('results');
   } catch (error) {
     const scenario = investigation.getSelectedScenario();
     const result = {
@@ -197,6 +204,7 @@ async function validateCurrentQuery(): Promise<void> {
     };
     output.showValidation(result, scenario.colunasEsperadas);
     investigation.showValidation();
+    showMobilePane('results');
   } finally {
     validating = false;
     editor.setActionsEnabled(true);

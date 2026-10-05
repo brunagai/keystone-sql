@@ -116,6 +116,8 @@ function renderTableButton(table: TableSchema, selected: boolean): string {
 
 export function initSchemaPanel(onInsertIdentifier: (identifier: string) => void): SchemaPanelController {
   const drawer = byId('schema-drawer');
+  const missionView = byId('investigation-mission-view');
+  const sidebar = byId('investigation-panel');
   const list = byId('schema-table-list');
   const inspector = byId('schema-tree');
   const filter = byId<HTMLInputElement>('schema-filter');
@@ -132,7 +134,10 @@ export function initSchemaPanel(onInsertIdentifier: (identifier: string) => void
 
   const setOpen = (open: boolean): void => {
     drawer.hidden = !open;
+    missionView.hidden = open;
+    sidebar.dataset['view'] = open ? 'schema' : 'mission';
     openButton.setAttribute('aria-expanded', String(open));
+    openButton.setAttribute('aria-pressed', String(open));
   };
 
   const visibleTables = (): TableSchema[] => tables.filter((t) => tableMatches(t, query));

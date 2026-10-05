@@ -23,7 +23,7 @@ export interface InvestigationPanelHandlers {
   onLoadSolution: (sql: string) => void;
   /** Disparado a cada troca de cenário (seleção manual, desafio gerado ou remoção do atual), exceto na carga inicial. */
   onScenarioChange: (scenario: InvestigationScenario) => void;
-  /** Abre a gaveta do Dicionário de Tabelas sem o estudante sair da missão. */
+  /** Alterna a coluna esquerda entre a missão e o dicionário de tabelas. */
   onOpenSchema?: () => void;
 }
 
