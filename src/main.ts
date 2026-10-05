@@ -41,6 +41,9 @@ const investigation = initInvestigationPanel({
     output.clearValidation();
     void session.switchTo(scenario);
   },
+  onOpenSchema: () => {
+    document.getElementById('btn-schema')?.click();
+  },
 });
 const schema = initSchemaPanel((column) => editor.insertAtCursor(column));
 const editor = initEditor({

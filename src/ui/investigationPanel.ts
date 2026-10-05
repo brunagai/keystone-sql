@@ -20,6 +20,8 @@ export interface InvestigationPanelHandlers {
   onLoadSolution: (sql: string) => void;
   /** Disparado a cada troca de cenário (seleção manual, desafio gerado ou remoção do atual), exceto na carga inicial. */
   onScenarioChange: (scenario: InvestigationScenario) => void;
+  /** Abre a gaveta do Dicionário de Tabelas sem o estudante sair da missão. */
+  onOpenSchema: () => void;
 }
 
 const levelLabel = (nivel: TrailLevel): string => `Nível ${nivel} — ${TRAIL_LEVELS[nivel].titulo}`;
@@ -73,6 +75,89 @@ function missionLine(objetivo: string): string {
   return sentence.length > 220 ? `${sentence.slice(0, 217)}…` : sentence;
 }
 
+const COLUMN_ROLES: Readonly<Record<string, string>> = {
+  acumulado_movel_3: 'o volume acumulado nas últimas originações da mesma conta',
+  acumulado_movel_pep: 'o volume acumulado nas originações recentes do titular monitorado',
+  canal: 'o canal por onde a operação foi disparada',
+  cargo_pep: 'o cargo público associado ao titular',
+  conta_destino: 'identificador de quem recebeu o valor',
+  conta_origem: 'identificador de quem enviou o valor',
+  data_abertura: 'a data de abertura da conta',
+  data_hora: 'a data e a hora da operação',
+  fator_incompatibilidade: 'o quanto o valor destoa da renda declarada',
+  faturamento_mensal: 'o faturamento mensal declarado',
+  hora_transacao: 'a hora em que a operação ocorreu',
+  id_conta: 'identificador da conta analisada',
+  id_transacao: 'identificador da transação',
+  intervalo_horas: 'o intervalo entre operações consecutivas',
+  intervalo_segundos: 'o intervalo entre operações consecutivas',
+  janela_hora: 'a janela horária em que as operações se concentraram',
+  maior_pix: 'o maior valor movimentado no recorte',
+  media_historica: 'a média histórica de valores daquela origem',
+  multiplo_renda: 'quantas vezes o volume supera a renda declarada',
+  ocupacao: 'a ocupação declarada no cadastro',
+  origens_distintas: 'quantos remetentes distintos alimentaram a conta',
+  proporcao: 'a proporção entre o valor e o perfil declarado',
+  qtd_historico: 'quantas operações anteriores entram na comparação',
+  qtd_no_dia: 'a quantidade de envios no mesmo dia',
+  qtd_operacoes: 'a quantidade de operações suspeitas',
+  qtd_pix: 'a quantidade de PIX no recorte',
+  qtd_redondas: 'a quantidade de valores redondos',
+  remetentes: 'quantos remetentes distintos participaram',
+  renda_mensal: 'a renda mensal declarada',
+  salto: 'o salto do valor em relação ao histórico',
+  taxa_repasse: 'a proporção entre saídas e entradas',
+  titular: 'quem figura como titular da conta',
+  total_enviado: 'o montante financeiro enviado',
+  total_no_dia: 'o montante financeiro acumulado no dia',
+  total_operacoes: 'a quantidade de envios suspeitos',
+  total_recebido: 'o montante financeiro recebido',
+  total_recebido_mes: 'o montante financeiro recebido no mês',
+  total_recebimentos: 'a quantidade de recebimentos',
+  valor: 'o valor da operação',
+  valor_recebido: 'o montante financeiro recebido',
+  valor_total: 'o montante financeiro total acumulado',
+};
+
+function joinPt(parts: readonly string[]): string {
+  if (parts.length === 0) return 'as evidências necessárias à esteira';
+  if (parts.length === 1) return parts[0] ?? '';
+  const last = parts[parts.length - 1] ?? '';
+  return `${parts.slice(0, -1).join(', ')} e ${last}`;
+}
+
+function describeOutputGoal(columns: readonly string[]): string {
+  const known: string[] = [];
+  let unknown = 0;
+  for (const column of columns) {
+    const role = COLUMN_ROLES[column.toLowerCase()];
+    if (role) known.push(role);
+    else unknown += 1;
+  }
+  if (unknown === 1) known.push('um atributo adicional da evidência (descubra o nome técnico no dicionário)');
+  if (unknown > 1) known.push('os demais atributos da evidência (descubra os nomes técnicos no dicionário)');
+  return `A sua consulta deve devolver evidências com: ${joinPt(known)}.`;
+}
+
+function renderExpectedOutput(s: InvestigationScenario): string {
+  const aliases = s.colunasEsperadas.map((c) => `\`${c}\``).join(', ');
+  return `
+    <p class="text-[11px] font-semibold uppercase tracking-wider text-sky-400">Objetivo de negócio da saída</p>
+    <p class="mt-1.5">${escapeHtml(describeOutputGoal(s.colunasEsperadas))}</p>
+    <p class="text-[12px] leading-relaxed text-slate-500">
+      Use o dicionário de tabelas para escolher as colunas reais. Os nomes técnicos abaixo só são necessários na hora de validar.
+    </p>
+    <details class="rounded-xl border border-slate-800 bg-slate-950/50">
+      <summary class="cursor-pointer select-none px-3 py-2.5 text-[12px] font-medium text-slate-200 hover:text-sky-200">
+        👁️ Revelar Nomes Técnicos e Aliases Esperados
+      </summary>
+      <div class="space-y-2 border-t border-slate-800 px-3 py-2.5 text-[12px] text-slate-400">
+        <p>A esteira compara o resultado nesta ordem: ${formatInline(aliases)}.</p>
+        <p>Ordene com ${formatInline(`\`ORDER BY ${s.ordenacao}\``)}.</p>
+      </div>
+    </details>`;
+}
+
 const tabButton = (id: string, label: string, selected: boolean): string => `
   <button type="button" data-tab="${id}" aria-selected="${String(selected)}"
     class="rounded-lg px-3 py-1.5 text-[12px] font-medium ${
@@ -90,6 +175,10 @@ function renderScenario(s: InvestigationScenario): string {
       <p class="mt-4 text-[11px] font-semibold uppercase tracking-wider text-sky-400">Sua Missão</p>
       <p class="mt-2 text-[15px] leading-relaxed text-slate-100">${escapeHtml(missionLine(s.objetivo))}</p>
     </section>
+    <button type="button" data-open-schema
+      class="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-900/50 px-3 py-2.5 text-[13px] font-medium text-slate-200 hover:border-sky-600 hover:bg-slate-800 hover:text-sky-100">
+      📊 Consultar Tabelas Disponíveis
+    </button>
     <div>
       <div role="tablist" aria-label="Detalhes do desafio" class="flex flex-wrap gap-1">
         ${tabButton('dica', '💡 Dica de SQL passo a passo', true)}
@@ -105,10 +194,8 @@ function renderScenario(s: InvestigationScenario): string {
         <p class="text-[12px] font-medium text-amber-200/90">${escapeHtml(s.enquadramento)}</p>
         <p class="text-[13px] leading-relaxed text-slate-400">${escapeHtml(s.dossie)}</p>
       </div>
-      <div data-tab-panel="colunas" hidden class="mt-3 space-y-2 text-[13px] leading-relaxed text-slate-300">
-        <p>${formatInline(s.objetivo)}</p>
-        <p class="text-slate-400">Colunas: ${formatInline(s.colunasEsperadas.map((c) => `\`${c}\``).join(', '))}</p>
-        <p class="text-slate-500">Ordene com ${formatInline(`\`ORDER BY ${s.ordenacao}\``)}.</p>
+      <div data-tab-panel="colunas" hidden class="mt-3 space-y-3 text-[13px] leading-relaxed text-slate-300">
+        ${renderExpectedOutput(s)}
       </div>
     </div>`;
 }
@@ -134,7 +221,11 @@ function renderCommentedSql(sql: string): string {
     .join('\n');
 }
 
-export function initInvestigationPanel({ onLoadSolution, onScenarioChange }: InvestigationPanelHandlers): InvestigationPanelController {
+export function initInvestigationPanel({
+  onLoadSolution,
+  onScenarioChange,
+  onOpenSchema,
+}: InvestigationPanelHandlers): InvestigationPanelController {
   const select = byId<HTMLSelectElement>('scenario-select');
   const card = byId('scenario-card');
   const solution = byId('solution-panel');
@@ -217,6 +308,10 @@ export function initInvestigationPanel({ onLoadSolution, onScenarioChange }: Inv
 
   card.addEventListener('click', (event) => {
     const target = event.target as HTMLElement;
+    if (target.closest('[data-open-schema]')) {
+      onOpenSchema();
+      return;
+    }
     const tab = target.closest<HTMLElement>('[data-tab]')?.dataset['tab'];
     if (tab) {
       for (const button of card.querySelectorAll<HTMLElement>('[data-tab]')) {
