@@ -7,7 +7,7 @@ import { renderResultTable } from './resultTable.ts';
 
 export interface OutputPanelController {
   showResults(results: QueryExecResult[], elapsedMs: number, keepBanner?: boolean): void;
-  showError(message: string, elapsedMs?: number, keepBanner?: boolean): void;
+  showError(message: string, elapsedMs?: number): void;
   showMessage(message: string): void;
   showExploreBanner(rowCount: number): void;
   showValidationPending(): void;
@@ -54,7 +54,7 @@ function renderFailure(result: ValidationResult, expectedColumns: readonly strin
     .map((line) => `<p class="font-mono text-[12px] leading-relaxed text-slate-300">${formatInline(line)}</p>`)
     .join('');
   return `
-    <div role="alert" class="rounded-xl border ${tone} bg-zinc-950 px-4 py-3 shadow-inner shadow-black/40">
+    <div role="alert" class="rounded-xl border ${tone} bg-zinc-950 px-4 py-3">
       <p class="font-mono text-[11px] font-semibold tracking-wide">[${escapeHtml(statusLabel)}]</p>
       <p class="mt-1.5 font-mono text-[12px] leading-relaxed text-slate-200">${escapeHtml(result.title)}</p>
       <p class="mt-2 font-mono text-[12px] leading-relaxed text-slate-400">${escapeHtml(snapshotLine(result, expectedColumns))}</p>
@@ -104,20 +104,34 @@ function renderSuccess(result: ValidationResult): string {
 
 export function initOutputPanel(): OutputPanelController {
   const pane = byId('output-pane');
+  const scroll = byId('output-scroll');
   const meta = byId('output-meta');
   const body = byId('output-body');
   const banner = byId('validation-banner');
 
   const placeholder = (message: string): string =>
-    `<div class="flex h-full items-center justify-center p-6 text-center text-xs text-slate-500">${escapeHtml(message)}</div>`;
+    `<div class="flex items-center justify-center p-6 text-center text-xs text-slate-500">${escapeHtml(message)}</div>`;
 
   const setBanner = (html: string): void => {
     banner.innerHTML = html;
     banner.hidden = !html;
   };
 
+  const setBody = (html: string): void => {
+    body.innerHTML = html;
+    body.hidden = !html;
+  };
+
+  const paintMeta = (elapsedMs: number | undefined, rows: number | null, erro = false): void => {
+    meta.innerHTML = [
+      elapsedMs === undefined ? '' : metaItem('tempo', formatMs(elapsedMs), erro ? 'text-rose-300' : 'text-emerald-300'),
+      rows === null ? '' : metaItem('linhas', formatInteiro(rows)),
+      erro ? metaItem('status', 'erro', 'text-rose-400') : '',
+    ].join('');
+  };
+
   const focusResults = (): void => {
-    banner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    scroll.scrollTop = 0;
     pane.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   };
 
@@ -125,39 +139,34 @@ export function initOutputPanel(): OutputPanelController {
     showResults(results, elapsedMs, keepBanner = false) {
       if (!keepBanner) setBanner('');
       const rows = results.reduce((acc, r) => acc + r.values.length, 0);
-      meta.innerHTML = [
-        metaItem('tempo', formatMs(elapsedMs), 'text-emerald-300'),
-        metaItem('linhas', formatInteiro(rows)),
-        results.length > 1 ? metaItem('conjuntos', String(results.length)) : '',
-      ].join('');
-
-      if (results.length === 0) {
-        body.innerHTML = placeholder('Comando executado com sucesso. Nenhuma linha retornada.');
+      paintMeta(elapsedMs, rows);
+      if (rows === 0) {
+        setBody(keepBanner ? '' : placeholder('Comando executado com sucesso. Nenhuma linha retornada.'));
         return;
       }
-      body.innerHTML = results
-        .map((r, i) =>
-          results.length > 1
-            ? `<div class="sticky left-0 border-b border-slate-800 bg-zinc-950 px-3 py-1 font-mono text-[10px] text-slate-500">Resultado ${i + 1}</div>${renderResultTable(r)}`
-            : renderResultTable(r),
-        )
-        .join('');
+      setBody(
+        results
+          .map((r, i) =>
+            results.length > 1
+              ? `<div class="sticky left-0 border-b border-slate-800 bg-zinc-950 px-3 py-1 font-mono text-[10px] text-slate-500">Resultado ${i + 1}</div>${renderResultTable(r)}`
+              : renderResultTable(r),
+          )
+          .join(''),
+      );
     },
-    showError(message, elapsedMs, keepBanner = false) {
-      if (!keepBanner) setBanner('');
-      meta.innerHTML = [
-        elapsedMs === undefined ? '' : metaItem('tempo', formatMs(elapsedMs)),
-        metaItem('status', 'erro', 'text-rose-400'),
-      ].join('');
-      body.innerHTML = `
-        <div class="p-3">
-          <pre class="whitespace-pre-wrap rounded border border-rose-900/70 bg-rose-950/30 p-3 font-mono text-xs text-rose-300">${escapeHtml(message)}</pre>
-        </div>`;
+    showError(message, elapsedMs) {
+      paintMeta(elapsedMs, null, true);
+      setBanner('');
+      setBody(`
+        <div class="px-5 py-3">
+          <pre class="whitespace-pre-wrap rounded-xl border border-rose-800/80 bg-zinc-950 px-4 py-3 font-mono text-xs leading-relaxed text-rose-200">${escapeHtml(message)}</pre>
+        </div>`);
+      focusResults();
     },
     showMessage(message) {
-      setBanner('');
       meta.innerHTML = '';
-      body.innerHTML = placeholder(message);
+      setBanner('');
+      setBody(placeholder(message));
     },
     showExploreBanner(rowCount) {
       const linhas = rowCount === 1 ? '1 linha' : `${formatInteiro(rowCount)} linhas`;
@@ -168,6 +177,7 @@ export function initOutputPanel(): OutputPanelController {
         </div>`);
     },
     showValidationPending() {
+      setBody('');
       setBanner(`
         <div class="flex items-center gap-2 rounded-xl border border-slate-800 bg-zinc-950 px-4 py-3 text-sm text-slate-400">
           <span class="size-3 animate-spin rounded-full border-2 border-slate-600 border-t-sky-400"></span>
@@ -176,7 +186,28 @@ export function initOutputPanel(): OutputPanelController {
       focusResults();
     },
     showValidation(result, expectedColumns) {
-      setBanner(result.status === 'success' ? renderSuccess(result) : renderFailure(result, expectedColumns));
+      const run = result.studentRun;
+      if (result.status === 'success') {
+        setBanner(renderSuccess(result));
+        if (run?.ok) {
+          const rows = run.results.reduce((acc, r) => acc + r.values.length, 0);
+          paintMeta(run.elapsedMs, rows);
+          if (rows === 0) setBody(placeholder('Comando executado com sucesso. Nenhuma linha retornada.'));
+        }
+        body.hidden = !body.innerHTML;
+        focusResults();
+        return;
+      }
+
+      setBanner(renderFailure(result, expectedColumns));
+      const hasRows = Boolean(run?.ok && run.results.some((table) => table.values.length > 0));
+      if (!hasRows) setBody('');
+      if (run?.ok) {
+        const rows = run.results.reduce((acc, r) => acc + r.values.length, 0);
+        paintMeta(run.elapsedMs, rows);
+      } else if (run) {
+        paintMeta(run.elapsedMs, null, true);
+      }
       focusResults();
     },
     clearValidation() {

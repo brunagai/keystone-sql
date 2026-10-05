@@ -14,6 +14,7 @@ import { initEditor } from './ui/editor.ts';
 import { createEditorSession } from './ui/editorSession.ts';
 import { initHeader, type DatasetCounts } from './ui/header.ts';
 import { initInvestigationPanel } from './ui/investigationPanel.ts';
+import { initWorkspaceSplit } from './ui/layout.ts';
 import { initLabGuide, startOnboardingTour } from './ui/onboardingTour.ts';
 import { initOutputPanel } from './ui/outputPanel.ts';
 import { initQueryHistory, type HistoryOrigin } from './ui/queryHistory.ts';
@@ -33,6 +34,7 @@ let validating = false;
 const output = initOutputPanel();
 const dossier = initDossierExport();
 initLabGuide();
+initWorkspaceSplit();
 const investigation = initInvestigationPanel({
   onLoadSolution: (sql) => editor.replaceSql(sql),
   onScenarioChange: (scenario) => {
@@ -164,7 +166,6 @@ async function validateCurrentQuery(): Promise<void> {
       dossier.setData({ scenario, sql, results: run.results, executedAt, elapsedMs: run.elapsedMs });
       recordExecution('validacao', sql, executedAt, run.elapsedMs, totalRows(run.results));
     } else if (run) {
-      output.showError(run.error, run.elapsedMs, true);
       dossier.setData(null);
       recordExecution('validacao', sql, executedAt, run.elapsedMs, null);
     }
