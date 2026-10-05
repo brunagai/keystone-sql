@@ -5,8 +5,11 @@ export type ScenarioId = string;
 
 export type ScenarioOrigin = 'base' | 'ia' | 'offline';
 
-/** Degraus da trilha pedagógica; o nível 5 cobre QSA/telemetria/produtos e, em seguida, desafios gerados. */
-export type TrailLevel = 1 | 2 | 3 | 4 | 5;
+/** Degraus da trilha; o 0 é SELECT/WHERE/GROUP BY, o 5 cobre QSA/telemetria/produtos e, em seguida, desafios gerados. */
+export type TrailLevel = 0 | 1 | 2 | 3 | 4 | 5;
+
+/** Caso aberto na primeira carga (Nível 0.1). */
+export const DEFAULT_SCENARIO_ID: ScenarioId = 'cadastro-listagem';
 
 export interface TrailLevelInfo {
   titulo: string;
@@ -15,6 +18,7 @@ export interface TrailLevelInfo {
 }
 
 export const TRAIL_LEVELS: Record<TrailLevel, TrailLevelInfo> = {
+  0: { titulo: 'Fundamentos de Consulta', tecnica: 'SELECT, FROM, WHERE, ORDER BY e GROUP BY' },
   1: { titulo: 'Fundamentos de Agregação', tecnica: 'GROUP BY, HAVING, JOIN e limiares' },
   2: { titulo: 'Janelas e Classificação', tecnica: 'ROW_NUMBER() OVER (PARTITION BY …)' },
   3: { titulo: 'Análise Temporal e Mudança de Padrão', tecnica: 'LAG / LEAD e recorte horário (strftime)' },
@@ -22,7 +26,7 @@ export const TRAIL_LEVELS: Record<TrailLevel, TrailLevelInfo> = {
   5: { titulo: 'Casos Avançados de PLD/FT', tecnica: 'JOIN em QSA, telemetria de acesso e produtos financeiros' },
 };
 
-export const TRAIL_ORDER: readonly TrailLevel[] = [1, 2, 3, 4, 5];
+export const TRAIL_ORDER: readonly TrailLevel[] = [0, 1, 2, 3, 4, 5];
 
 export interface SuccessSummary {
   message: string;
@@ -88,6 +92,191 @@ const distinct = (values: unknown[]): string[] => [...new Set(values.map(String)
 const sum = (values: unknown[]): number => values.reduce<number>((acc, v) => acc + Number(v), 0);
 
 const CATALOG: readonly InvestigationScenario[] = [
+  {
+    id: 'cadastro-listagem',
+    origem: 'base',
+    nivel: 0,
+    titulo: 'Reconhecimento Cadastral: Listagem de Clientes',
+    enquadramento: 'Circular Bacen 3.978/2020 · conhecimento do cliente (KYC)',
+    dossie:
+      'Antes de qualquer alerta de transação, a esteira de PLD precisa conhecer a base cadastral: quem são os titulares, ' +
+      'se a conta é de pessoa física ou jurídica e qual renda ou faturamento foi declarado. Este primeiro recorte monta a ' +
+      'ficha-mãe dos clientes no laboratório.',
+    objetivo:
+      'Liste o identificador da conta, o titular, o tipo de pessoa e a renda ou faturamento declarado de todos os clientes cadastrados.',
+    colunasEsperadas: ['id_conta', 'titular', 'tipo_pessoa', 'renda_mensal_declarada'],
+    ordenacao: 'id_conta',
+    dicaTexto:
+      'Comece projetando as colunas cadastrais e indique de qual tabela elas vêm. Ainda não é preciso filtrar nem agrupar.',
+    dicaSql: `-- SELECT escolhe as colunas; FROM indica a tabela
+SELECT coluna_a, coluna_b
+FROM nome_da_tabela;`,
+    gabaritoSql: `-- Gabarito · reconhecimento cadastral (KYC)
+SELECT
+  id_conta,
+  titular,
+  tipo_pessoa,
+  renda_mensal_declarada
+FROM contas
+ORDER BY id_conta;`,
+    colunaChave: 'id_conta',
+    rotuloEntidade: { singular: 'cliente', plural: 'clientes' },
+    dicasDivergencia: {
+      excesso: 'Há contas a mais. Use somente a tabela de cadastro, sem cruzar PIX nem aplicar filtros extras.',
+      falta: 'Faltam clientes. Não restrinja a listagem: o recorte pede toda a base cadastrada.',
+      valores:
+        'Os identificadores batem, mas algum campo diverge. Projete titular, tipo de pessoa e a renda/faturamento declarado, sem aliases desnecessários.',
+      ordenacao: 'Os dados estão corretos, mas a ordem não. Ordene pelo identificador da conta.',
+    },
+    resumirSucesso(gabarito) {
+      return {
+        message: `Base cadastral mapeada: ${gabarito.values.length} cliente(s) com titular, tipo de pessoa e renda/faturamento declarado.`,
+        entities: distinct(columnValues(gabarito, 'id_conta')).slice(0, 8),
+        details: ['Próximo passo: isolar quem o cadastro marca como Pessoa Exposta Politicamente.'],
+      };
+    },
+  },
+  {
+    id: 'triagem-pep',
+    origem: 'base',
+    nivel: 0,
+    titulo: 'Triagem de Risco: Pessoas Expostas Politicamente (PEP)',
+    enquadramento: 'Circular Bacen 3.978/2020 · escrutínio reforçado de PEP',
+    dossie:
+      'Titulares com cargo público relevante exigem monitoramento mais rigoroso. O cadastro já traz o sinalizador de ' +
+      'Pessoa Exposta Politicamente; a triagem inicial é listar essas contas para a mesa de PLD.',
+    objetivo:
+      'Identifique as contas sinalizadas no cadastro como Pessoas Expostas Politicamente (PEP), trazendo o identificador da conta, o titular e a ocupação informada.',
+    colunasEsperadas: ['id_conta', 'titular', 'ocupacao'],
+    ordenacao: 'id_conta',
+    dicaTexto:
+      'Depois de escolher as colunas, mantenha só as linhas que satisfazem uma condição cadastral (o sinalizador PEP).',
+    dicaSql: `-- WHERE filtra linhas que atendem a uma condição
+SELECT coluna_a, coluna_b
+FROM nome_da_tabela
+WHERE coluna_filtro = ...;`,
+    gabaritoSql: `-- Gabarito · triagem de PEP
+SELECT
+  id_conta,
+  titular,
+  ocupacao
+FROM contas
+WHERE eh_pep = 1
+ORDER BY id_conta;`,
+    colunaChave: 'id_conta',
+    rotuloEntidade: { singular: 'conta PEP', plural: 'contas PEP' },
+    dicasDivergencia: {
+      excesso: 'Há contas a mais. Mantenha apenas quem o cadastro marca como PEP (`eh_pep = 1`).',
+      falta: 'Faltam contas PEP. Confira o sinalizador cadastral (`eh_pep`) e não filtre por cargo ou cidade.',
+      valores: 'As contas estão certas, mas titular ou ocupação divergem. Projete os campos cadastrais pedidos.',
+      ordenacao: 'Os dados estão corretos, mas a ordem não. Ordene pelo identificador da conta.',
+    },
+    resumirSucesso(gabarito) {
+      const contas = distinct(columnValues(gabarito, 'id_conta'));
+      const titulares = distinct(columnValues(gabarito, 'titular'));
+      return {
+        message: `Triagem PEP: ${gabarito.values.length} conta(s) com escrutínio reforçado (${titulares.join(', ') || '—'}).`,
+        entities: contas,
+        details: ['No laboratório, C013 (Deputado Estadual) e C004 (Prefeito) são o recorte plantado.'],
+      };
+    },
+  },
+  {
+    id: 'pix-alto-valor',
+    origem: 'base',
+    nivel: 0,
+    titulo: 'Comunicação Obrigatória: Operações de Alto Valor',
+    enquadramento: 'Carta Circular Bacen 4.001/2020 · operações em espécie ou de elevado valor',
+    dossie:
+      'Valores individuais elevados concentram risco de comunicação e de revisão manual. A mesa pediu o mapa de PIX cujo ' +
+      'montante unitário alcança ou supera R$ 50.000,00, priorizando os maiores valores.',
+    objetivo:
+      'Mapeie todas as transferências PIX com valor individual igual ou superior a R$ 50.000,00, apresentando os registros ordenados do maior para o menor valor financeiro.',
+    colunasEsperadas: ['id_transacao', 'id_conta_origem', 'id_conta_destino', 'valor', 'data_hora'],
+    ordenacao: 'valor DESC',
+    dicaTexto:
+      'Filtre as liquidações pelo limiar de valor e, em seguida, organize o resultado do maior montante para o menor.',
+    dicaSql: `-- WHERE compara números; ORDER BY DESC coloca os maiores primeiro
+SELECT ...
+FROM transacoes_pix
+WHERE valor >= ...
+ORDER BY valor DESC;`,
+    gabaritoSql: `-- Gabarito · PIX de alto valor (R$ 50 mil)
+SELECT
+  id_transacao,
+  id_conta_origem,
+  id_conta_destino,
+  valor,
+  data_hora
+FROM transacoes_pix
+WHERE valor >= 50000
+ORDER BY valor DESC;`,
+    colunaChave: 'id_transacao',
+    rotuloEntidade: { singular: 'transferência', plural: 'transferências' },
+    dicasDivergencia: {
+      excesso: 'Há PIX a mais. Use o limiar inclusivo de R$ 50.000,00 (`valor >= 50000`) e somente a tabela de transações.',
+      falta: 'Faltam operações. O corte é inclusivo: R$ 50.000,00 entra. Não restrinja por data, canal ou conta.',
+      valores: 'As transações estão certas, mas algum campo diverge. Projete origem, destino, valor e data/hora.',
+      ordenacao: 'Os dados estão corretos, mas a ordem não. Ordene pelo valor do maior para o menor.',
+    },
+    resumirSucesso(gabarito) {
+      const total = sum(columnValues(gabarito, 'valor'));
+      return {
+        message: `Alto valor: ${gabarito.values.length} PIX ≥ R$ 50 mil, somando ${formatBRL(total)}.`,
+        entities: distinct(columnValues(gabarito, 'id_transacao')).slice(0, 8),
+        details: ['Esses montantes unitários costumam ir à fila de comunicação; o próximo degrau é consolidar volume por remetente.'],
+      };
+    },
+  },
+  {
+    id: 'volumetria-remetente',
+    origem: 'base',
+    nivel: 0,
+    titulo: 'Volumetria Transacional: Consolidação por Remetente',
+    enquadramento: 'Circular Bacen 3.978/2020 · monitoramento de movimentação por cliente',
+    dossie:
+      'Depois de ver operações isoladas, a esteira consolida o comportamento de cada pagador: quantas remessas partem da ' +
+      'conta e qual o volume financeiro acumulado. Essa visão alimenta o ranking de exposição antes dos cortes de fracionamento.',
+    objetivo:
+      'Apure o comportamento transacional dos clientes, quantificando o total de remessas enviadas e o valor financeiro acumulado por cada conta de origem.',
+    colunasEsperadas: ['conta_origem', 'total_operacoes', 'valor_total'],
+    ordenacao: 'total_operacoes DESC',
+    dicaTexto:
+      'Agrupe as liquidações pela conta pagadora e, em cada grupo, conte as remessas e some os valores. Ainda não aplique recorrência mínima (isso vem no caso 1.1).',
+    dicaSql: `-- GROUP BY consolida linhas; COUNT e SUM viram métricas por grupo
+SELECT id_conta_origem AS conta_origem,
+       COUNT(*)        AS total_operacoes,
+       SUM(valor)      AS valor_total
+FROM transacoes_pix
+GROUP BY id_conta_origem
+ORDER BY total_operacoes DESC;`,
+    gabaritoSql: `-- Gabarito · volumetria por remetente
+SELECT
+  id_conta_origem AS conta_origem,
+  COUNT(*)        AS total_operacoes,
+  SUM(valor)      AS valor_total
+FROM transacoes_pix
+GROUP BY id_conta_origem
+ORDER BY total_operacoes DESC;`,
+    colunaChave: 'conta_origem',
+    rotuloEntidade: { singular: 'remetente', plural: 'remetentes' },
+    dicasDivergencia: {
+      excesso: 'Há contas a mais. Agrupe só pela origem do PIX, sem filtrar destino nem faixa de valor.',
+      falta: 'Faltam remetentes. Não use corte de quantidade mínima: toda conta que enviou PIX entra na consolidação.',
+      valores:
+        'Os remetentes estão certos, mas as métricas não. `total_operacoes` é a quantidade de envios e `valor_total` é a soma dos valores.',
+      ordenacao: 'Os dados estão corretos, mas a ordem não. Ordene pela quantidade de remessas, da maior para a menor.',
+    },
+    resumirSucesso(gabarito) {
+      const contas = distinct(columnValues(gabarito, 'conta_origem'));
+      const total = sum(columnValues(gabarito, 'valor_total'));
+      return {
+        message: `Volumetria: ${gabarito.values.length} conta(s) de origem, com ${formatBRL(total)} enviados no período.`,
+        entities: contas.slice(0, 8),
+        details: ['No Caso 1.1 você vai cruzar faixa logo abaixo de R$ 10 mil, destino C025 e recorrência mínima.'],
+      };
+    },
+  },
   {
     id: 'smurfing',
     origem: 'base',

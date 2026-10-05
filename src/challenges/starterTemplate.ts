@@ -37,6 +37,41 @@ function missionLine(objetivo: string): string {
   return firstSentence(plain(objetivo));
 }
 
+const LEVEL0_SKELETON: Readonly<Record<string, string>> = {
+  'cadastro-listagem': `SELECT
+    -- 1. Quais dados cadastrais a ficha-mãe precisa mostrar?
+    
+FROM contas
+-- Ainda não há recorte: a listagem cobre toda a base.
+;`,
+  'triagem-pep': `SELECT
+    -- 1. Identificador, titular e ocupação
+    
+FROM contas
+WHERE
+    -- 2. Como o cadastro sinaliza Pessoa Exposta Politicamente?
+    
+;`,
+  'pix-alto-valor': `SELECT
+    -- 1. Identificador da liquidação, origem, destino, valor e data/hora
+    
+FROM transacoes_pix
+WHERE
+    -- 2. Qual o piso de valor da comunicação obrigatória?
+    
+-- 3. Priorize os maiores montantes:
+-- ORDER BY ...
+;`,
+  'volumetria-remetente': `SELECT
+    -- 1. Conta de origem (com alias), quantidade de remessas e volume acumulado
+    
+FROM transacoes_pix
+-- 2. Consolide por pagador (sem corte de recorrência mínima):
+-- GROUP BY ...
+-- ORDER BY ...
+;`,
+};
+
 const LEVEL5_SKELETON: Readonly<Record<string, string>> = {
   'ubo-aurora': `SELECT
     s.nome_socio,
@@ -103,7 +138,7 @@ export function principalTableOf(scenario: InvestigationScenario): string {
 
 /** Cabeçalho e esqueleto SQL guiado para o desafio ativo. */
 export function buildStarterTemplate(scenario: InvestigationScenario): string {
-  const skeleton = LEVEL5_SKELETON[scenario.id];
+  const skeleton = LEVEL0_SKELETON[scenario.id] ?? LEVEL5_SKELETON[scenario.id];
   if (skeleton) return `${headerComments(scenario).join('\n')}${skeleton}`;
 
   const table = principalTableOf(scenario);

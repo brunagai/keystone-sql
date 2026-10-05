@@ -5,7 +5,7 @@ import {
   onScenariosChange,
   removeGenerated,
 } from '../challenges/registry.ts';
-import { TRAIL_LEVELS, TRAIL_ORDER, type InvestigationScenario, type ScenarioId, type TrailLevel, type TwoPhaseReasoning } from '../challenges/scenarios.ts';
+import { DEFAULT_SCENARIO_ID, TRAIL_LEVELS, TRAIL_ORDER, type InvestigationScenario, type ScenarioId, type TrailLevel, type TwoPhaseReasoning } from '../challenges/scenarios.ts';
 import { resolveTwoPhase } from '../challenges/twoPhase.ts';
 import { escapeHtml, formatInline } from './format.ts';
 
@@ -33,7 +33,7 @@ type TrailBand = 'todos' | 'iniciante' | 'intermediario' | 'avancado';
 
 const BAND_LEVELS: Record<TrailBand, readonly TrailLevel[]> = {
   todos: TRAIL_ORDER,
-  iniciante: [1, 2],
+  iniciante: [0, 1, 2],
   intermediario: [3],
   avancado: [4, 5],
 };
@@ -128,6 +128,8 @@ const COLUMN_ROLES: Readonly<Record<string, string>> = {
   media_historica: 'a média histórica de valores daquela origem',
   multiplo_renda: 'quantas vezes o volume supera a renda declarada',
   ocupacao: 'a ocupação declarada no cadastro',
+  tipo_pessoa: 'se o cliente é pessoa física ou jurídica',
+  renda_mensal_declarada: 'a renda ou o faturamento mensal declarado no KYC',
   origens_distintas: 'quantos remetentes distintos alimentaram a conta',
   proporcao: 'a proporção entre o valor e o perfil declarado',
   qtd_historico: 'quantas operações anteriores entram na comparação',
@@ -268,7 +270,7 @@ export function initInvestigationPanel({
   const trailBands = el('trail-bands');
   let trailBand: TrailBand = 'todos';
 
-  const firstScenario = baseScenarios()[0];
+  const firstScenario = findScenario(DEFAULT_SCENARIO_ID) ?? baseScenarios()[0];
   if (!firstScenario) throw new Error('Nenhum cenário investigativo cadastrado.');
 
   let selected = firstScenario;

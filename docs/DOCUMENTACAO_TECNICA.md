@@ -58,31 +58,31 @@ Os scripts `predev`, `prebuild` e `postinstall` executam `scripts/copy-wasm.mjs`
 ## 3. Estrutura de pastas
 
 ```text
-index.html                 Layout: navbar, duas colunas, gavetas, modal de IA
+index.html                 Layout: navbar, duas colunas, Schema Explorer flutuante, gaveta do agente, modal de IA
 scripts/
   copy-wasm.mjs            Copia o binário WASM do sql.js para public/
-  generate-dataset.mjs     Gera o dataset sintético (PRNG com semente fixa)
+  generate-dataset.mjs     Dataset v1.4.0: PIX congelado (v1.3.0) + QSA/acessos/produtos (PRNG isolado)
 src/
   main.ts                  Composição: inicializa os módulos e liga os eventos
-  types/                   Tipos de domínio (Conta, TransacaoPix, Dataset) e d.ts do sql.js
+  types/                   Tipos de domínio (Conta, TransacaoPix, SocioEmpresa, AcessoDigital, OperacaoProduto, Dataset) e d.ts do sql.js
   data/
-    dataset.json           38 contas + transações PIX (agosto/2026); regenerar com npm run generate:dataset após mudar o gerador
-    dictionary.ts          Descrições das 2 tabelas/colunas (gaveta Dicionário)
+    dataset.json           38 contas + PIX (ago/2026) + QSA, acessos e produtos (v1.4.0); regenerar após mudar o gerador
+    dictionary.ts          Metadados das 5 tabelas (categoria, descrição, PK/FK, exemplos)
   database/
-    schema.ts              DDL (CREATE TABLE/INDEX) — somente `contas` e `transacoes_pix`
-    sqlite.ts              Carga do WASM, criação, seed e reset do banco
+    schema.ts              DDL (CREATE TABLE/INDEX) — 5 tabelas; PRAGMA foreign_keys
+    sqlite.ts              Carga do WASM, criação, seed (coleções novas aceitam `[]` se o JSON for antigo) e reset
     introspection.ts       Leitura do schema (PRAGMA) e pré-visualização de tabelas
     safeQuery.ts           Bloqueio de escrita, execução isolada (SAVEPOINT), extração do ORDER BY
     cteInspector.ts        Completa um WITH sem SELECT externo para inspecionar a CTE
     sqlText.ts             Utilitários de texto SQL (remover comentários, comparar)
   challenges/
-    scenarios.ts           Interface InvestigationScenario, níveis da trilha e 8 cenários base
+    scenarios.ts           Interface InvestigationScenario, níveis 1–5 e **11** cenários base
     twoPhase.ts            Decomposição pedagógica WITH → WHERE (N3, N4 e gerados)
     registry.ts            Catálogo único: cenários base + gerados (persistidos)
     validator.ts           Motor de validação semântica (orquestra compare + sqlErrors)
     compare.ts             Comparação com tolerância + esteira (FN/FP/fila) + banner de conformidade
-    sqlErrors.ts           Erros do SQLite em vocabulário didático (prioridade: janela no WHERE)
-    starterTemplate.ts     Template comentado inicial de cada desafio
+    sqlErrors.ts           Erros do SQLite em vocabulário didático (5 tabelas; janela no WHERE)
+    starterTemplate.ts     Template comentado + esqueletos do nível 5 (UBO, ATO, consórcio)
     drafts.ts              Rascunhos por desafio
   agent/
     types.ts               GeneratedChallenge, AiSettings, focos (incl. blocos A–D) e catálogo de 15 tipologias
@@ -101,14 +101,14 @@ src/
     navbar.ts              Fecha popovers órfãos e localiza o seletor de casos
     header.ts              Status Online/Offline e botão Restaurar Dados
     layout.ts              Splitter da coluna esquerda (largura no localStorage)
-    schemaPanel.ts         Gaveta Dicionário de Tabelas
-    editor.ts              Editor SQL, banner de confirmação, status
+    schemaPanel.ts         Navegador de Esquema (painel flutuante, master-detail, insert sem fechar)
+    editor.ts              Editor SQL, banner de confirmação, `insertAtCursor` (Schema Explorer)
     editorSession.ts       Dono do texto do editor, rascunhos e troca de desafio
     queryHistory.ts        Popover com as últimas 10 execuções
     outputPanel.ts         Painel Resultados (banner, erro exclusivo, tabela, scroll)
     resultTable.ts         Renderização tabular (moeda, datas, números)
     dossierExport.ts       Menu de exportação e download
-    investigationPanel.ts  Coluna "O que fazer": missão, abas, atalho do dicionário
+    investigationPanel.ts  Coluna "O que fazer": missão em linguagem de negócio, abas, atalho do esquema
     agentPanel.ts          Gaveta do Agente Educador
     aiSettingsModal.ts     Modal BYOK (Groq/OpenAI)
     onboardingTour.ts      Tour ancorado (Entenda o Laboratório)
@@ -176,16 +176,23 @@ sequenceDiagram
 
 ### 5.1 Schema
 
-Duas tabelas **fixas** (ver `src/database/schema.ts`). O agente de IA **não** altera o DDL: só gera desafios (nível 5) contra este schema.
+Cinco tabelas **fixas** (ver `src/database/schema.ts`). O agente de IA **não** altera o DDL: só gera desafios (nível 5) contra este schema.
 
 - **`contas`** — cadastro KYC: `id_conta` (PK, formato `C001`), `titular`, `tipo_pessoa` (`PF`/`PJ`), `documento` (único), `ocupacao`, `renda_mensal_declarada` (renda da PF ou faturamento da PJ), dados bancários (`banco_ispb`, `banco_nome`, `agencia`, `numero_conta`), chave PIX (`tipo_chave_pix`, `chave_pix`), `cidade`, `uf`, `data_abertura`, **`eh_pep`** (0/1) e **`cargo_pep`**. PEP plantado de forma determinística: **C013** (Deputado Estadual) e **C004** (Prefeito).
 - **`transacoes_pix`** — liquidações: `id_transacao` (PK), `id_conta_origem`/`id_conta_destino` (FK → `contas`), `valor` (> 0), `data_hora` (`TEXT 'YYYY-MM-DD HH:MM:SS'`, horário de Brasília), `tipo_chave_destino`, `chave_pix_destino`, `descricao`, `canal` (`APP`, `INTERNET_BANKING`, `API`).
+- **`socios_empresas`** — QSA: `id_socio` (PK), `id_conta_empresa` (FK → `contas`, `ON DELETE CASCADE`), `cnpj_empresa`, `cpf_socio`, `nome_socio`, `percentual_participacao` (0 exclusive a 100], `eh_administrador` (0/1), `data_entrada`. Índices por conta e CPF.
+- **`acessos_digitais`** — telemetria: `id_acesso` (PK), `id_conta` (FK, CASCADE), `device_id`, `ip`, `geolocalizacao_cidade`/`uf`, `latitude`/`longitude` (nullable), `sucesso` (0/1), `data_hora`. Índices por `(id_conta, data_hora)` e `device_id`.
+- **`operacoes_produtos`** — aportes: `id_operacao` (PK), `id_conta` (FK, CASCADE), `tipo_produto` (`CONSORCIO_LANCE`, `CDB_LIQUIDEZ_DIARIA`, `PREVIDENCIA_VGBL`, `FUNDOS_RENDA_FIXA`), `valor_aporte` (> 0), `forma_liquidacao` (`ESPECIE`, `PIX`, `TED`, `SALDO_CONTA`), `status_contemplacao` (0/1), `data_operacao`. Índices por conta e liquidação.
 
-`CHECK` constraints garantem domínios válidos, impedem origem = destino e amarram PEP: `eh_pep IN (0, 1)` e, se `eh_pep = 0`, então `cargo_pep` é NULL; se `eh_pep = 1`, `cargo_pep` é obrigatório. Há índices por `data_hora`, `(id_conta_origem, data_hora)` e `(id_conta_destino, data_hora)`. `PRAGMA foreign_keys = ON` é aplicado na criação.
+`CHECK` constraints garantem domínios válidos, impedem origem = destino no PIX e amarram PEP: `eh_pep IN (0, 1)` e, se `eh_pep = 0`, então `cargo_pep` é NULL; se `eh_pep = 1`, `cargo_pep` é obrigatório. Há índices PIX por `data_hora`, `(id_conta_origem, data_hora)` e `(id_conta_destino, data_hora)`. `PRAGMA foreign_keys = ON` é aplicado na criação.
+
+O dicionário (`dictionary.ts`) classifica as tabelas em **Cadastral & Societário**, **Transacional**, **Segurança & Telemetria** e **Investimentos & Produtos**, com descrição, exemplo e selos PK/FK usados no Navegador de Esquema.
 
 ### 5.2 Dataset sintético
 
-`src/data/dataset.json` (versão de metadados **1.3.0**) é gerado por `scripts/generate-dataset.mjs` com PRNG `mulberry32` e semente fixa (`20260801`), portanto **é determinístico**: rodar o script de novo produz o mesmo arquivo. Período: 01 a 31/08/2026; limiar regulatório de referência: R$ 10.000. CPFs/CNPJs têm dígitos verificadores válidos, mas são aleatórios. O status PEP **não** consome o PRNG (mapa fixo `CARGO_PEP`). Escalada PEP, coação noturna, ATO e valores redondos são gravados **depois** dos laços aleatórios, com `ts(...)` fixos e **sem** `rand()`, para não alterar a sequência das tipologias já homologadas.
+`src/data/dataset.json` (versão de metadados **1.4.0**) é gerado por `scripts/generate-dataset.mjs` com PRNG `mulberry32` e semente fixa (`20260801`), portanto **é determinístico**: rodar o script de novo produz o mesmo arquivo. Período: 01 a 31/08/2026; limiar regulatório de referência: R$ 10.000. CPFs/CNPJs têm dígitos verificadores válidos, mas são aleatórios. O status PEP **não** consome o PRNG (mapa fixo `CARGO_PEP`). Escalada PEP, coação noturna, ATO e valores redondos no PIX são gravados **depois** dos laços aleatórios, com `ts(...)` fixos e **sem** `rand()`, para não alterar a sequência das tipologias já homologadas (congeladas como na v1.3.0).
+
+A extensão **1.4.0** (QSA, acessos digitais, produtos) usa PRNG **isolado** depois do bloco PIX, para não embaralhar as contas/transações já validadas.
 
 Além do "ruído" de transações legítimas, as tipologias plantadas são:
 
@@ -196,8 +203,11 @@ Além do "ruído" de transações legítimas, as tipologias plantadas são:
 | Incompatibilidade patrimonial | C035, C036, C037, C038 | Estudante, aposentada e MEI movimentam centenas de milhares de reais, muito acima da renda declarada |
 | PEP (KYC + escalada) | C013, C004 | Pessoa Exposta Politicamente: Deputado Estadual (C013, Brasília) e Prefeito (C004, Curitiba). C013 origina, em **27/08**, três PIX a C022 (R$ 7.200, R$ 7.500 e R$ 6.800) após histórico compatível; a soma móvel das 3 supera R$ 20 mil e fica abaixo de R$ 25 mil (não entra no gabarito 4.2). |
 | Coação noturna | C005, C032 | Advogada (rotina diurna) envia R$ 8.500 (23:42) e R$ 9.200 (01:50) à intermediadora C032 |
-| Account takeover | C001, C034 | Micro-PIX de R$ 1,50 e R$ 2,00 e, 4 min depois, R$ 15.000 via API |
+| Account takeover (PIX) | C001, C034 | Micro-PIX de R$ 1,50 e R$ 2,00 e, 4 min depois, R$ 15.000 via API |
 | Valores redondos | C009, C007, C010, C001 | Múltiplos de R$ 5.000 (R$ 20.000, R$ 10.000, R$ 5.000 e o ATO de R$ 15.000), cada um abaixo do corte da janela móvel (R$ 25 mil) |
+| QSA / UBO | C025, C038, demais PJ | Aurora (C025): laranjas C026/C027 com 1% e **Cláudio Henrique Vilela 98% + administrador**. Holding C038: UBO offshore 90%. Outras PJ com quadro familiar. |
+| Telemetria ATO | C001 | Login falho + sessão ok em **Manaus** (`DEV-C001-ATO`) imediatamente antes do PIX alto; demais contas com 2 acessos habituais na cidade KYC |
+| Produtos / espécie | C025 e outras | Lance de consórcio contemplado em espécie (O001, R$ 85 mil na Aurora); demais aportes (CDB, VGBL, fundos, lance não contemplado) para ruído |
 
 ### 5.3 Ciclo de vida
 
@@ -272,7 +282,7 @@ No **sucesso**, `computeComplianceMetrics(X, X, 0)` alimenta `formatComplianceBa
 
 Nesses casos o título é **⚠️ Ordem de Execução do Compilador SQL**: o `WHERE` corre **antes** de o `SELECT` materializar Window Functions; a métrica deve ir no `WITH envelope_metricas AS (...)` (Fase 1) e o corte no `WHERE` externo (Fase 2). O destaque aponta o token (`LAG`, `OVER`, etc.).
 
-Demais regras: erro de sintaxe, coluna inexistente, tabela inexistente, função não suportada, coluna ambígua, uso indevido de **agregação** (`HAVING` após `GROUP BY`) e SQL incompleto.
+Demais regras: erro de sintaxe, coluna inexistente, tabela inexistente (lista as **cinco** tabelas), função não suportada, coluna ambígua, uso indevido de **agregação** (`HAVING` após `GROUP BY`) e SQL incompleto.
 
 ---
 
@@ -285,7 +295,7 @@ Todo desafio — base ou gerado — implementa `InvestigationScenario` (`src/cha
 | Campo | Uso |
 | --- | --- |
 | `id`, `origem` (`base`/`ia`/`offline`), `modelo?` | Identificação e selo de origem |
-| `titulo`, `enquadramento`, `dossie`, `objetivo` | Missão (frase) + aba Dossiê; `objetivo` técnico não é despejado na aba de colunas |
+| `titulo`, `enquadramento`, `dossie`, `objetivo` | Missão (linguagem de negócio de PLD/FT, **sem** cláusulas SQL) + aba Dossiê; `objetivo` não é despejado na aba de colunas. O card **Sua Missão** mostra a primeira frase (`investigationPanel.missionLine` / `starterTemplate`), ignorando pontos de milhar (`9.700`) |
 | `colunasEsperadas`, `ordenacao` | Objetivo de negócio derivado + spoiler de aliases; template inicial |
 | `dicaTexto`, `dicaSql` | "Dica de Sintaxe SQL" |
 | `decomposicao?` | Card **Decomposição em 2 Fases** (N3/N4 explícito; gerados inferem via `twoPhase.ts`) |
@@ -304,7 +314,7 @@ Todo cenário tem `nivel: TrailLevel` (`1 | 2 | 3 | 4 | 5`). `TRAIL_LEVELS` guar
 | 2 | Janelas e Classificação | `ROW_NUMBER() OVER (PARTITION BY …)` |
 | 3 | Análise Temporal e Mudança de Padrão | `LAG` / `LEAD` e recorte horário (`strftime`) |
 | 4 | Composição Analítica com CTEs | `WITH` + janelas, `LAG` e `ROWS BETWEEN` |
-| 5 | Laboratório Aberto (Agente IA) | Desafios gerados (LLM ou offline); o adaptador atribui `nivel: 5` |
+| 5 | Casos Avançados de PLD/FT | JOIN em QSA, telemetria de acesso e produtos financeiros; em seguida, desafios gerados (`nivel: 5`) |
 
 ### 8.3 Cenários base
 
@@ -318,6 +328,9 @@ Todo cenário tem `nivel: TrailLevel` (`1 | 2 | 3 | 4 | 5`). `TRAIL_LEVELS` guar
 | 4 | `conta-aquecida` | Conta "aquecida": PIX de teste seguido de salto abrupto (CTE) | `id_transacao, conta_origem, titular, valor, data_hora, intervalo_horas, media_historica, salto` | `salto DESC, id_transacao` |
 | 4 | `janela-movel` | Acúmulo móvel: soma das últimas 3 originações (ROWS BETWEEN) | `id_transacao, conta_origem, titular, valor, data_hora, acumulado_movel_3` | `acumulado_movel_3 DESC, id_transacao` |
 | 4 | `pep-escalada` | Nível 4.3 — Escalada Rápida em PEP (Escrutínio Reforçado) | `id_transacao, conta_origem, titular, cargo_pep, valor, data_hora, acumulado_movel_pep` | `acumulado_movel_pep DESC, id_transacao ASC` |
+| 5 | `ubo-aurora` | Rastreio de UBO: Sócios Relevantes em Empresas Suspeitas | `nome_socio, cpf_socio, percentual_participacao, cnpj_empresa` | `percentual_participacao DESC, nome_socio` |
+| 5 | `ato-dispositivo` | Account Takeover (ATO): Dispositivo Inédito e Transação Atípica | `id_conta, device_id, geolocalizacao_cidade, valor_transacao` | `valor_transacao DESC, id_conta` |
+| 5 | `consorcio-especie` | Ocultação Patrimonial: Lance de Consórcio em Espécie | `id_conta, tipo_produto, valor_aporte, forma_liquidacao` | `valor_aporte DESC, id_conta` |
 
 Notas de desenho:
 
@@ -326,6 +339,10 @@ Notas de desenho:
 - **`janela-movel`** carimba `SUM(valor) OVER (PARTITION BY id_conta_origem ORDER BY data_hora ROWS BETWEEN 2 PRECEDING AND CURRENT ROW)` e corta `acumulado_movel_3 >= 25000` no `WHERE` externo (marcadores FASE 1 / FASE 2). No dataset atual o gabarito devolve **18 linhas** (estruturação C026–C029, circuito C035–C038, PIX isolados altos como C025/C021/C023).
 - **`pep-escalada`** faz `JOIN` `transacoes_pix`/`contas` no envelope, carimba a mesma janela de 3 PIX como `acumulado_movel_pep` e no inspetor exige `eh_pep = 1` e `acumulado_movel_pep > 20000`. O recorte plantado é C013 (Deputado Estadual) em 27/08; valores individuais < R$ 10 mil e soma móvel < R$ 25 mil para não colidir com smurfing, burst, incompatibilidade, conta-aquecida nem 4.2.
 - **`noturno-coacao`** carimba `hora_transacao` com `CAST(strftime('%H', data_hora) AS INTEGER)` e corta `valor >= 5000` e `(hora >= 20 OR hora < 6)`. Inclui C005→C032 (R$ 8.500 / R$ 9.200) e originações noturnas ≥ R$ 5 mil da cadeia burst (C032).
+- **`ubo-aurora`** filtra `socios_empresas` da C025 com `percentual_participacao >= 25` e `eh_administrador = 1`. O gabarito depende de Cláudio (98%) estar marcado como administrador no JSON 1.4.0.
+- **`ato-dispositivo`** cruza `acessos_digitais` (login ok, cidade ≠ KYC) com PIX de origem `valor >= 10000` em janela de 0 a 900 s (`unixepoch`).
+- **`consorcio-especie`** recorta `operacoes_produtos` com `tipo_produto = 'CONSORCIO_LANCE'`, `forma_liquidacao = 'ESPECIE'` e `status_contemplacao = 1` (O001 na Aurora; O002 não contemplado fica de fora).
+- **`objetivo`** de todos os casos base descreve só a regra investigativa (faixas, recorrência, janelas, PEP, UBO, espécie). A sintaxe (`HAVING`, `LAG`, `ROW_NUMBER`, aliases) permanece em `dicaTexto` / `dicaSql` / `gabaritoSql`.
 
 ### 8.4 Adicionar um cenário base
 
@@ -399,7 +416,7 @@ flowchart TD
 
 ### 9.4 Integração com o validador
 
-`challengeAdapter.toScenario` converte o desafio gerado em `InvestigationScenario` no **Nível 5** da trilha: `ordenacao` vem de `extractOrderBy(solutionQuery)`, `colunaChave` é a primeira coluna esperada e as dicas de divergência são genéricas. Assim, desafios gerados usam exatamente o mesmo validador, a mesma tolerância e o mesmo gabarito comentado dos cenários base. O `registry.ts` guarda até 20 desafios gerados.
+`challengeAdapter.toScenario` converte o desafio gerado em `InvestigationScenario` no **Nível 5** da trilha (mesmo grupo dos casos UBO/ATO/consórcio): `ordenacao` vem de `extractOrderBy(solutionQuery)`, `colunaChave` é a primeira coluna esperada e as dicas de divergência são genéricas. Assim, desafios gerados usam exatamente o mesmo validador, a mesma tolerância e o mesmo gabarito comentado dos cenários base. O `registry.ts` guarda até 20 desafios gerados.
 
 ---
 
@@ -407,10 +424,10 @@ flowchart TD
 
 ### 10.1 Layout
 
-- **Navbar**: status Online/Offline, filtro da trilha, seletor de caso (default `smurfing`), **Agente IA**, **Dicionário de Tabelas**, **Entenda o Laboratório**, **Restaurar Dados Originais**.
-- **Coluna esquerda — O que fazer** (`investigationPanel.ts` + splitter em `layout.ts`): missão, atalho **Consultar Tabelas Disponíveis**, abas Dica / Dossiê / Colunas esperadas (objetivo de negócio + `<details>` de aliases), decomposição em 2 fases (N3/N4/gerados), gabarito após a primeira validação.
+- **Navbar**: status Online/Offline, filtro da trilha, seletor de caso (default `smurfing`), **Agente IA**, **Dicionário de Tabelas** (*toggle* do esquema), **Entenda o Laboratório**, **Restaurar Dados Originais**.
+- **Coluna esquerda — O que fazer** (`investigationPanel.ts` + splitter em `layout.ts`): missão (primeira frase do `objetivo`, sem cortar `R$ 9.700`), atalho **Consultar Tabelas Disponíveis** (`schema.toggle()`), abas Dica / Dossiê / Colunas esperadas (objetivo de negócio + `<details>` de aliases), decomposição em 2 fases (N3/N4/gerados), gabarito após a primeira validação.
 - **Coluna direita — Mão na massa**: editor (`Rodar Teste`, `Validar Resposta`, restaurar modelo, testar trecho, histórico), painel Resultados com `#output-scroll` (`flex-1 min-h-0 overflow-auto`). Erro de SQL/AML renderiza só o card; sucesso mostra banner + tabela. Popovers de histórico e exportação nascem com `hidden`.
-- **Gaveta Dicionário**: as 2 tabelas com contagem de linhas, descrição, clique-para-inserir coluna e 3 linhas de exemplo. Sem selos PK/FK no UI atual.
+- **Navegador de Esquema** (`schemaPanel.ts` + `#schema-drawer` em `index.html`): `fixed` ~24rem, `shadow-2xl z-30`, **sem backdrop**. Lista compacta das 5 tabelas (badge + linhas) + inspetor da tabela selecionada. Filtro `#schema-filter`. Insert via `data-insert` chama `editor.insertAtCursor` e flash **✓ inserido**; o painel **não** fecha. Fecha com **✕** ou **Esc**. Clique no editor não fecha.
 - **Gaveta Agente**: geração de desafios e atalho para o modal BYOK.
 
 ### 10.2 Sessão do editor e rascunhos (`editorSession.ts`, `drafts.ts`)

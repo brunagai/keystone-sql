@@ -36,15 +36,15 @@ npm run dev
 
 Depois abra **http://localhost:5173** no navegador (Chrome, Edge ou Firefox atualizados).
 
-Quando o canto superior esquerdo mostrar **● Online** em verde, o banco está pronto. As duas tabelas (`contas` e `transacoes_pix`) e as contagens de linhas ficam no **Dicionário de Tabelas**.
+Quando o canto superior esquerdo mostrar **● Online** em verde, o banco está pronto. As **cinco tabelas** e as contagens de linhas ficam no **Navegador de Esquema** (botão **📖 Dicionário de Tabelas** ou **📊 Consultar Tabelas Disponíveis**).
 
-Se você atualizou o gerador (por exemplo, para o desafio 4.3 de PEP), rode **`npm run generate:dataset`** e recarregue a página (ou **↻ Restaurar Dados Originais**) para o SQLite em memória refletir o JSON novo.
+Se você atualizou o gerador (QSA, telemetria, produtos, PEP, etc.), rode **`npm run generate:dataset`** e recarregue a página (ou **↻ Restaurar Dados Originais**) para o SQLite em memória refletir o JSON novo (`versao` **1.4.0**).
 
 ---
 
 ## 2. Conhecendo a tela
 
-A tela é um laboratório em **duas colunas**, com a missão à esquerda e o trabalho SQL à direita. O dicionário e o agente de IA abrem em **gavetas**, para não quebrar a leitura do caso.
+A tela é um laboratório em **duas colunas**, com a missão à esquerda e o trabalho SQL à direita. O **Navegador de Esquema** é um painel flutuante (não cobre o editor). O agente de IA abre em **gaveta**.
 
 ### Cabeçalho
 
@@ -52,7 +52,7 @@ A tela é um laboratório em **duas colunas**, com a missão à esquerda e o tra
 - **Filtro da trilha** — **Todos**, **Iniciante** (níveis 1–2), **Intermediário** (nível 3) ou **Avançado** (níveis 4–5).
 - **Seletor de caso** — o desafio ativo (na primeira carga: **1.1 · Smurfing para a receptora Aurora**).
 - **🤖 Agente IA** — gera novos desafios (nível 5) e abre a configuração da chave.
-- **📖 Dicionário de Tabelas** — consulta as **2 tabelas** do banco (`contas` e `transacoes_pix`). A IA não adiciona tabelas.
+- **📖 Dicionário de Tabelas** — abre ou fecha o **Navegador de Esquema** (5 tabelas). A IA não adiciona tabelas.
 - **❓ Entenda o Laboratório** — reabre o tour guiado.
 - **↻ Restaurar Dados Originais** — recria o banco sintético. Use se você alterou ou apagou dados sem querer.
 
@@ -60,8 +60,8 @@ A tela é um laboratório em **duas colunas**, com a missão à esquerda e o tra
 
 Redimensionável (arraste a faixa entre as colunas). Contém:
 
-- o card **Sua Missão** (o que investigar, em uma frase);
-- o atalho **📊 Consultar Tabelas Disponíveis** (abre o mesmo dicionário da navbar);
+- o card **Sua Missão** (o problema investigativo em linguagem de negócio, sem cláusulas SQL);
+- o atalho **📊 Consultar Tabelas Disponíveis** (abre ou fecha o Navegador de Esquema, o mesmo da navbar);
 - as abas de apoio:
   - **💡 Dica de SQL passo a passo** — texto pedagógico e esqueleto SQL (sem o gabarito completo);
   - **📋 Dossiê / Contexto Policial** — enquadramento regulatório e narrativa do caso;
@@ -81,21 +81,26 @@ Redimensionável (arraste a faixa entre as colunas). Contém:
 
 Valores em reais aparecem como **R$ 9.850,00** e datas como **dd/mm/aaaa hh:mm:ss**.
 
-### Gaveta Dicionário de Tabelas
+### Navegador de Esquema (Dicionário de Tabelas)
 
-Há exatamente **duas tabelas**:
+Painel flutuante à esquerda (~384px, sombra), **sem overlay escuro**. Você consulta o esquema e **continua digitando no editor**. Clicar fora **não** fecha. Fecha só no **✕** ou na tecla **Esc**. A navbar e **Consultar Tabelas Disponíveis** fazem *toggle*.
+
+Há **cinco tabelas** (badges: Cadastral, Transacional, Telemetria, Investimentos):
 
 - **`contas`** — cadastro KYC (nome, PF/PJ, ocupação, **renda mensal declarada**, banco, chave PIX, cidade, data de abertura, indicador **PEP** `eh_pep` e **`cargo_pep`**). Duas contas PEP de exemplo: **C013** (Deputado Estadual) e **C004** (Prefeito).
 - **`transacoes_pix`** — transferências (origem, destino, **valor**, **data e hora**, canal: APP, INTERNET_BANKING ou API).
+- **`socios_empresas`** — quadro de sócios e administradores (QSA) para rastrear **UBO** (participação e flag de administrador).
+- **`acessos_digitais`** — telemetria de login (dispositivo, IP, cidade, sucesso) para **account takeover**.
+- **`operacoes_produtos`** — aportes em consórcio e renda fixa, com forma de liquidação (incluindo **espécie**) e contemplação.
 
-Cada tabela mostra a **quantidade de linhas**. Clique no nome de uma coluna para inseri-lo no editor. Abra **👁 Ver 3 exemplos práticos desta tabela** para ver dados reais.
+Use o campo **Filtrar tabela ou coluna…**. A lista compacta mostra as tabelas e o total de linhas; ao escolher uma, o **inspetor** traz só as colunas daquela tabela (tipo, selos PK/FK, descrição e exemplo). Clique no nome da tabela ou da coluna para **inserir no cursor** do editor — o painel **permanece aberto** e aparece o selo **✓ inserido**. Abra **👁 Ver 3 exemplos práticos desta tabela** para ver dados reais.
 
 ---
 
 ## 3. Resolvendo seu primeiro desafio
 
 1. No seletor da navbar (ou deixe o caso padrão), escolha um cenário — por exemplo, **1.1 · Smurfing para a receptora Aurora (C025)**.
-2. Leia **Sua Missão**. Use **📊 Consultar Tabelas Disponíveis** para lembrar quais tabelas e colunas existem, em vez de adivinhar nomes.
+2. Leia **Sua Missão** (regra de negócio). Use **📊 Consultar Tabelas Disponíveis** para o esquema — o editor continua editável.
 3. Na aba **Colunas esperadas**, leia o objetivo de negócio. Só abra **Revelar Nomes Técnicos** se precisar conferir os aliases da esteira.
 4. Complete o modelo no editor. **↺ Restaurar Modelo Inicial** recoloca o esqueleto se você se perder.
 5. Clique em **▶ Rodar Teste** (ou **Ctrl+Enter**) para explorar os dados. Isso **não** pontua o desafio.
@@ -110,15 +115,18 @@ Os desafios estão organizados em **níveis progressivos**: cada nível introduz
 
 | Nível | Técnica | Desafio | O que investigar |
 | --- | --- | --- | --- |
-| **1 — Fundamentos de Agregação** | `GROUP BY`, `HAVING`, `JOIN` | **1.1 Smurfing** | Remetentes que enviaram várias transferências logo abaixo de R$ 10 mil para a mesma empresa |
-| | | **1.2 Incompatibilidade patrimonial** | Transferências de valor muito acima da renda declarada do titular |
-| **2 — Janelas e Classificação** | `ROW_NUMBER()` | **2.1 Pico individual por conta** | O maior PIX de cada conta no dia 18/08, com quantas operações e quanto cada uma movimentou no dia (atenção ao empate!) |
-| **3 — Análise Temporal** | `LAG` / `LEAD` | **3.1 Burst / alta frequência** | Transferências feitas com segundos de diferença pela mesma conta |
-| | `strftime` hora | **3.2 Transferência noturna sob coação** | PIX ≥ R$ 5 mil entre 20h e 5h59 (Res. BCB 142 / sequestro relâmpago) |
-| **4 — Composição com CTEs** | `WITH` + janelas | **4.1 Conta "aquecida"** | Contas que fazem PIX de teste de poucos reais e, dias depois, movimentam valores dezenas de vezes maiores |
-| | `ROWS BETWEEN` | **4.2 Acúmulo móvel (3 PIX)** | Soma móvel das últimas 3 originações ≥ R$ 25 mil (estruturação em janela) |
-| | PEP + janela | **4.3 Escalada rápida em PEP** | Titular PEP (`eh_pep = 1`) cuja soma móvel das últimas 3 originações supera R$ 20 mil |
-| **5 — Laboratório Aberto** | Livre | Desafios gerados pelo agente | Casos inéditos criados pela IA (ou pelo gerador offline) |
+| **1 — Fundamentos de Agregação** | `GROUP BY`, `HAVING`, `JOIN` | **1.1 Smurfing** | Remetentes com PIX individuais entre R$ 9.700,00 e R$ 9.999,00 para a C025, com pelo menos 2 operações |
+| | | **1.2 Incompatibilidade patrimonial** | Transferências iguais ou superiores a 30 vezes a renda declarada do titular da origem |
+| **2 — Janelas e Classificação** | `ROW_NUMBER()` | **2.1 Pico individual por conta** | O maior PIX de cada conta no dia 18/08, com quantas operações e quanto cada uma movimentou no dia (atenção ao empate) |
+| **3 — Análise Temporal** | `LAG` / `LEAD` | **3.1 Burst / alta frequência** | Transferências com no máximo 60 s em relação à anterior da mesma origem |
+| | recorte horário | **3.2 Transferência noturna sob coação** | PIX de R$ 5.000,00 ou mais entre 20h e 5h59 (Res. BCB 142 / sequestro relâmpago) |
+| **4 — Composição com CTEs** | `WITH` + janelas | **4.1 Conta "aquecida"** | Histórico curto, salto de 10× a média anterior, valor ≥ R$ 5.000,00 e até 10 dias desde o PIX anterior |
+| | soma móvel | **4.2 Acúmulo móvel (3 PIX)** | Soma dos últimos 3 PIX da mesma origem ≥ R$ 25.000,00 |
+| | PEP + janela | **4.3 Escalada rápida em PEP** | Titular PEP cuja soma móvel das últimas 3 originações supera R$ 20.000,00 |
+| **5 — Casos avançados de PLD/FT** | QSA / UBO | **5.1 Sócios relevantes da Aurora** | Sócios da C025 com ≥ 25% e poderes de administrador |
+| | telemetria | **5.2 Account takeover** | Login ok em cidade diferente do cadastro até 15 min antes de PIX de R$ 10.000,00 ou mais |
+| | produtos | **5.3 Consórcio em espécie** | Lances de consórcio já contemplados liquidados em espécie |
+| | Livre | Desafios gerados pelo agente | Casos inéditos (IA ou gerador offline), no mesmo nível 5 |
 
 ---
 
@@ -190,7 +198,7 @@ Isso é o mesmo raciocínio do card **Decomposição em 2 Fases** nos níveis 3,
    - **Avançado** — `WITH` + `LAG()`/`LEAD()` (burst, intervalo entre PIX) e corte no `WHERE` externo, no mesmo esquema de duas fases.
 2. Clique em **✨ Gerar Novo Desafio com IA**.
 3. Acompanhe as mensagens: o agente analisa as tipologias do Bacen e o dataset, redige o caso e roda um **Sanity Check** — executa o gabarito no banco para garantir que ele funciona e encontra evidências.
-4. Quando terminar, o desafio aparece no grupo **"Nível 5 — Laboratório Aberto (Agente IA)"** do seletor, já selecionado, e o editor recebe um **template comentado** com o título, o objetivo, as colunas esperadas e a ordenação. É só começar a escrever depois do `SELECT`.
+4. Quando terminar, o desafio aparece no grupo **"Nível 5 — Casos Avançados de PLD/FT"** do seletor (junto dos casos 5.1–5.3), já selecionado, e o editor recebe um **template comentado** com o título, o objetivo, as colunas esperadas e a ordenação. É só começar a escrever depois do `SELECT`.
 
 Focos disponíveis: os clássicos (fracionamento, burst, incompatibilidade, conta de passagem, fan-in/fan-out, horário atípico, valores redondos) e os **quatro blocos avançados** — (A) coação física/furto/PIX forçado, (B) invasão digital e engenharia social, (C) laranjas e mulas, (D) Carta Circular 4.001 avançada. O agente escolhe **uma** das **15 tipologias** do catálogo e aplica o corte SQL correspondente (hora noturna, micro-PIX + salto, fan-out, round-tripping, etc.).
 
@@ -273,7 +281,7 @@ O botão fica desabilitado enquanto não houver um resultado válido (por exempl
 | **Ctrl+Enter** | Editor | **Rodar Teste**: executa a consulta inteira, ou só o trecho selecionado |
 | **Tab** | Editor | Indenta com 2 espaços |
 | **Ctrl+Z** | Editor | Desfaz (inclusive após carregar do histórico ou o gabarito) |
-| **Esc** | Histórico, exportação, aviso do editor, modal de IA | Fecha / mantém sua query |
+| **Esc** | Histórico, exportação, aviso do editor, modal de IA, Navegador de Esquema | Fecha / mantém sua query (no esquema, fecha o painel) |
 | **↑ / ↓** e **Enter** | Histórico | Navega e escolhe uma consulta |
 
 ---
@@ -314,7 +322,13 @@ Use **Testar conexão** no modal. Mensagens comuns: chave recusada (confira se c
 Depois que a página estiver aberta, sim — exceto a geração com IA, que cai automaticamente no modo offline.
 
 **Quantas tabelas o banco tem?**
-Sempre **duas** (`contas` e `transacoes_pix`), com ou sem IA. O agente só cria **desafios** novos (nível 5), não tabelas.
+Sempre **cinco** (`contas`, `transacoes_pix`, `socios_empresas`, `acessos_digitais`, `operacoes_produtos`), com ou sem IA. O agente só cria **desafios** novos (nível 5), não tabelas.
+
+**O dicionário some quando eu clico numa coluna?**
+Não deveria: o Navegador de Esquema só fecha no **✕** ou **Esc**. Clique insere o nome no editor e mostra **✓ inserido**.
+
+**A missão parece “incompleta” (corta em R$ 9.)?**
+O recorte da primeira frase ignora pontos de milhar (`9.700`). Se ainda vir texto truncado, recarregue a página após a última atualização.
 
 **O menu de Histórico ou Exportar ficou aberto sozinho.**
 Eles devem nascer fechados. Recarregue a página. Eles só abrem ao clicar nos respectivos botões.
@@ -339,6 +353,9 @@ Não. Todos os nomes, documentos e transações são **fictícios**, criados par
 | **Conta de passagem** | Conta que recebe e repassa quase tudo rapidamente, sem reter saldo |
 | **Fan-in / fan-out** | Muitas origens concentrando em uma conta (fan-in) ou uma conta dispersando para muitas (fan-out) |
 | **Incompatibilidade patrimonial** | Movimentação incompatível com a renda, o faturamento ou a ocupação declarados |
+| **UBO** | *Ultimate Beneficial Owner*: beneficiário final que de fato controla a empresa (participação relevante e/ou administração) |
+| **QSA** | Quadro de Sócios e Administradores (tabela `socios_empresas`) |
+| **ATO / account takeover** | Invasão de conta: acesso atípico (dispositivo/cidade) imediatamente antes de transação de alto valor |
 | **Laranja** | Pessoa cuja conta é usada para movimentar recursos de terceiros |
 | **PEP** | Pessoa Exposta Politicamente: titular com cargo público relevante (`eh_pep = 1`, `cargo_pep`). Exige monitoramento KYC reforçado |
 | **Esteira de risco** | Fila de monitoramento: primeiro carimbar métricas (envelope), depois cortar o que vira alerta (inspetor) |

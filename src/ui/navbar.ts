@@ -9,7 +9,10 @@ export function hideFloatingMenus(): void {
   }
 }
 
-/** Garante o seletor de casos na barra superior e oculta menus flutuantes. */
+/**
+ * Seletor `#scenario-select` (preenchido em `investigationPanel`):
+ * trilha 0–5; filtro Iniciante = níveis 0–2; carga inicial = Caso 0.1.
+ */
 export function initNavbar(): HTMLSelectElement | null {
   hideFloatingMenus();
   const select = document.getElementById('scenario-select');
