@@ -33,7 +33,7 @@ const STEPS: readonly TourStep[] = [
     targetId: 'action-buttons-group',
     placement: 'below',
     title: 'Executar e validar',
-    body: 'Executar Consulta mostra a tabela. Validar Resposta compara o resultado com o gabarito da esteira.',
+    body: 'Rodar Teste mostra os dados no console (modo exploratório). Validar Resposta submete a consulta à esteira AML.',
   },
 ];
 

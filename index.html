@@ -81,15 +81,20 @@
               <div class="ml-auto flex items-center gap-2">
                 <div id="action-buttons-group" class="flex items-center gap-2">
                 <button id="btn-run" type="button" disabled
-                  class="rounded-lg bg-emerald-600 px-3.5 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40">
-                  ▶ Executar Consulta
+                  class="rounded-lg border border-slate-600 bg-transparent px-3.5 py-1.5 text-sm font-medium text-slate-200 hover:border-slate-400 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40">
+                  ▶ Rodar Teste
                 </button>
                 <button id="btn-validate" type="button" disabled
-                  class="rounded-lg bg-sky-600 px-3.5 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-40">
+                  class="rounded-lg bg-indigo-600 px-3.5 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-40">
                   ✓ Validar Resposta
                 </button>
                 </div>
                 <span class="mx-1 h-5 w-px bg-slate-800" aria-hidden="true"></span>
+                <button id="btn-restore-template" type="button"
+                  title="Recoloca o esqueleto SQL guiado deste desafio"
+                  class="rounded-md px-2.5 py-1.5 text-[12px] text-slate-400 hover:bg-slate-800 hover:text-slate-200">
+                  ↺ Restaurar Modelo Inicial
+                </button>
                 <div class="relative">
                   <button id="btn-run-selection" type="button" disabled
                     title="Executa apenas o pedaço de código selecionado com o cursor no editor (ideal para testar subqueries e blocos WITH/CTE)."
@@ -240,7 +245,7 @@
             <span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-sky-500/15 text-sm font-semibold text-sky-300">3</span>
             <div>
               <p class="font-medium text-slate-100">Escreva a consulta e valide</p>
-              <p class="mt-1 text-sm leading-relaxed text-slate-400">No editor, complete o rascunho. <span class="text-slate-200">Executar Consulta</span> mostra a tabela; <span class="text-slate-200">Validar Resposta</span> compara com o gabarito da esteira.</p>
+              <p class="mt-1 text-sm leading-relaxed text-slate-400">No editor, complete o rascunho. <span class="text-slate-200">Rodar Teste</span> mostra a tabela (exploração); <span class="text-slate-200">Validar Resposta</span> submete o caso à esteira AML.</p>
             </div>
           </li>
         </ol>

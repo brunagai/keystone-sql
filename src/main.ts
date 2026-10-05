@@ -7,7 +7,6 @@ import { addGenerated, allScenarios, onScenariosChange } from './challenges/regi
 import { validateChallenge } from './challenges/validator.ts';
 import { executeTimedQuery, getDatabase, resetDatabase } from './database/sqlite.ts';
 import { prepareExecutableSql } from './database/cteInspector.ts';
-import { sameSql } from './database/sqlText.ts';
 import { initAgentPanel } from './ui/agentPanel.ts';
 import { initAiSettingsModal } from './ui/aiSettingsModal.ts';
 import { initDossierExport } from './ui/dossierExport.ts';
@@ -19,18 +18,6 @@ import { initLabGuide, startOnboardingTour } from './ui/onboardingTour.ts';
 import { initOutputPanel } from './ui/outputPanel.ts';
 import { initQueryHistory, type HistoryOrigin } from './ui/queryHistory.ts';
 import { initSchemaPanel } from './ui/schemaPanel.ts';
-
-const QUERY_INICIAL = `-- Maiores transações PIX do período
-SELECT t.data_hora,
-       o.titular AS origem,
-       d.titular AS destino,
-       t.canal,
-       t.valor
-FROM transacoes_pix t
-JOIN contas o ON o.id_conta = t.id_conta_origem
-JOIN contas d ON d.id_conta = t.id_conta_destino
-ORDER BY t.valor DESC
-LIMIT 20;`;
 
 const errorMessage = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 
@@ -59,6 +46,7 @@ const editor = initEditor({
   onTestSelection: () => runCurrentQuery({ inspectCte: true }),
   onValidate: () => void validateCurrentQuery(),
   onChange: () => session.noteEdit(),
+  onRestoreTemplate: () => void session.restoreTemplate(),
 });
 const session = createEditorSession(editor, investigation.getSelectedScenario());
 const history = initQueryHistory((sql) => {
@@ -147,6 +135,7 @@ function runCurrentQuery(options?: { inspectCte?: boolean }): boolean {
     header.setDatasetCounts(countRows(db));
     dossier.setData({ scenario: investigation.getSelectedScenario(), sql, results, executedAt, elapsedMs });
     recordExecution('execucao', sql, executedAt, elapsedMs, totalRows(results));
+    output.showExploreBanner(totalRows(results));
     if (selection) editor.showSnippetHint(totalRows(results));
     else editor.clearHint();
     return true;
@@ -230,14 +219,13 @@ async function handleReset(): Promise<void> {
 
 async function bootstrap(): Promise<void> {
   header.setConnectionState('loading');
-  session.start(QUERY_INICIAL);
+  session.start();
   editor.focus();
   output.showMessage('Inicializando SQLite WebAssembly…');
 
   try {
     applyDatabase(await getDatabase());
-    if (sameSql(editor.getFullSql(), QUERY_INICIAL)) runCurrentQuery();
-    else output.showMessage('Rascunho restaurado. Pressione Ctrl+Enter para executar.');
+    output.showMessage('Modelo do desafio carregado. Complete a consulta e use Rodar Teste para explorar os dados.');
     startOnboardingTour();
   } catch (error) {
     console.error(error);

@@ -9,6 +9,7 @@ export interface OutputPanelController {
   showResults(results: QueryExecResult[], elapsedMs: number, keepBanner?: boolean): void;
   showError(message: string, elapsedMs?: number, keepBanner?: boolean): void;
   showMessage(message: string): void;
+  showExploreBanner(rowCount: number): void;
   showValidationPending(): void;
   showValidation(result: ValidationResult, expectedColumns: readonly string[]): void;
   clearValidation(): void;
@@ -157,6 +158,14 @@ export function initOutputPanel(): OutputPanelController {
       setBanner('');
       meta.innerHTML = '';
       body.innerHTML = placeholder(message);
+    },
+    showExploreBanner(rowCount) {
+      const linhas = rowCount === 1 ? '1 linha' : `${formatInteiro(rowCount)} linhas`;
+      setBanner(`
+        <div role="status" class="rounded-xl border border-slate-700 bg-slate-900/70 px-4 py-2.5 text-[13px] leading-relaxed text-slate-300">
+          🔍 Modo Exploratório: Consulta executada com sucesso (${linhas}). Para submeter e pontuar neste caso, clique em
+          <span class="font-medium text-indigo-300">Validar Resposta</span>.
+        </div>`);
     },
     showValidationPending() {
       setBanner(`

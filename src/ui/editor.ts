@@ -34,13 +34,14 @@ export interface EditorHandlers {
   onTestSelection: () => void;
   onValidate: () => void;
   onChange: () => void;
+  onRestoreTemplate: () => void;
 }
 
 const INDENT = '  ';
 const HINT_TIMEOUT_MS = 6000;
 const HELP_TIMEOUT_MS = 8000;
 
-export function initEditor({ onRun, onTestSelection, onValidate, onChange }: EditorHandlers): EditorController {
+export function initEditor({ onRun, onTestSelection, onValidate, onChange, onRestoreTemplate }: EditorHandlers): EditorController {
   const textarea = byId<HTMLTextAreaElement>('sql-editor');
   const runButton = byId<HTMLButtonElement>('btn-run');
   const validateButton = byId<HTMLButtonElement>('btn-validate');
@@ -48,6 +49,7 @@ export function initEditor({ onRun, onTestSelection, onValidate, onChange }: Edi
   const banner = byId('editor-banner');
   const hint = byId('editor-hint');
   const selectionHelp = byId('selection-help');
+  const restoreButton = byId<HTMLButtonElement>('btn-restore-template');
 
   const hasSelection = (): boolean => textarea.selectionStart !== textarea.selectionEnd;
 
@@ -66,13 +68,14 @@ export function initEditor({ onRun, onTestSelection, onValidate, onChange }: Edi
     syncSelectionAffordance();
   };
 
-  runButton.title = 'Executa a consulta no banco local (Ctrl+Enter)';
-  validateButton.title = 'Confere se o resultado bate com o gabarito do desafio';
+  runButton.title = 'Executa sua consulta livremente no banco para explorar e conferir os dados.';
+  validateButton.title = 'Submete sua query para a esteira AML conferir se você encontrou as evidências do caso.';
   selectionButton.title =
     'Executa apenas o pedaço de código selecionado com o cursor no editor (ideal para testar subqueries e blocos WITH/CTE).';
   runButton.addEventListener('click', onRun);
   selectionButton.addEventListener('click', onTestSelection);
   validateButton.addEventListener('click', onValidate);
+  restoreButton.addEventListener('click', onRestoreTemplate);
   textarea.addEventListener('input', () => {
     onChange();
     syncSelectionAffordance();
