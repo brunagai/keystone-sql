@@ -1,5 +1,4 @@
 import { getDraft, saveDraft } from '../challenges/drafts.ts';
-import { findScenario } from '../challenges/registry.ts';
 import type { InvestigationScenario } from '../challenges/scenarios.ts';
 import { buildStarterTemplate } from '../challenges/starterTemplate.ts';
 import { sameSql, stripSqlComments } from '../database/sqlText.ts';
@@ -89,14 +88,11 @@ export function createEditorSession(editor: EditorController, initial: Investiga
       const current = editor.getFullSql();
 
       if (hasWorkInProgress(current)) {
-        const previous = owner;
         const replace = await editor.confirmReplace({
-          message: `Você tem uma query em andamento. Carregar o modelo de ${quoted(next)}?`,
-          detail: findScenario(previous.id)
-            ? `Substituir guarda sua query como rascunho de ${quoted(previous)}; ela volta quando você reabrir aquele desafio.`
-            : 'O desafio anterior foi removido: substituir descarta a query atual.',
-          confirmLabel: 'Carregar modelo do caso',
-          cancelLabel: 'Manter minha query',
+          message: 'Você possui uma query em andamento neste desafio.',
+          detail: 'Deseja substituir pelo modelo inicial ou manter seu rascunho atual?',
+          confirmLabel: 'Carregar modelo inicial',
+          cancelLabel: 'Manter meu rascunho',
         });
         if (token !== switchToken) return;
         flush();
@@ -131,7 +127,7 @@ export function createEditorSession(editor: EditorController, initial: Investiga
           message: 'Restaurar o modelo inicial deste desafio?',
           detail: 'A consulta atual será substituída pelo scaffolding guiado. O rascunho anterior deixa de valer para este caso.',
           confirmLabel: 'Restaurar modelo',
-          cancelLabel: 'Manter minha query',
+          cancelLabel: 'Manter meu rascunho',
         });
         if (!replace) return;
       }

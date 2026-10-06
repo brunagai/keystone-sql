@@ -128,16 +128,18 @@ export function initEditor({ onRun, onValidate, onChange, onRestoreTemplate }: E
     confirmReplace({ message, detail, confirmLabel, cancelLabel }) {
       settlePrompt(false);
       banner.innerHTML = `
-        <span class="mt-px text-amber-400" aria-hidden="true">⚠</span>
-        <div class="min-w-0 flex-1">
-          <p class="font-medium text-amber-200">${escapeHtml(message)}</p>
-          ${detail ? `<p class="mt-0.5 text-[11px] text-amber-200/60">${escapeHtml(detail)}</p>` : ''}
+        <div class="flex min-w-0 w-full items-start gap-2 sm:flex-1">
+          <span class="mt-px shrink-0 text-amber-400" aria-hidden="true">⚠</span>
+          <div class="min-w-0 w-full">
+            <p class="font-medium leading-relaxed text-amber-200">${escapeHtml(message)}</p>
+            ${detail ? `<p class="mt-1 leading-relaxed text-amber-200/70">${escapeHtml(detail)}</p>` : ''}
+          </div>
         </div>
-        <div class="flex shrink-0 gap-1.5">
+        <div class="flex w-full flex-col gap-2 pt-2 xs:flex-row sm:w-auto sm:shrink-0 sm:flex-row sm:pt-0">
           <button type="button" data-choice="replace"
-            class="rounded bg-amber-600 px-2 py-0.5 font-semibold text-zinc-950 hover:bg-amber-500">${escapeHtml(confirmLabel)}</button>
+            class="min-h-10 w-full rounded-md bg-amber-600 px-3 py-2 text-center font-semibold text-zinc-950 hover:bg-amber-500 sm:min-h-0 sm:w-auto sm:py-1.5">${escapeHtml(confirmLabel)}</button>
           <button type="button" data-choice="keep"
-            class="rounded border border-slate-600 px-2 py-0.5 text-slate-200 hover:bg-slate-800">${escapeHtml(cancelLabel)}</button>
+            class="min-h-10 w-full rounded-md border border-slate-600 px-3 py-2 text-center text-slate-200 hover:bg-slate-800 sm:min-h-0 sm:w-auto sm:py-1.5">${escapeHtml(cancelLabel)}</button>
         </div>`;
       banner.hidden = false;
       return new Promise<boolean>((resolve) => {
