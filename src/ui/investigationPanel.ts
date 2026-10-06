@@ -239,6 +239,42 @@ function renderCommentedSql(sql: string): string {
     .join('\n');
 }
 
+function renderDidacticGabarito(scenario: InvestigationScenario): string {
+  const aula = scenario.explicacaoGabarito;
+  if (!aula) {
+    return `<pre class="max-h-80 overflow-auto rounded-xl bg-slate-950 p-3 font-mono text-[12px] leading-6">${renderCommentedSql(scenario.gabaritoSql ?? '')}</pre>`;
+  }
+
+  const passos = aula.passos
+    .map(
+      (passo) => `
+        <li class="space-y-1">
+          <code class="block font-mono text-cyan-300 text-xs bg-slate-950/80 px-2 py-1 rounded border border-slate-800/80 break-words">${escapeHtml(passo.linha)}</code>
+          <p class="text-xs text-slate-300">${formatInline(passo.explicacao)}</p>
+        </li>`,
+    )
+    .join('');
+
+  const atencao = aula.atencao
+    ? `
+      <div class="bg-amber-950/20 border border-amber-500/30 rounded-md p-2.5 mt-3">
+        <p class="text-xs font-semibold text-amber-300">⚠️ Ponto de Atenção</p>
+        <p class="mt-1 text-xs text-amber-200/90 leading-relaxed">${formatInline(aula.atencao)}</p>
+      </div>`
+    : '';
+
+  return `
+    <div class="bg-slate-900/60 border border-slate-800 rounded-md p-3 mb-3">
+      <p class="text-xs font-semibold text-slate-300 mb-1">💡 Raciocínio de Negócio</p>
+      <p class="text-xs text-slate-400 leading-relaxed">${formatInline(aula.raciocinio)}</p>
+    </div>
+    <div>
+      <p class="text-xs font-semibold text-slate-300 mb-2">🛠️ Decomposição da Consulta</p>
+      <ol class="space-y-3 list-none p-0 m-0">${passos}</ol>
+    </div>
+    ${atencao}`;
+}
+
 export function initInvestigationPanel({
   onLoadSolution,
   onScenarioChange,
@@ -311,7 +347,7 @@ export function initInvestigationPanel({
           <span class="ml-auto text-[12px] font-normal text-slate-500">${count} tentativa${count > 1 ? 's' : ''}</span>
         </summary>
         <div class="space-y-2 border-t border-slate-800 p-3">
-          <pre class="max-h-80 overflow-auto rounded-xl bg-slate-950 p-3 font-mono text-[12px] leading-6">${renderCommentedSql(selected.gabaritoSql ?? '')}</pre>
+          ${renderDidacticGabarito(selected)}
           <button type="button" data-load-solution
             class="w-full rounded-lg border border-slate-700 px-3 py-2 text-[12px] text-slate-300 hover:border-sky-600 hover:text-sky-200">
             Abrir gabarito no editor

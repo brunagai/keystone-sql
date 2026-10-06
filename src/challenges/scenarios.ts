@@ -76,6 +76,17 @@ export interface TwoPhaseReasoning {
   fase2: TwoPhaseStep;
 }
 
+export interface PassoGabarito {
+  linha: string;
+  explicacao: string;
+}
+
+export interface ExplicacaoGabarito {
+  raciocinio: string;
+  passos: PassoGabarito[];
+  atencao?: string;
+}
+
 export interface InvestigationScenario {
   id: ScenarioId;
   origem: ScenarioOrigin;
@@ -96,6 +107,8 @@ export interface InvestigationScenario {
   decomposicao?: TwoPhaseReasoning;
   /** Query de referência (ground truth). Os comentários `--` fazem parte do gabarito comentado. */
   gabaritoSql: string;
+  /** Mini-aula do card “Ver gabarito comentado”. O editor recebe só `gabaritoSql`. */
+  explicacaoGabarito?: ExplicacaoGabarito;
   /** Coluna do gabarito usada para apontar entidades faltantes/excedentes. */
   colunaChave: string;
   rotuloEntidade: { singular: string; plural: string };
@@ -181,6 +194,27 @@ SELECT
   ocupacao
 FROM contas
 WHERE eh_pep = 1;`,
+    explicacaoGabarito: {
+      raciocinio:
+        'Identificamos clientes com exposição política filtrando o indicador booleano cadastral e selecionando apenas os dados necessários para triagem.',
+      passos: [
+        {
+          linha: 'SELECT id_conta, titular, ocupacao',
+          explicacao:
+            'Projeta exatamente as colunas solicitadas para o relatório, evitando transferir campos dispensáveis.',
+        },
+        {
+          linha: 'FROM contas',
+          explicacao: 'Consulta a base cadastral de clientes do banco.',
+        },
+        {
+          linha: 'WHERE eh_pep = 1',
+          explicacao: 'Filtra registros onde o sinalizador de Pessoa Politicamente Exposta está ativo.',
+        },
+      ],
+      atencao:
+        'No SQLite, sinalizadores booleanos são gravados como números inteiros: utilize 1 para verdadeiro e 0 para falso.',
+    },
     colunaChave: 'id_conta',
     rotuloEntidade: { singular: 'conta PEP', plural: 'contas PEP' },
     dicasDivergencia: {
@@ -421,6 +455,42 @@ WHERE t.id_conta_destino = 'C025'        -- receptora sob alerta
 GROUP BY t.id_conta_origem               -- uma linha por remetente
 HAVING COUNT(*) >= 2                     -- recorrência: padrão de fracionamento, não evento isolado
 ORDER BY valor_total DESC;               -- maior exposição primeiro`,
+    explicacaoGabarito: {
+      raciocinio:
+        'O recorte isola quem pulveriza PIX logo abaixo de R$ 10 mil para a Aurora (C025): filtra destino e faixa, consolida por remetente e só então exige recorrência.',
+      passos: [
+        {
+          linha: 'SELECT t.id_conta_origem AS conta_origem, COUNT(*) AS total_operacoes, SUM(t.valor) AS valor_total',
+          explicacao:
+            'Uma linha por remetente, com a quantidade de envios e o montante pulverizado — as três colunas do relatório.',
+        },
+        {
+          linha: 'FROM transacoes_pix AS t',
+          explicacao:
+            'Toda a evidência está na liquidação. Não há JOIN com o cadastro: titular e renda não entram neste recorte.',
+        },
+        {
+          linha: "WHERE t.id_conta_destino = 'C025' AND t.valor BETWEEN 9700 AND 9999",
+          explicacao:
+            'Restringe à receptora sob alerta e à faixa unitária logo abaixo do limiar de comunicação. O `BETWEEN` é inclusivo nas duas pontas.',
+        },
+        {
+          linha: 'GROUP BY t.id_conta_origem',
+          explicacao: 'Agrupa os PIX filtrados para que COUNT e SUM descrevam cada conta de origem, não cada transação.',
+        },
+        {
+          linha: 'HAVING COUNT(*) >= 2',
+          explicacao:
+            'O corte de recorrência vale sobre o grupo. `WHERE` não enxerga agregados: um único PIX na faixa não caracteriza smurfing.',
+        },
+        {
+          linha: 'ORDER BY valor_total DESC',
+          explicacao: 'Prioriza os maiores montantes, como pede o enunciado da fila de exposição.',
+        },
+      ],
+      atencao:
+        'Não coloque `COUNT(*)` no `WHERE`. Recorrência é predicado de grupo (`HAVING`). Quem envia um único PIX de R$ 9.850 para a C025 deve ficar de fora.',
+    },
     colunaChave: 'conta_origem',
     rotuloEntidade: { singular: 'remetente', plural: 'remetentes' },
     dicasDivergencia: {
