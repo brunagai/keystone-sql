@@ -427,6 +427,228 @@ ORDER BY valor_total DESC;               -- maior exposição primeiro`,
     },
   },
   {
+    id: 'alta-recorrencia',
+    origem: 'base',
+    nivel: 1,
+    titulo: 'Alta Recorrência: Pulverização Sistemática de Envios',
+    enquadramento: 'Carta Circular Bacen 4.001/2020 · Inciso IV - Alta Frequência',
+    dossie:
+      'A mesa de monitoramento observou pagadores com rotina de disparos muito acima do uso habitual. O recorte pede ' +
+      'quem pulverizou envios no período, independentemente do valor unitário ou do favorecido, para priorizar contas ' +
+      'com comportamento repetitivo.',
+    objetivo:
+      'Identifique as contas remetentes que realizaram um volume elevado de transferências, localizando quem efetuou 10 ou mais envios no período monitorado.',
+    colunasEsperadas: ['conta_origem', 'total_operacoes', 'valor_total'],
+    ordenacao: 'total_operacoes DESC',
+    dicaTexto:
+      'Consolide os envios por conta de origem e, só depois, mantenha os grupos cuja quantidade de remessas atinge o piso de 10.',
+    dicaSql: `-- HAVING filtra GRUPOS (depois do agrupamento), não linhas isoladas
+-- COUNT(*) no HAVING corta quem tem poucas ocorrências
+SELECT id_conta_origem AS conta_origem,
+       COUNT(*)        AS total_operacoes,
+       SUM(valor)      AS valor_total
+FROM transacoes_pix
+GROUP BY id_conta_origem
+HAVING COUNT(*) >= ...
+ORDER BY total_operacoes DESC;`,
+    gabaritoSql: `-- Gabarito · alta recorrência de envios (≥ 10)
+SELECT
+  id_conta_origem AS conta_origem,
+  COUNT(*)        AS total_operacoes,
+  SUM(valor)      AS valor_total
+FROM transacoes_pix
+GROUP BY id_conta_origem
+HAVING COUNT(*) >= 10
+ORDER BY total_operacoes DESC;`,
+    colunaChave: 'conta_origem',
+    rotuloEntidade: { singular: 'remetente', plural: 'remetentes' },
+    dicasDivergencia: {
+      excesso:
+        'Há remetentes a mais. O corte de quantidade vale sobre o grupo: `HAVING COUNT(*) >= 10`. Sem piso, a listagem vira volumetria do Nível 0.',
+      falta:
+        'Faltam remetentes. O piso é inclusivo (`>= 10`). Não restrinja valor, destino ou canal: qualquer envio conta.',
+      valores:
+        'Os remetentes estão certos, mas as métricas não. `total_operacoes` é `COUNT(*)` e `valor_total` é `SUM(valor)`.',
+      ordenacao: 'Os dados estão corretos, mas a ordem não. Ordene pela quantidade de envios, da maior para a menor.',
+    },
+    resumirSucesso(gabarito) {
+      const contas = distinct(columnValues(gabarito, 'conta_origem'));
+      const total = sum(columnValues(gabarito, 'valor_total'));
+      return {
+        message: `Alta recorrência: ${gabarito.values.length} remetente(s) com 10 ou mais envios, somando ${formatBRL(total)}.`,
+        entities: contas.slice(0, 8),
+        details: ['O próximo recorte inverte o olhar: concentração de créditos no favorecido, não no pagador.'],
+      };
+    },
+  },
+  {
+    id: 'concentracao-creditos',
+    origem: 'base',
+    nivel: 1,
+    titulo: 'Concentração Atípica de Créditos Recebidos',
+    enquadramento: 'Carta Circular Bacen 4.001/2020 · Inciso I - Fracionamento / fan-in',
+    dossie:
+      'Receptoras que acumulam entradas relevantes em curto período concentram risco de pass-through. A esteira pediu as ' +
+      'contas favorecidas cujo crédito acumulado ultrapassa R$ 100.000,00, com o ticket médio de cada crédito para ' +
+      'distinguir poucos aportes grandes de muitos recebimentos menores.',
+    objetivo:
+      'Mapeie as contas favorecidas que concentraram montantes expressivos de entrada, filtrando quem recebeu mais de R$ 100.000,00 no acumulado e calculando o valor médio de cada crédito.',
+    colunasEsperadas: ['conta_destino', 'total_recebido', 'valor_medio_operacao'],
+    ordenacao: 'total_recebido DESC',
+    dicaTexto:
+      'Agrupe pelo favorecido, some os créditos e calcule o ticket médio. Mantenha só quem ultrapassa o piso acumulado de R$ 100.000,00.',
+    dicaSql: `-- SUM no HAVING corta pelo volume acumulado do grupo
+-- AVG devolve o ticket médio das operações daquele favorecido
+SELECT id_conta_destino AS conta_destino,
+       SUM(valor)       AS total_recebido,
+       AVG(valor)       AS valor_medio_operacao
+FROM transacoes_pix
+GROUP BY id_conta_destino
+HAVING SUM(valor) > ...
+ORDER BY total_recebido DESC;`,
+    gabaritoSql: `-- Gabarito · concentração de créditos recebidos (> R$ 100 mil)
+SELECT
+  id_conta_destino AS conta_destino,
+  SUM(valor)       AS total_recebido,
+  AVG(valor)       AS valor_medio_operacao
+FROM transacoes_pix
+GROUP BY id_conta_destino
+HAVING SUM(valor) > 100000
+ORDER BY total_recebido DESC;`,
+    colunaChave: 'conta_destino',
+    rotuloEntidade: { singular: 'favorecido', plural: 'favorecidos' },
+    dicasDivergencia: {
+      excesso:
+        'Há favorecidos a mais. O corte é estritamente acima de R$ 100.000,00 (`HAVING SUM(valor) > 100000`, não `>=`). Agrupe pelo destino, não pela origem.',
+      falta:
+        'Faltam favorecidas. Some todos os créditos da conta, sem recortar faixa unitária. Quem soma exatamente R$ 100.000,00 fica de fora.',
+      valores:
+        'Os destinos estão certos, mas as métricas não. `total_recebido` é `SUM(valor)` e `valor_medio_operacao` é `AVG(valor)`.',
+      ordenacao: 'Os dados estão corretos, mas a ordem não. Ordene pelo volume recebido, do maior para o menor.',
+    },
+    resumirSucesso(gabarito) {
+      const contas = distinct(columnValues(gabarito, 'conta_destino'));
+      const total = sum(columnValues(gabarito, 'total_recebido'));
+      return {
+        message: `Concentração: ${gabarito.values.length} favorecido(s) acima de R$ 100 mil, com ${formatBRL(total)} em créditos acumulados.`,
+        entities: contas.slice(0, 8),
+        details: ['Depois, cruze faixa unitária abaixo do limiar de R$ 10 mil com recorrência mínima de envios.'],
+      };
+    },
+  },
+  {
+    id: 'fracionamento-limiar',
+    origem: 'base',
+    nivel: 1,
+    titulo: 'Fracionamento Sistêmico Abaixo do Limiar Regulatório',
+    enquadramento: 'Carta Circular Bacen 4.001/2020 · Inciso I - Fracionamento',
+    dossie:
+      'Diferente do Caso 1.1, aqui não há uma receptora única: o padrão é o próprio pagador reiterar valores logo abaixo ' +
+      'de R$ 10.000,00 para quaisquer favorecidos. O recorte pede quem sustentou essa prática no período.',
+    objetivo:
+      'Detecte remetentes com comportamento continuado de envio em valores fracionados, localizando contas que emitiram 3 ou mais PIX com valores unitários entre R$ 8.000,00 e R$ 9.999,00 para qualquer favorecido.',
+    colunasEsperadas: ['conta_origem', 'total_operacoes_fracionadas', 'valor_total_fracionado'],
+    ordenacao: 'total_operacoes_fracionadas DESC',
+    dicaTexto:
+      'Primeiro isole as liquidações cuja faixa unitária está logo abaixo de R$ 10 mil; depois consolide por remetente e mantenha quem repetiu o padrão pelo menos três vezes.',
+    dicaSql: `-- WHERE recorta linhas (valor de cada PIX) ANTES de agrupar
+-- HAVING recorta grupos (recorrência) DEPOIS de agrupar
+SELECT id_conta_origem AS conta_origem,
+       COUNT(*)        AS total_operacoes_fracionadas,
+       SUM(valor)      AS valor_total_fracionado
+FROM transacoes_pix
+WHERE valor BETWEEN ... AND ...
+GROUP BY id_conta_origem
+HAVING COUNT(*) >= ...
+ORDER BY total_operacoes_fracionadas DESC;`,
+    gabaritoSql: `-- Gabarito · fracionamento sistêmico (R$ 8 mil a R$ 9.999, recorrência ≥ 3)
+SELECT
+  id_conta_origem AS conta_origem,
+  COUNT(*)        AS total_operacoes_fracionadas,
+  SUM(valor)      AS valor_total_fracionado
+FROM transacoes_pix
+WHERE valor BETWEEN 8000 AND 9999
+GROUP BY id_conta_origem
+HAVING COUNT(*) >= 3
+ORDER BY total_operacoes_fracionadas DESC;`,
+    colunaChave: 'conta_origem',
+    rotuloEntidade: { singular: 'remetente', plural: 'remetentes' },
+    dicasDivergencia: {
+      excesso:
+        'Há remetentes a mais. Recorte a faixa unitária `valor BETWEEN 8000 AND 9999` nas linhas e só então `HAVING COUNT(*) >= 3`. Não fixe destino.',
+      falta:
+        'Faltam remetentes. Os extremos da faixa entram (`8000` e `9999`). Qualquer favorecido vale; o piso de recorrência é 3.',
+      valores:
+        'Os remetentes estão certos, mas as métricas não. Use `total_operacoes_fracionadas` (`COUNT(*)`) e `valor_total_fracionado` (`SUM(valor)`).',
+      ordenacao: 'Os dados estão corretos, mas a ordem não. Ordene pela quantidade de PIX fracionados, da maior para a menor.',
+    },
+    resumirSucesso(gabarito) {
+      const contas = distinct(columnValues(gabarito, 'conta_origem'));
+      const total = sum(columnValues(gabarito, 'valor_total_fracionado'));
+      return {
+        message: `Fracionamento sistêmico: ${gabarito.values.length} remetente(s) com 3+ PIX na faixa R$ 8–9,9 mil, somando ${formatBRL(total)}.`,
+        entities: contas.slice(0, 8),
+        details: ['Falta combinar frequência e volume no mesmo recorte de grupo (matriz de criticidade).'],
+      };
+    },
+  },
+  {
+    id: 'matriz-criticidade',
+    origem: 'base',
+    nivel: 1,
+    titulo: 'Matriz de Criticidade: Volume e Recorrência Combinados',
+    enquadramento: 'Circular Bacen 3.978/2020 · monitoramento contínuo e abordagem baseada em risco',
+    dossie:
+      'Alertas isolados de frequência ou de montante geram ruído. A matriz pede quem acumula os dois sinais ao mesmo ' +
+      'tempo: rotina mínima de envios e relevância financeira, para a fila de revisão priorizar exposição combinada.',
+    objetivo:
+      'Isole os remetentes que preenchem cumulativamente critérios de alta frequência e relevância financeira, identificando quem realizou pelo menos 5 operações e totalizou um montante acumulado igual ou superior a R$ 40.000,00.',
+    colunasEsperadas: ['conta_origem', 'total_operacoes', 'valor_total'],
+    ordenacao: 'valor_total DESC',
+    dicaTexto:
+      'Consolide por pagador e mantenha só os grupos que atendem às duas condições ao mesmo tempo: quantidade mínima de envios e piso de volume acumulado.',
+    dicaSql: `-- Vários predicados agregados no mesmo HAVING, ligados por AND
+-- Os dois critérios precisam valer no grupo (não na linha isolada)
+SELECT id_conta_origem AS conta_origem,
+       COUNT(*)        AS total_operacoes,
+       SUM(valor)      AS valor_total
+FROM transacoes_pix
+GROUP BY id_conta_origem
+HAVING COUNT(*) >= ...
+   AND SUM(valor) >= ...
+ORDER BY valor_total DESC;`,
+    gabaritoSql: `-- Gabarito · matriz frequência × volume (≥ 5 envios e ≥ R$ 40 mil)
+SELECT
+  id_conta_origem AS conta_origem,
+  COUNT(*)        AS total_operacoes,
+  SUM(valor)      AS valor_total
+FROM transacoes_pix
+GROUP BY id_conta_origem
+HAVING COUNT(*) >= 5
+   AND SUM(valor) >= 40000
+ORDER BY valor_total DESC;`,
+    colunaChave: 'conta_origem',
+    rotuloEntidade: { singular: 'remetente', plural: 'remetentes' },
+    dicasDivergencia: {
+      excesso:
+        'Há remetentes a mais. Os dois cortes são cumulativos: `HAVING COUNT(*) >= 5 AND SUM(valor) >= 40000`. Quem só tem frequência ou só tem volume sai.',
+      falta:
+        'Faltam remetentes. Os pisos são inclusivos (5 envios e R$ 40.000,00). Não recorte faixa unitária nem destino.',
+      valores:
+        'Os remetentes estão certos, mas as métricas não. `total_operacoes` é `COUNT(*)` e `valor_total` é `SUM(valor)`.',
+      ordenacao: 'Os dados estão corretos, mas a ordem não. Ordene pelo volume acumulado, do maior para o menor.',
+    },
+    resumirSucesso(gabarito) {
+      const contas = distinct(columnValues(gabarito, 'conta_origem'));
+      const total = sum(columnValues(gabarito, 'valor_total'));
+      return {
+        message: `Matriz de criticidade: ${gabarito.values.length} remetente(s) com ≥ 5 envios e ≥ R$ 40 mil, somando ${formatBRL(total)}.`,
+        entities: contas.slice(0, 8),
+        details: ['No Nível 2 a análise deixa de consolidar grupos e passa a classificar linhas em janelas.'],
+      };
+    },
+  },
+  {
     id: 'burst',
     origem: 'base',
     nivel: 3,

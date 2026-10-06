@@ -91,6 +91,56 @@ FROM transacoes_pix
 ;`,
 };
 
+const LEVEL1_SKELETON: Readonly<Record<string, string>> = {
+  'alta-recorrencia': `SELECT
+    -- 1. Conta de origem (com alias), quantidade de envios e volume acumulado
+    
+FROM transacoes_pix
+GROUP BY
+    -- 2. Consolide por pagador
+    
+-- 3. Mantenha só grupos com 10 ou mais remessas:
+-- HAVING ...
+-- ORDER BY ...
+;`,
+  'concentracao-creditos': `SELECT
+    -- 1. Conta de destino (com alias), volume recebido e ticket médio
+    
+FROM transacoes_pix
+GROUP BY
+    -- 2. Consolide por favorecido
+    
+-- 3. Mantenha quem acumulou mais de R$ 100.000,00:
+-- HAVING ...
+-- ORDER BY ...
+;`,
+  'fracionamento-limiar': `SELECT
+    -- 1. Conta de origem (com alias), quantidade e volume na faixa fracionada
+    
+FROM transacoes_pix
+WHERE
+    -- 2. Recorte o valor unitário (logo abaixo de R$ 10 mil) ANTES de agrupar
+    
+GROUP BY
+    -- 3. Consolide por pagador
+    
+-- 4. Recorrência mínima de 3 envios (depois de agrupar):
+-- HAVING ...
+-- ORDER BY ...
+;`,
+  'matriz-criticidade': `SELECT
+    -- 1. Conta de origem (com alias), quantidade de envios e volume acumulado
+    
+FROM transacoes_pix
+GROUP BY
+    -- 2. Consolide por pagador
+    
+-- 3. Os dois critérios do grupo precisam valer juntos:
+-- HAVING ... AND ...
+-- ORDER BY ...
+;`,
+};
+
 const LEVEL5_SKELETON: Readonly<Record<string, string>> = {
   'ubo-aurora': `SELECT
     s.nome_socio,
@@ -157,7 +207,8 @@ export function principalTableOf(scenario: InvestigationScenario): string {
 
 /** Cabeçalho e esqueleto SQL guiado para o desafio ativo. */
 export function buildStarterTemplate(scenario: InvestigationScenario): string {
-  const skeleton = LEVEL0_SKELETON[scenario.id] ?? LEVEL5_SKELETON[scenario.id];
+  const skeleton =
+    LEVEL0_SKELETON[scenario.id] ?? LEVEL1_SKELETON[scenario.id] ?? LEVEL5_SKELETON[scenario.id];
   if (skeleton) return `${headerComments(scenario).join('\n')}${skeleton}`;
 
   const table = principalTableOf(scenario);
