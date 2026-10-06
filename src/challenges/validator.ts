@@ -1,12 +1,14 @@
 import type { Database, QueryExecResult } from 'sql.js';
 import { findForbiddenCommand, runIsolated } from '../database/safeQuery.ts';
 import {
+  describeAliasPractice,
   describePrioritizationMismatch,
   describeRowAudit,
   findKeyColumn,
   formatComplianceBanner,
   computeComplianceMetrics,
   mapColumns,
+  mapColumnsByContent,
   normalizeColumnName,
   rowsMatchIgnoringOrder,
   type ComplianceMetrics,
@@ -91,6 +93,49 @@ function describeEntityDiff(scenario: InvestigationScenario, diff: EntityDiff): 
   return lines;
 }
 
+function successWithNotes(
+  scenario: InvestigationScenario,
+  expected: QueryExecResult,
+  student: QueryExecResult,
+  mapping: readonly (number | null)[],
+  extraNotes: readonly string[],
+): Omit<ValidationResult, 'studentRun' | 'highlight'> {
+  const summary = scenario.resumirSucesso(expected);
+  const details = [...extraNotes];
+  const complete = mapping.every((k) => k != null);
+
+  if (complete) {
+    const extraCols = student.columns.filter((_, k) => !mapping.includes(k));
+    if (extraCols.length) {
+      details.push(`Dica de boas práticas: as colunas extras \`${extraCols.join(', ')}\` não eram necessárias.`);
+    }
+
+    const aliasPair = expected.columns.flatMap((name, j) => {
+      const k = mapping[j];
+      if (k == null) return [];
+      const returned = student.columns[k] ?? '';
+      return normalizeColumnName(returned) !== normalizeColumnName(name) ? [{ expected: name, returned }] : [];
+    })[0];
+    if (aliasPair) details.unshift(describeAliasPractice(aliasPair.expected, aliasPair.returned));
+
+    if (mapping.some((k, j) => k !== j)) {
+      details.push('As colunas estão em ordem diferente da sugerida, mas o conteúdo confere.');
+    }
+  }
+
+  details.push(...(summary.details ?? []));
+  const captured = expected.values.length;
+  const compliance = computeComplianceMetrics(captured, captured, 0);
+  return {
+    status: 'success',
+    title: formatComplianceBanner(compliance),
+    message: summary.message,
+    details,
+    entities: summary.entities,
+    compliance,
+  };
+}
+
 function compareResults(
   scenario: InvestigationScenario,
   expected: QueryExecResult,
@@ -139,19 +184,17 @@ function compareResults(
     };
   }
 
-  const mapping = mapColumns(expected, student);
+  const orderedMap = mapColumns(expected, student);
+  const contentMap = mapColumnsByContent(expected, student);
+  const mapping = contentMap.every((k) => k != null) ? contentMap : orderedMap;
   const unmatched = expected.columns.filter((_, j) => mapping[j] === null);
 
   if (unmatched.length > 0) {
     if (rowsMatchIgnoringOrder(expected, student)) {
       const prio = describePrioritizationMismatch(scenario.ordenacao);
-      return {
-        status: 'warning',
-        title: prio.title,
-        message: prio.message,
-        details: [hints.ordenacao],
-        entities: [],
-      };
+      return successWithNotes(scenario, expected, student, contentMap, [
+        `${prio.message} A esteira aceitou o conjunto de evidências.`,
+      ]);
     }
     if (!diff.keyFound || diff.missing.length || diff.extra.length) {
       return {
@@ -173,30 +216,13 @@ function compareResults(
     };
   }
 
-  const summary = scenario.resumirSucesso(expected);
-  const details = [...(summary.details ?? [])];
-  const extraCols = student.columns.filter((_, k) => !mapping.includes(k));
-  if (extraCols.length) details.unshift(`Dica de boas práticas: as colunas extras \`${extraCols.join(', ')}\` não eram necessárias.`);
+  const orderNotes: string[] = [];
+  if (orderedMap.some((k) => k === null)) {
+    const prio = describePrioritizationMismatch(scenario.ordenacao);
+    orderNotes.push(`💡 Fila de priorização: ${prio.message}`);
+  }
 
-  const renamed = expected.columns.filter((name, j) => {
-    const k = mapping[j];
-    return k != null && normalizeColumnName(student.columns[k] ?? '') !== normalizeColumnName(name);
-  });
-  if (renamed.length) details.unshift(`Aliases diferentes do sugerido (aceitos): esperados \`${renamed.join(', ')}\`.`);
-
-  const reordered = mapping.some((k, j) => k !== j);
-  if (reordered) details.unshift('As colunas estão em ordem diferente da sugerida, mas o conteúdo confere.');
-
-  const captured = expected.values.length;
-  const compliance = computeComplianceMetrics(captured, captured, 0);
-  return {
-    status: 'success',
-    title: formatComplianceBanner(compliance),
-    message: summary.message,
-    details,
-    entities: summary.entities,
-    compliance,
-  };
+  return successWithNotes(scenario, expected, student, mapping, orderNotes);
 }
 
 export async function validateChallenge(db: Database, scenario: InvestigationScenario, sql: string): Promise<ValidationResult> {

@@ -1,4 +1,5 @@
 import { byId } from './dom.ts';
+import '../style.css';
 
 const STORAGE_KEY = 'aml-lab:sidebar-width';
 const MIN_WIDTH_PX = 260;
@@ -108,6 +109,10 @@ export function initWorkspaceSplit(): void {
   };
 
   const restoreDesktop = (): void => {
+    document.body.classList.add('h-screen', 'overflow-hidden');
+    document.body.classList.remove('min-h-[100dvh]', 'overflow-y-auto');
+    document.getElementById('app')?.classList.add('h-screen', 'overflow-hidden');
+    document.getElementById('app')?.classList.remove('min-h-[100dvh]', 'overflow-visible');
     sidebar.hidden = false;
     queryPanel.hidden = false;
     editorContainer.hidden = false;
@@ -117,26 +122,31 @@ export function initWorkspaceSplit(): void {
     queryPanel.style.removeProperty('flex');
     editorContainer.classList.add('flex-[1.15]');
     editorContainer.classList.remove('flex-1');
+    outputPane.classList.remove('min-h-[50dvh]');
+    document.documentElement.style.removeProperty('--lab-vh');
     const stored = readStoredWidth();
     apply(stored ?? workspace.clientWidth * DEFAULT_RATIO);
   };
 
   const applyMobilePanes = (): void => {
+    document.body.classList.remove('h-screen', 'overflow-hidden');
+    document.body.classList.add('min-h-[100dvh]', 'overflow-y-auto');
+    document.getElementById('app')?.classList.remove('h-screen', 'overflow-hidden');
+    document.getElementById('app')?.classList.add('min-h-[100dvh]', 'overflow-visible');
     sidebar.style.width = '100%';
     sidebar.style.maxWidth = '100%';
-    sidebar.style.flex = '1 1 0%';
-    queryPanel.style.flex = '1 1 0%';
+    sidebar.style.flex = '1 1 auto';
+    queryPanel.style.flex = '1 1 auto';
     sidebar.hidden = mobilePane !== 'mission';
     queryPanel.hidden = mobilePane === 'mission';
     editorContainer.hidden = mobilePane !== 'editor';
     outputPane.hidden = mobilePane !== 'results';
-    if (mobilePane === 'editor') {
-      editorContainer.classList.add('flex-1');
-      editorContainer.classList.remove('flex-[1.15]');
-    } else {
-      editorContainer.classList.add('flex-[1.15]');
-      editorContainer.classList.remove('flex-1');
-    }
+    editorContainer.classList.toggle('flex-1', mobilePane === 'editor');
+    editorContainer.classList.toggle('flex-[1.15]', mobilePane !== 'editor');
+    outputPane.classList.toggle('min-h-[50dvh]', mobilePane === 'results');
+    outputPane.classList.add('overflow-y-auto');
+    const vh = window.visualViewport?.height ?? window.innerHeight;
+    document.documentElement.style.setProperty('--lab-vh', `${Math.round(vh)}px`);
   };
 
   const sync = (): void => {
@@ -211,6 +221,9 @@ export function initWorkspaceSplit(): void {
     sync();
   };
 
+  window.visualViewport?.addEventListener('resize', () => {
+    if (media.matches) sync();
+  });
   media.addEventListener('change', onViewportChange);
   window.addEventListener('resize', () => {
     if (!media.matches) persistWidth(apply(sidebar.getBoundingClientRect().width));

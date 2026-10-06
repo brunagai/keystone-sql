@@ -54,6 +54,40 @@ export function mapColumns(expected: QueryExecResult, student: QueryExecResult):
   });
 }
 
+function columnBag(result: QueryExecResult, index: number): string {
+  return result.values
+    .map((row) => cellToken(row[index] ?? null))
+    .sort()
+    .join('\u001f');
+}
+
+/**
+ * Mapeia colunas do gabarito às do aluno pelo conjunto de valores (independente de alias e de ordem das linhas).
+ */
+export function mapColumnsByContent(expected: QueryExecResult, student: QueryExecResult): (number | null)[] {
+  const used = new Set<number>();
+  return expected.columns.map((name, j) => {
+    const wanted = columnBag(expected, j);
+    const byName = student.columns.findIndex((c) => normalizeColumnName(c) === normalizeColumnName(name));
+    const candidates = [j, byName, ...student.columns.keys()];
+    for (const k of candidates) {
+      if (k < 0 || k >= student.columns.length || used.has(k)) continue;
+      if (columnBag(student, k) === wanted) {
+        used.add(k);
+        return k;
+      }
+    }
+    return null;
+  });
+}
+
+export function describeAliasPractice(expectedName: string, returnedName: string): string {
+  return (
+    '🎉 Excelente! A sua extração de dados está correta.\n' +
+    `💡 Dica de Boas Práticas: No ambiente corporativo, padronizar os aliases facilita a automação (ex: use \`${expectedName}\` em vez de \`${returnedName}\`).`
+  );
+}
+
 /** Verdadeiro se cada linha do gabarito tem uma linha correspondente no aluno, ignorando ordem de linhas e colunas. */
 export function rowsMatchIgnoringOrder(expected: QueryExecResult, student: QueryExecResult): boolean {
   if (expected.values.length !== student.values.length) return false;

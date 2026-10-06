@@ -95,10 +95,21 @@ function renderSuccess(result: ValidationResult): string {
       : '';
   return `
     <div role="status" class="rounded-xl border border-emerald-500/50 bg-emerald-950/50 px-4 py-3">
-      <p class="text-sm font-semibold text-emerald-200">✓ Desafio Concluído! Evidências regulatórias validadas</p>
+      <p class="text-sm font-semibold text-emerald-200">🎉 Missão Cumprida</p>
+      <p class="mt-1 text-[12px] font-medium leading-relaxed text-emerald-100/90">${formatInline(result.title)}</p>
       <p class="mt-1 text-[12px] leading-relaxed text-emerald-100/80">${formatInline(result.message)}</p>
       ${metrics}
       ${entities}
+      ${
+        result.details.length
+          ? `<div class="mt-3 space-y-2 border-t border-emerald-800/50 pt-3">${result.details
+              .map(
+                (line) =>
+                  `<p class="whitespace-pre-line text-[12px] leading-relaxed text-emerald-100/85">${formatInline(line)}</p>`,
+              )
+              .join('')}</div>`
+          : ''
+      }
     </div>`;
 }
 

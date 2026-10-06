@@ -1,0 +1,72 @@
+/* Layout global: desktop intacto; mobile usa dvh e rolagem livre (teclado virtual). */
+
+html {
+  height: 100%;
+}
+
+body {
+  min-height: 100%;
+}
+
+#app {
+  min-height: 100dvh;
+}
+
+#output-body,
+#output-scroll,
+#schema-tree,
+#investigation-scroll {
+  -webkit-overflow-scrolling: touch;
+}
+
+#output-body {
+  overflow-x: auto;
+}
+
+#output-body table {
+  min-width: 100%;
+}
+
+@media (max-width: 767px) {
+  html,
+  body {
+    height: auto;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  #app {
+    height: auto;
+    min-height: var(--lab-vh, 100dvh);
+    overflow: visible;
+  }
+
+  #app-header {
+    height: auto;
+    min-height: 2.5rem;
+    overflow: visible;
+  }
+
+  #workspace {
+    min-height: min(70dvh, 100%);
+    overflow: visible;
+  }
+
+  #sql-editor,
+  #output-scroll,
+  #investigation-scroll,
+  #schema-tree {
+    overflow-y: auto;
+    min-height: 12rem;
+  }
+
+  #sql-editor {
+    min-height: 40dvh;
+  }
+
+  button,
+  select {
+    font-size: max(0.75rem, 12px);
+  }
+}
