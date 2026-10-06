@@ -21,8 +21,8 @@ function wrapRow(id: string, className: string, nodes: HTMLElement[]): HTMLEleme
 
 /**
  * Seletor `#scenario-select` (preenchido em `investigationPanel`):
- * trilha 0–5; filtro Iniciante = níveis 0–2; carga inicial = Caso 0.1.
- * No mobile: linha 1 (marca + ações) e linha 2 (níveis + dropdown do caso).
+ * trilha 0–5 em <optgroup>; Iniciante = 0–1, Intermediário = 2–3, Avançado = 4–5.
+ * No mobile: linha 1 (marca + ações) e linha 2 (categorias + dropdown do caso).
  */
 export function initNavbar(): HTMLSelectElement | null {
   hideFloatingMenus();
@@ -42,7 +42,7 @@ export function initNavbar(): HTMLSelectElement | null {
     );
     const row2 = wrapRow(
       'navbar-cases',
-      'flex min-h-10 w-full min-w-0 flex-1 flex-wrap items-center gap-2 md:flex-nowrap',
+      'flex min-h-10 w-full min-w-0 flex-1 flex-wrap items-center gap-2 overflow-x-hidden md:flex-nowrap',
       [tools],
     );
     header.replaceChildren(row1, row2);
@@ -53,25 +53,26 @@ export function initNavbar(): HTMLSelectElement | null {
       'max-md:items-stretch',
       'max-md:gap-2',
       'max-md:py-2',
+      'max-md:overflow-x-hidden',
       'md:h-16',
       'md:flex-row',
       'md:items-center',
     );
     header.classList.remove('h-16', 'overflow-x-auto');
     nav.classList.add('ml-auto', 'flex-wrap', 'shrink-0');
-    tools.classList.add('min-w-0', 'w-full', 'flex-1', 'flex-wrap', 'md:flex-nowrap');
+    tools.classList.add('min-w-0', 'w-full', 'max-w-full', 'flex-1', 'flex-wrap', 'md:flex-nowrap');
     tools.classList.remove('overflow-x-auto');
   }
 
   if (trail) {
-    trail.classList.add('shrink-0', 'overflow-x-auto');
+    trail.classList.add('shrink-0', 'max-md:max-w-full', 'overflow-x-auto');
     for (const button of trail.querySelectorAll('button')) {
       button.classList.add('shrink-0', 'min-h-[38px]');
     }
   }
 
   if (select instanceof HTMLSelectElement) {
-    select.classList.add('min-h-[38px]', 'min-w-0', 'w-full', 'flex-1');
+    select.classList.add('min-h-[38px]', 'min-w-0', 'w-full', 'max-w-full', 'flex-1', 'truncate');
     select.classList.remove('shrink-0');
   }
 

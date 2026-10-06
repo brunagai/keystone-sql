@@ -28,6 +28,26 @@ export const TRAIL_LEVELS: Record<TrailLevel, TrailLevelInfo> = {
 
 export const TRAIL_ORDER: readonly TrailLevel[] = [0, 1, 2, 3, 4, 5];
 
+/** Filtros da navbar: Iniciante = 0–1, Intermediário = 2–3, Avançado = 4–5. */
+export type TrailBand = 'todos' | 'iniciante' | 'intermediario' | 'avancado';
+
+export const TRAIL_BAND_LEVELS: Record<TrailBand, readonly TrailLevel[]> = {
+  todos: TRAIL_ORDER,
+  iniciante: [0, 1],
+  intermediario: [2, 3],
+  avancado: [4, 5],
+};
+
+export function trailBandOf(nivel: TrailLevel): Exclude<TrailBand, 'todos'> {
+  if (nivel <= 1) return 'iniciante';
+  if (nivel <= 3) return 'intermediario';
+  return 'avancado';
+}
+
+export function trailOptgroupLabel(nivel: TrailLevel): string {
+  return `Nível ${nivel} · ${TRAIL_LEVELS[nivel].titulo}`;
+}
+
 export interface SuccessSummary {
   message: string;
   entities: string[];

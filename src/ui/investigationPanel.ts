@@ -5,7 +5,7 @@ import {
   onScenariosChange,
   removeGenerated,
 } from '../challenges/registry.ts';
-import { DEFAULT_SCENARIO_ID, TRAIL_LEVELS, TRAIL_ORDER, type InvestigationScenario, type ScenarioId, type TrailLevel, type TwoPhaseReasoning } from '../challenges/scenarios.ts';
+import { DEFAULT_SCENARIO_ID, TRAIL_BAND_LEVELS, TRAIL_LEVELS, trailBandOf, trailOptgroupLabel, type InvestigationScenario, type ScenarioId, type TrailBand, type TrailLevel, type TwoPhaseReasoning } from '../challenges/scenarios.ts';
 import { resolveTwoPhase } from '../challenges/twoPhase.ts';
 import { escapeHtml, formatInline } from './format.ts';
 
@@ -27,16 +27,7 @@ export interface InvestigationPanelHandlers {
   onOpenSchema?: () => void;
 }
 
-const levelLabel = (nivel: TrailLevel): string => `Nível ${nivel} — ${TRAIL_LEVELS[nivel].titulo}`;
-
-type TrailBand = 'todos' | 'iniciante' | 'intermediario' | 'avancado';
-
-const BAND_LEVELS: Record<TrailBand, readonly TrailLevel[]> = {
-  todos: TRAIL_ORDER,
-  iniciante: [0, 1, 2],
-  intermediario: [3],
-  avancado: [4, 5],
-};
+const levelLabel = (nivel: TrailLevel): string => trailOptgroupLabel(nivel);
 
 const BAND_BUTTON_ON = 'rounded-full bg-sky-600 px-3 py-1 text-[12px] font-medium text-white';
 const BAND_BUTTON_OFF = 'rounded-full px-3 py-1 text-[12px] font-medium text-slate-400 hover:bg-slate-800 hover:text-slate-100';
@@ -276,10 +267,29 @@ export function initInvestigationPanel({
   let selected = firstScenario;
   const attempts = new Map<ScenarioId, number>();
 
+  const catalog = (): InvestigationScenario[] => [...baseScenarios(), ...generatedScenarios()];
+
+  const firstInBand = (band: TrailBand): InvestigationScenario | undefined => {
+    const levels = TRAIL_BAND_LEVELS[band];
+    return catalog().find((s) => levels.includes(s.nivel));
+  };
+
+  const scenarioInBand = (scenario: InvestigationScenario, band: TrailBand): boolean =>
+    TRAIL_BAND_LEVELS[band].includes(scenario.nivel);
+
+  const paintTrailBand = (): void => {
+    if (!trailBands) return;
+    for (const button of trailBands.querySelectorAll<HTMLElement>('[data-trail-band]')) {
+      const on = button.dataset['trailBand'] === trailBand;
+      button.className = on ? BAND_BUTTON_ON : BAND_BUTTON_OFF;
+      button.setAttribute('aria-selected', String(on));
+    }
+  };
+
   const renderOptions = (): void => {
     if (!select) return;
-    const all = [...baseScenarios(), ...generatedScenarios()];
-    select.innerHTML = BAND_LEVELS[trailBand]
+    const all = catalog();
+    select.innerHTML = TRAIL_BAND_LEVELS[trailBand]
       .map((nivel) => {
         const items = all.filter((s) => s.nivel === nivel);
         const options = items.length
@@ -291,8 +301,7 @@ export function initInvestigationPanel({
               })
               .join('')
           : '<option disabled>Use “✨ Gerar Novo Desafio com IA” para abrir este nível</option>';
-        const count = nivel === 5 && items.length ? ` (${items.length})` : '';
-        return `<optgroup label="${escapeHtml(levelLabel(nivel))}${count}">${options}</optgroup>`;
+        return `<optgroup label="${escapeHtml(levelLabel(nivel))}">${options}</optgroup>`;
       })
       .join('');
     select.value = selected.id;
@@ -344,17 +353,25 @@ export function initInvestigationPanel({
     if (notify && changed) onScenarioChange(scenario);
   };
 
+  const applyTrailBand = (band: TrailBand): void => {
+    trailBand = band;
+    paintTrailBand();
+    if (scenarioInBand(selected, trailBand)) {
+      renderOptions();
+      return;
+    }
+    const next = firstInBand(trailBand);
+    renderOptions();
+    if (next) show(next);
+  };
+
   if (trailBands) {
     trailBands.addEventListener('click', (event) => {
       const target = event.target;
       if (!(target instanceof Element)) return;
       const band = target.closest<HTMLElement>('[data-trail-band]')?.dataset['trailBand'];
       if (band !== 'todos' && band !== 'iniciante' && band !== 'intermediario' && band !== 'avancado') return;
-      trailBand = band;
-      for (const button of trailBands.querySelectorAll<HTMLElement>('[data-trail-band]')) {
-        button.className = button.dataset['trailBand'] === trailBand ? BAND_BUTTON_ON : BAND_BUTTON_OFF;
-      }
-      renderOptions();
+      applyTrailBand(band);
     });
   }
 
@@ -397,13 +414,20 @@ export function initInvestigationPanel({
   });
 
   renderOptions();
+  paintTrailBand();
   show(firstScenario, false);
 
   return {
     getSelectedScenario: () => selected,
     selectScenario(id) {
       const scenario = findScenario(id);
-      if (scenario) show(scenario);
+      if (!scenario) return;
+      if (trailBand !== 'todos' && !scenarioInBand(scenario, trailBand)) {
+        trailBand = trailBandOf(scenario.nivel);
+        paintTrailBand();
+      }
+      renderOptions();
+      show(scenario);
     },
     showValidation() {
       attempts.set(selected.id, (attempts.get(selected.id) ?? 0) + 1);
