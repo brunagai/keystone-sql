@@ -189,7 +189,7 @@ async function validateCurrentQuery(): Promise<void> {
       recordExecution('validacao', sql, executedAt, run.elapsedMs, null);
     }
     output.showValidation(result, scenario.colunasEsperadas);
-    investigation.showValidation();
+    investigation.showValidation(result.status === 'success');
     showMobilePane('results');
   } catch (error) {
     const scenario = investigation.getSelectedScenario();
@@ -203,7 +203,7 @@ async function validateCurrentQuery(): Promise<void> {
       studentRun: null,
     };
     output.showValidation(result, scenario.colunasEsperadas);
-    investigation.showValidation();
+    investigation.showValidation(false);
     showMobilePane('results');
   } finally {
     validating = false;

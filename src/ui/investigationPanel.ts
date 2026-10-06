@@ -7,6 +7,7 @@ import {
 } from '../challenges/registry.ts';
 import { DEFAULT_SCENARIO_ID, TRAIL_BAND_LEVELS, TRAIL_LEVELS, trailBandOf, trailOptgroupLabel, type InvestigationScenario, type ScenarioId, type TrailBand, type TrailLevel, type TwoPhaseReasoning } from '../challenges/scenarios.ts';
 import { resolveTwoPhase } from '../challenges/twoPhase.ts';
+import { isChallengeCompleted, markChallengeCompleted, PROGRESS_UPDATED_EVENT } from '../services/progressService.ts';
 import { escapeHtml, formatInline } from './format.ts';
 
 function el<T extends HTMLElement>(id: string): T | null {
@@ -16,7 +17,7 @@ function el<T extends HTMLElement>(id: string): T | null {
 export interface InvestigationPanelController {
   getSelectedScenario(): InvestigationScenario;
   selectScenario(id: ScenarioId): void;
-  showValidation(): void;
+  showValidation(approved?: boolean): void;
 }
 
 export interface InvestigationPanelHandlers {
@@ -295,8 +296,9 @@ export function initInvestigationPanel({
         const options = items.length
           ? items
               .map((s, i) => {
+                const done = isChallengeCompleted(s.id) ? '✓ ' : '';
                 const marker = s.origem === 'base' ? '' : `${s.origem === 'ia' ? '✨' : '⚙'} `;
-                const label = `${nivel}.${i + 1} · ${marker}${s.titulo ?? s.id}`;
+                const label = `${done}${nivel}.${i + 1} · ${marker}${s.titulo ?? s.id}`;
                 return `<option value="${escapeHtml(s.id)}"${s.id === selected.id ? ' selected' : ''}>${escapeHtml(label)}</option>`;
               })
               .join('')
@@ -413,6 +415,8 @@ export function initInvestigationPanel({
     if (!current) show(firstScenario);
   });
 
+  window.addEventListener(PROGRESS_UPDATED_EVENT, () => renderOptions());
+
   renderOptions();
   paintTrailBand();
   show(firstScenario, false);
@@ -429,8 +433,9 @@ export function initInvestigationPanel({
       renderOptions();
       show(scenario);
     },
-    showValidation() {
+    showValidation(approved = false) {
       attempts.set(selected.id, (attempts.get(selected.id) ?? 0) + 1);
+      if (approved) markChallengeCompleted(selected.id);
       renderSolutionToggle();
     },
   };
