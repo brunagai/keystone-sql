@@ -1,4 +1,4 @@
-import { TRAIL_LEVELS, type InvestigationScenario } from './scenarios.ts';
+import { TRAIL_LEVELS, ensureRelatorioColunas, type InvestigationScenario } from './scenarios.ts';
 
 const LINE_WIDTH = 78;
 
@@ -19,22 +19,6 @@ function wrapComment(text: string, prefix: string): string[] {
   }
   if (current.length > lead.length) lines.push(current);
   return lines;
-}
-
-function firstSentence(text: string): string {
-  for (let i = 0; i < text.length; i += 1) {
-    const ch = text[i];
-    if (ch !== '.' && ch !== '!' && ch !== '?') continue;
-    const prev = text[i - 1];
-    const next = text[i + 1];
-    if (ch === '.' && prev !== undefined && next !== undefined && /\d/.test(prev) && /\d/.test(next)) continue;
-    return text.slice(0, i + 1).trim();
-  }
-  return text;
-}
-
-function missionLine(objetivo: string): string {
-  return firstSentence(plain(objetivo));
 }
 
 const LEVEL0_SKELETON: Readonly<Record<string, string>> = {
@@ -490,7 +474,7 @@ function headerComments(scenario: InvestigationScenario): string[] {
   const columns = scenario.colunasEsperadas.join(', ');
   return [
     ...wrapComment(scenario.titulo, '-- Desafio: '),
-    ...wrapComment(missionLine(scenario.objetivo), '-- Objetivo: '),
+    ...wrapComment(ensureRelatorioColunas(scenario.objetivo, scenario.colunasEsperadas), '-- Objetivo: '),
     ...wrapComment(columns, '-- Colunas esperadas na resposta: '),
     `-- Nível ${scenario.nivel} — ${TRAIL_LEVELS[scenario.nivel].titulo}`,
     '',

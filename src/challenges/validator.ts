@@ -16,7 +16,7 @@ import {
 import type { InvestigationScenario } from './scenarios.ts';
 import { describeSqlError, type ErrorHighlight } from './sqlErrors.ts';
 
-export type ValidationStatus = 'success' | 'warning' | 'error';
+export type ValidationStatus = 'success' | 'warning' | 'error' | 'quase_la';
 
 export type StudentRun =
   | { ok: true; results: QueryExecResult[]; elapsedMs: number }
@@ -136,6 +136,40 @@ function successWithNotes(
   };
 }
 
+function formatColumnList(columns: readonly string[]): string {
+  return `[${columns.join(', ')}]`;
+}
+
+function columnsMatchReport(expected: QueryExecResult, student: QueryExecResult): boolean {
+  if (expected.columns.length !== student.columns.length) return false;
+  return expected.columns.every(
+    (name, index) => normalizeColumnName(name) === normalizeColumnName(student.columns[index] ?? ''),
+  );
+}
+
+function namesPresent(expected: QueryExecResult, student: QueryExecResult): boolean {
+  const have = new Set(student.columns.map((name) => normalizeColumnName(name)));
+  return expected.columns.every((name) => have.has(normalizeColumnName(name)));
+}
+
+function reportShapeMismatch(
+  expected: QueryExecResult,
+  student: QueryExecResult,
+): Omit<ValidationResult, 'studentRun' | 'highlight'> {
+  return {
+    status: 'quase_la',
+    title: '🔍 Quase lá! Dados e lógica analítica corretos',
+    message:
+      'Identificou e filtrou os registos solicitados com precisão. Contudo, o relatório de auditoria/compliance exige uma estrutura de colunas específica para conformidade.',
+    details: [
+      `Colunas enviadas: ${formatColumnList(student.columns)}`,
+      `Colunas requeridas: ${formatColumnList(expected.columns)}`,
+      'Basta ajustar o SELECT para incluir exatamente essas colunas e revalidar.',
+    ],
+    entities: [],
+  };
+}
+
 function compareResults(
   scenario: InvestigationScenario,
   expected: QueryExecResult,
@@ -143,7 +177,6 @@ function compareResults(
 ): Omit<ValidationResult, 'studentRun' | 'highlight'> {
   const { plural } = scenario.rotuloEntidade;
   const hints = scenario.dicasDivergencia;
-  const expectedCols = expected.columns.join(', ');
   const diff = diffEntities(scenario, expected, student);
   const entityLines = describeEntityDiff(scenario, diff);
   const audit = describeRowAudit({
@@ -155,20 +188,10 @@ function compareResults(
 
   if (student.values.length === 0) {
     return {
-      status: 'warning',
+      status: 'error',
       title: audit.title,
       message: audit.message,
       details: [hints.falta, ...entityLines],
-      entities: [],
-    };
-  }
-
-  if (student.columns.length < expected.columns.length) {
-    return {
-      status: 'error',
-      title: 'Colunas faltando',
-      message: `Sua consulta retornou ${student.columns.length} coluna(s), mas o desafio pede ${expected.columns.length}: \`${expectedCols}\`.`,
-      details: [`Colunas retornadas: \`${student.columns.join(', ')}\`.`],
       entities: [],
     };
   }
@@ -188,9 +211,19 @@ function compareResults(
   const contentMap = mapColumnsByContent(expected, student);
   const mapping = contentMap.every((k) => k != null) ? contentMap : orderedMap;
   const unmatched = expected.columns.filter((_, j) => mapping[j] === null);
+  const bagMatch = rowsMatchIgnoringOrder(expected, student);
+  const entitiesOk = diff.keyFound && diff.missing.length === 0 && diff.extra.length === 0;
+  const expectedMapped = unmatched.length === 0;
+  const analyticsOk = expectedMapped || bagMatch || entitiesOk;
+
+  if (analyticsOk && !columnsMatchReport(expected, student)) {
+    if (expectedMapped || bagMatch || (entitiesOk && !namesPresent(expected, student))) {
+      return reportShapeMismatch(expected, student);
+    }
+  }
 
   if (unmatched.length > 0) {
-    if (rowsMatchIgnoringOrder(expected, student)) {
+    if (bagMatch) {
       const prio = describePrioritizationMismatch(scenario.ordenacao);
       return successWithNotes(scenario, expected, student, contentMap, [
         `${prio.message} A esteira aceitou o conjunto de evidências.`,
@@ -208,12 +241,16 @@ function compareResults(
       };
     }
     return {
-      status: 'warning',
-      title: 'Divergência nas métricas calculadas',
+      status: 'error',
+      title: 'Registos fora do critério de negócio',
       message: `A identificação de ${plural} está correta, mas os valores de \`${unmatched.join('`, `')}\` não conferem com o gabarito (tolerância numérica de 0,01).`,
       details: [hints.valores],
       entities: [],
     };
+  }
+
+  if (!columnsMatchReport(expected, student)) {
+    return reportShapeMismatch(expected, student);
   }
 
   const orderNotes: string[] = [];

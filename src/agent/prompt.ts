@@ -133,7 +133,8 @@ ${compilerSection(difficulty)}
 ## Regras de conteúdo
 - Português do Brasil, tom profissional de área de compliance.
 - "contexto": dossiê/denúncia fictícia (2 a 4 frases), coerente com o dataset.
-- "objetivo": o que a query deve retornar, citando colunas esperadas, a ordenação e a técnica do nível (${kit.resumo}).
+- "objetivo": o que a query deve retornar, a ordenação, a técnica do nível (${kit.resumo}) e, ao final, a frase exata:
+  "Para o relatório regulatório, apresente as seguintes colunas: col1, col2, …" com os aliases do SELECT final.
 - "dicaSql": esqueleto parcial da técnica, SEM entregar a resposta completa.
 - "badgeEnquadramento": cite a norma (ex.: "Carta Circular 4.001/2020 · Conta de passagem" ou "Res. BCB 142/2021 · Limite noturno PIX"). Não invente números de
   artigos ou incisos dos quais não tenha certeza.

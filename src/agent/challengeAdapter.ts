@@ -1,4 +1,4 @@
-import type { InvestigationScenario, TrailLevel } from '../challenges/scenarios.ts';
+import { ensureRelatorioColunas, type InvestigationScenario, type TrailLevel } from '../challenges/scenarios.ts';
 import { extractOrderBy } from '../database/safeQuery.ts';
 import { inferTrailLevelFromSql, isChallengeTrailLevel, parseIdTrailLevel } from './difficultyToolkit.ts';
 import type { GeneratedChallenge, GenerationSource } from './types.ts';
@@ -33,7 +33,7 @@ export function toScenario({ challenge: ch, source, model }: StoredChallenge): I
     titulo: ch.titulo,
     enquadramento: ch.badgeEnquadramento,
     dossie: ch.contexto,
-    objetivo: ch.objetivo,
+    objetivo: ensureRelatorioColunas(ch.objetivo, colunas),
     colunasEsperadas: colunas,
     ordenacao,
     dicaTexto: `Tipologia: ${ch.tipologiaBacen}. Colunas esperadas: ${colunas.join(', ')}.`,

@@ -5,7 +5,7 @@ import {
   onScenariosChange,
   removeGenerated,
 } from '../challenges/registry.ts';
-import { DEFAULT_SCENARIO_ID, TRAIL_BAND_LEVELS, TRAIL_LEVELS, trailBandOf, trailOptgroupLabel, type InvestigationScenario, type ScenarioId, type TrailBand, type TrailLevel, type TwoPhaseReasoning } from '../challenges/scenarios.ts';
+import { DEFAULT_SCENARIO_ID, TRAIL_BAND_LEVELS, TRAIL_LEVELS, ensureRelatorioColunas, trailBandOf, trailOptgroupLabel, type InvestigationScenario, type ScenarioId, type TrailBand, type TrailLevel, type TwoPhaseReasoning } from '../challenges/scenarios.ts';
 import { resolveTwoPhase } from '../challenges/twoPhase.ts';
 import { isChallengeCompleted, markChallengeCompleted, PROGRESS_UPDATED_EVENT } from '../services/progressService.ts';
 import { escapeHtml, formatInline } from './format.ts';
@@ -65,24 +65,11 @@ function renderTwoPhase(s: InvestigationScenario): string {
     </div>`;
 }
 
-/** Primeira frase, sem cortar em milhares/decimais (ex.: R$ 9.700,00). */
-function firstSentence(text: string): string {
-  for (let i = 0; i < text.length; i += 1) {
-    const ch = text[i];
-    if (ch !== '.' && ch !== '!' && ch !== '?') continue;
-    const prev = text[i - 1];
-    const next = text[i + 1];
-    if (ch === '.' && prev !== undefined && next !== undefined && /\d/.test(prev) && /\d/.test(next)) continue;
-    return text.slice(0, i + 1).trim();
-  }
-  return text;
-}
-
-function missionLine(objetivo: string | undefined): string {
-  const text = (objetivo ?? '').replace(/`/g, '').replace(/\s+/g, ' ').trim();
-  if (!text) return 'Produza as evidências pedidas neste caso.';
-  const sentence = firstSentence(text);
-  return sentence.length > 280 ? `${sentence.slice(0, 277)}…` : sentence;
+function missionLine(s: InvestigationScenario): string {
+  const columns = expectedColumns(s);
+  const text = (s.objetivo ?? '').replace(/`/g, '').replace(/\s+/g, ' ').trim();
+  if (!text && columns.length === 0) return 'Produza as evidências pedidas neste caso.';
+  return ensureRelatorioColunas(text || 'Produza as evidências pedidas neste caso.', columns);
 }
 
 function expectedColumns(s: InvestigationScenario): readonly string[] {
@@ -204,7 +191,7 @@ function renderScenario(s: InvestigationScenario): string {
     <section id="mission-card" class="rounded-2xl bg-slate-900/40 p-5">
       <h3 class="text-lg font-semibold leading-snug text-slate-50">${escapeHtml(s.titulo ?? 'Caso investigativo')}</h3>
       <p class="mt-4 text-[11px] font-semibold uppercase tracking-wider text-sky-400">Sua Missão</p>
-      <p class="mt-2 text-[15px] leading-relaxed text-slate-100">${escapeHtml(missionLine(s.objetivo))}</p>
+      <p class="mt-2 text-[15px] leading-relaxed text-slate-100">${escapeHtml(missionLine(s))}</p>
     </section>
     <button type="button" data-open-schema
       class="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-900/50 px-3 py-2.5 text-[13px] font-medium text-slate-200 hover:border-sky-600 hover:bg-slate-800 hover:text-sky-100">

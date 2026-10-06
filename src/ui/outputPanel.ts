@@ -47,6 +47,18 @@ function snapshotLine(result: ValidationResult, expectedColumns: readonly string
   }, ${rows} linha(s).`;
 }
 
+function renderReportAdjustment(result: ValidationResult): string {
+  const details = result.details
+    .map((line) => `<p class="text-[13px] leading-relaxed text-amber-100/90">${formatInline(line)}</p>`)
+    .join('');
+  return `
+    <div role="status" class="rounded-xl border border-amber-500/60 bg-amber-950/40 px-4 py-3">
+      <p class="text-sm font-semibold text-amber-200">${escapeHtml(result.title)}</p>
+      <p class="mt-2 text-[13px] leading-relaxed text-amber-100/90">${escapeHtml(result.message)}</p>
+      ${details ? `<div class="mt-3 space-y-1.5 border-t border-amber-800/50 pt-3">${details}</div>` : ''}
+    </div>`;
+}
+
 function renderFailure(result: ValidationResult, expectedColumns: readonly string[]): string {
   const statusLabel = result.status === 'warning' ? 'INCONSISTÊNCIA DETECTADA' : 'ERRO DE VALIDAÇÃO';
   const tone = result.status === 'warning' ? 'border-amber-700/70 text-amber-200' : 'border-rose-800/80 text-rose-200';
@@ -206,6 +218,15 @@ export function initOutputPanel(): OutputPanelController {
           if (rows === 0) setBody(placeholder('Comando executado com sucesso. Nenhuma linha retornada.'));
         }
         body.hidden = !body.innerHTML;
+        focusResults();
+        return;
+      }
+      if (result.status === 'quase_la') {
+        setBanner(renderReportAdjustment(result));
+        if (run?.ok) {
+          const rows = run.results.reduce((acc, r) => acc + r.values.length, 0);
+          paintMeta(run.elapsedMs, rows);
+        }
         focusResults();
         return;
       }

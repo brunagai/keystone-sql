@@ -2734,4 +2734,22 @@ ORDER BY valor_aporte DESC, id_conta;`,
 ];
 
 /** Catálogo base na ordem da trilha (a ordenação é estável dentro de cada nível). */
-export const SCENARIOS: readonly InvestigationScenario[] = [...CATALOG].sort((a, b) => a.nivel - b.nivel);
+export function relatorioRegulatorioColunas(columns: readonly string[]): string {
+  return `Para o relatório regulatório, apresente as seguintes colunas: ${columns.join(', ')}.`;
+}
+
+const RELATORIO_TAIL = /Para o relatório regulatório, apresente as seguintes colunas:\s*.*$/i;
+
+/** Garante que o enunciado termine com a frase padronizada das colunas do relatório. */
+export function ensureRelatorioColunas(objetivo: string, columns: readonly string[]): string {
+  const phrase = relatorioRegulatorioColunas(columns);
+  const body = objetivo.replace(/\s+/g, ' ').trim().replace(RELATORIO_TAIL, '').trim();
+  return body ? `${body} ${phrase}` : phrase;
+}
+
+export const SCENARIOS: readonly InvestigationScenario[] = [...CATALOG]
+  .sort((a, b) => a.nivel - b.nivel)
+  .map((scenario) => ({
+    ...scenario,
+    objetivo: ensureRelatorioColunas(scenario.objetivo, scenario.colunasEsperadas),
+  }));
