@@ -133,10 +133,10 @@ function insertAcessos(db: Database, acessos: readonly AcessoDigital[]): void {
   const stmt = db.prepare(`
     INSERT INTO acessos_digitais (
       id_acesso, id_conta, device_id, ip, geolocalizacao_cidade, geolocalizacao_uf,
-      latitude, longitude, sucesso, data_hora
+      latitude, longitude, sucesso, status_dispositivo, data_hora
     ) VALUES (
       $id_acesso, $id_conta, $device_id, $ip, $geolocalizacao_cidade, $geolocalizacao_uf,
-      $latitude, $longitude, $sucesso, $data_hora
+      $latitude, $longitude, $sucesso, $status_dispositivo, $data_hora
     )
   `);
   try {
@@ -151,6 +151,7 @@ function insertAcessos(db: Database, acessos: readonly AcessoDigital[]): void {
         $latitude: a.latitude,
         $longitude: a.longitude,
         $sucesso: a.sucesso,
+        $status_dispositivo: a.status_dispositivo ?? 'CONFIÁVEL',
         $data_hora: a.data_hora,
       });
     }

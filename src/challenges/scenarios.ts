@@ -21,7 +21,7 @@ export const TRAIL_LEVELS: Record<TrailLevel, TrailLevelInfo> = {
   0: { titulo: 'Fundamentos de Consulta', tecnica: 'SELECT, FROM, WHERE, ORDER BY e GROUP BY' },
   1: { titulo: 'Fundamentos de Agregação', tecnica: 'GROUP BY, HAVING, JOIN e limiares' },
   2: { titulo: 'Cruzamentos Cadastrais e Relações Societárias', tecnica: 'JOIN, LEFT JOIN e duplo relacionamento de cadastro' },
-  3: { titulo: 'Análise Temporal e Mudança de Padrão', tecnica: 'LAG / LEAD e recorte horário (strftime)' },
+  3: { titulo: 'Janelas Temporais e Anomalias Transacionais', tecnica: 'time/strftime, HAVING sobre renda, date() e unixepoch' },
   4: { titulo: 'Composição Analítica com CTEs', tecnica: 'WITH + janelas, LAG e ROWS BETWEEN' },
   5: { titulo: 'Casos Avançados de PLD/FT', tecnica: 'JOIN em QSA, telemetria de acesso e produtos financeiros' },
 };
@@ -645,6 +645,278 @@ ORDER BY valor_total DESC;`,
         message: `Matriz de criticidade: ${gabarito.values.length} remetente(s) com ≥ 5 envios e ≥ R$ 40 mil, somando ${formatBRL(total)}.`,
         entities: contas.slice(0, 8),
         details: ['No Nível 2 a análise deixa de consolidar grupos e passa a classificar linhas em janelas.'],
+      };
+    },
+  },
+  {
+    id: 'limiar-noturno',
+    origem: 'base',
+    nivel: 3,
+    titulo: 'Limiar Noturno: Monitoramento de Transferências de Risco',
+    enquadramento: 'Resolução BCB 142/2021 · limites de segurança do PIX no período noturno',
+    dossie:
+      'A Resolução BCB 142/2021 trata o horário noturno como faixa de maior risco de coação, furto de dispositivo e ' +
+      'limites reduzidos. A mesa pediu originações de valor relevante liquidadas entre o fim da noite e o início da manhã.',
+    objetivo:
+      'Mapeie as transferências PIX de valor igual ou superior a R$ 1.000,00 liquidadas no período noturno (entre 20:00:00 e 06:00:00), faixa sujeita a limites regulatórios de segurança e risco de coação.',
+    colunasEsperadas: ['id_transacao', 'id_conta_origem', 'id_conta_destino', 'valor', 'data_hora'],
+    ordenacao: 'data_hora DESC',
+    dicaTexto:
+      'Combine o piso de valor com o recorte de horário. A madrugada atravessa a meia-noite: nenhuma marcação é, ao mesmo tempo, depois das 20h e antes das 6h — use a união das duas faixas.',
+    dicaSql: `-- Nenhuma hora é >= 20:00 E < 06:00 ao mesmo tempo: use OR
+SELECT id_transacao, id_conta_origem, id_conta_destino, valor, data_hora
+FROM transacoes_pix
+WHERE valor >= ...
+  AND (time(data_hora) >= '20:00:00' OR time(data_hora) < '06:00:00')
+ORDER BY data_hora DESC;`,
+    gabaritoSql: `-- Gabarito · PIX noturno ≥ R$ 1.000 (20h–6h, virada da meia-noite)
+SELECT
+  id_transacao,
+  id_conta_origem,
+  id_conta_destino,
+  valor,
+  data_hora
+FROM transacoes_pix
+WHERE valor >= 1000
+  AND (time(data_hora) >= '20:00:00' OR time(data_hora) < '06:00:00')
+ORDER BY data_hora DESC;`,
+    colunaChave: 'id_transacao',
+    rotuloEntidade: { singular: 'transferência', plural: 'transferências' },
+    dicasDivergencia: {
+      excesso:
+        'Há PIX a mais. O piso é `valor >= 1000` e o horário é `(time(data_hora) >= \'20:00:00\' OR time(data_hora) < \'06:00:00\')`. AND no horário esvazia o resultado.',
+      falta:
+        'Faltam operações. Inclua 20h–23h59 e 00h–05h59. O corte das 6h é exclusivo (`< \'06:00:00\'`). O piso de R$ 1.000,00 é inclusivo.',
+      valores: 'As transações estão certas, mas algum campo diverge. Projete origem, destino, valor e data/hora.',
+      ordenacao: 'Os dados estão corretos, mas a ordem não. Ordene pela data/hora, da mais recente para a mais antiga.',
+    },
+    resumirSucesso(gabarito) {
+      const total = sum(columnValues(gabarito, 'valor'));
+      return {
+        message: `Limiar noturno: ${gabarito.values.length} PIX ≥ R$ 1 mil entre 20h e 6h, somando ${formatBRL(total)}.`,
+        entities: distinct(columnValues(gabarito, 'id_transacao')).slice(0, 8),
+        details: ['O próximo recorte cruza calendário comercial: PJ com envio relevante no fim de semana.'],
+      };
+    },
+  },
+  {
+    id: 'liquidacoes-fim-de-semana',
+    origem: 'base',
+    nivel: 3,
+    titulo: 'Atipicidade de Calendário: Liquidações em Finais de Semana',
+    enquadramento: 'Carta Circular Bacen 4.001/2020 · operações incompatíveis com o objeto social',
+    dossie:
+      'Pessoas jurídicas raramente liquidam valores elevados no sábado ou no domingo fora de plantão operacional. ' +
+      'Envios relevantes nesses dias fogem do ciclo comercial habitual e pedem diligência de atipicidade.',
+    objetivo:
+      'Isole as transferências financeiras de saída de valor relevante (iguais ou superiores a R$ 15.000,00) efetuadas por empresas (PJ) durante finais de semana (sábado ou domingo), indicando atividade fora do ciclo comercial habitual.',
+    colunasEsperadas: ['id_transacao', 'razao_social', 'valor', 'data_hora'],
+    ordenacao: 'data_hora ASC',
+    dicaTexto:
+      'Cruze a originação com o cadastro da empresa, recorte o piso de valor e mantenha só liquidações em sábado ou domingo.',
+    dicaSql: `-- strftime('%w') devolve o dia da semana: '0' = domingo, '6' = sábado
+SELECT t.id_transacao, c.titular AS razao_social, t.valor, t.data_hora
+FROM transacoes_pix t
+JOIN contas c ON t.id_conta_origem = c.id_conta
+WHERE c.tipo_pessoa = 'PJ'
+  AND t.valor >= ...
+  AND strftime('%w', t.data_hora) IN ('0', '6')
+ORDER BY t.data_hora ASC;`,
+    gabaritoSql: `-- Gabarito · PIX de PJ ≥ R$ 15 mil no sábado ou domingo
+SELECT
+  t.id_transacao,
+  c.titular AS razao_social,
+  t.valor,
+  t.data_hora
+FROM transacoes_pix t
+JOIN contas c ON t.id_conta_origem = c.id_conta
+WHERE c.tipo_pessoa = 'PJ'
+  AND t.valor >= 15000
+  AND strftime('%w', t.data_hora) IN ('0', '6')
+ORDER BY t.data_hora ASC;`,
+    colunaChave: 'id_transacao',
+    rotuloEntidade: { singular: 'liquidação', plural: 'liquidações' },
+    dicasDivergencia: {
+      excesso:
+        'Há PIX a mais. Mantenha PJ, `valor >= 15000` e `strftime(\'%w\', data_hora) IN (\'0\', \'6\')` (domingo e sábado).',
+      falta:
+        'Faltam operações. O `%w` do SQLite é texto (`\'0\'` e `\'6\'`, não 0 e 6 numéricos). O piso de R$ 15.000,00 é inclusivo.',
+      valores: 'As transações estão certas, mas a razão social ou o valor divergem. `razao_social` é o titular da conta de origem.',
+      ordenacao: 'Os dados estão corretos, mas a ordem não. Ordene pela data/hora, da mais antiga para a mais recente.',
+    },
+    resumirSucesso(gabarito) {
+      const total = sum(columnValues(gabarito, 'valor'));
+      return {
+        message: `Fim de semana: ${gabarito.values.length} envio(s) de PJ ≥ R$ 15 mil, somando ${formatBRL(total)}.`,
+        entities: distinct(columnValues(gabarito, 'razao_social')).slice(0, 8),
+        details: ['Depois, a incompatibilidade deixa de ser o PIX isolado e passa a ser o volume acumulado versus a renda PF.'],
+      };
+    },
+  },
+  {
+    id: 'volume-desproporcional-renda',
+    origem: 'base',
+    nivel: 3,
+    titulo: 'Incompatibilidade Cadastral: Volume Desproporcional à Renda',
+    enquadramento: 'Circular Bacen 3.978/2020, Art. 38 · incompatibilidade com a capacidade econômico-financeira',
+    dossie:
+      'Diferente do alerta de um único PIX desproporcional, aqui a mesa soma tudo o que a pessoa física enviou no período ' +
+      'e compara com a renda mensal declarada. O recorte captura quem pulveriza valores menores que, juntos, estouram o perfil.',
+    objetivo:
+      'Identifique clientes Pessoa Física (PF) cuja soma total enviada em transferências PIX no período analisado seja igual ou superior a 3 vezes a sua renda mensal declarada no cadastro.',
+    colunasEsperadas: ['id_conta', 'titular', 'renda_mensal_declarada', 'total_enviado'],
+    ordenacao: 'total_enviado DESC',
+    dicaTexto:
+      'Consolide os envios por cliente PF e compare o volume acumulado com o triplo da renda declarada. Toda coluna cadastral projetada precisa ir junto na consolidação.',
+    dicaSql: `-- Colunas não agregadas do SELECT repetem no GROUP BY (ANSI)
+-- A comparação com a renda ocorre DEPOIS de somar (HAVING)
+SELECT c.id_conta, c.titular, c.renda_mensal_declarada,
+       SUM(t.valor) AS total_enviado
+FROM contas c
+JOIN transacoes_pix t ON c.id_conta = t.id_conta_origem
+WHERE c.tipo_pessoa = 'PF'
+GROUP BY c.id_conta, c.titular, c.renda_mensal_declarada
+HAVING SUM(t.valor) >= 3 * c.renda_mensal_declarada
+ORDER BY total_enviado DESC;`,
+    gabaritoSql: `-- Gabarito · PF com volume enviado ≥ 3× a renda mensal declarada
+SELECT
+  c.id_conta,
+  c.titular,
+  c.renda_mensal_declarada,
+  SUM(t.valor) AS total_enviado
+FROM contas c
+JOIN transacoes_pix t ON c.id_conta = t.id_conta_origem
+WHERE c.tipo_pessoa = 'PF'
+GROUP BY c.id_conta, c.titular, c.renda_mensal_declarada
+HAVING SUM(t.valor) >= 3 * c.renda_mensal_declarada
+ORDER BY total_enviado DESC;`,
+    colunaChave: 'id_conta',
+    rotuloEntidade: { singular: 'cliente', plural: 'clientes' },
+    dicasDivergencia: {
+      excesso:
+        'Há contas a mais. Restrinja a PF, some só envios e corte `HAVING SUM(t.valor) >= 3 * c.renda_mensal_declarada`.',
+      falta:
+        'Faltam clientes. O múltiplo é inclusivo (3 vezes). Repita `id_conta`, `titular` e `renda_mensal_declarada` no agrupamento.',
+      valores:
+        'Os identificadores batem, mas renda ou `total_enviado` divergem. `total_enviado` é `SUM(t.valor)` dos PIX de origem.',
+      ordenacao: 'Os dados estão corretos, mas a ordem não. Ordene pelo volume enviado, do maior para o menor.',
+    },
+    resumirSucesso(gabarito) {
+      const total = sum(columnValues(gabarito, 'total_enviado'));
+      return {
+        message: `Incompatibilidade acumulada: ${gabarito.values.length} PF(s) com envios ≥ 3× a renda, somando ${formatBRL(total)}.`,
+        entities: distinct(columnValues(gabarito, 'id_conta')).slice(0, 8),
+        details: ['O próximo sinal é operacional: muitos disparos na mesma data civil, independentemente do valor unitário.'],
+      };
+    },
+  },
+  {
+    id: 'rajada-mesma-data',
+    origem: 'base',
+    nivel: 3,
+    titulo: 'Rajada Transacional: Concentração de Disparos na Mesma Data',
+    enquadramento: 'Carta Circular Bacen 4.001/2020 · Inciso IV - Alta Frequência',
+    dossie:
+      'Rajadas no mesmo dia civil sugerem automação, lote de laranjas ou tentativa de esgotar limites. A esteira pede ' +
+      'quem originou quatro ou mais liquidações na mesma data, com a contagem e o volume daquele dia.',
+    objetivo:
+      'Detecte contas de origem que apresentaram comportamento de disparo sucessivo de fundos, efetuando 4 ou mais transferências em uma única data civil.',
+    colunasEsperadas: ['conta_origem', 'data_operacao', 'total_operacoes', 'valor_total_dia'],
+    ordenacao: 'total_operacoes DESC, valor_total_dia DESC',
+    dicaTexto:
+      'Consolide cada pagador por dia (sem a hora) e mantenha só os pares conta–data com pelo menos quatro envios.',
+    dicaSql: `-- date(data_hora) trunca o instante para o dia civil (balde diário)
+SELECT id_conta_origem AS conta_origem,
+       date(data_hora) AS data_operacao,
+       COUNT(*)        AS total_operacoes,
+       SUM(valor)      AS valor_total_dia
+FROM transacoes_pix
+GROUP BY id_conta_origem, date(data_hora)
+HAVING COUNT(*) >= ...
+ORDER BY total_operacoes DESC, valor_total_dia DESC;`,
+    gabaritoSql: `-- Gabarito · 4 ou mais PIX da mesma origem no mesmo dia civil
+SELECT
+  id_conta_origem AS conta_origem,
+  date(data_hora) AS data_operacao,
+  COUNT(*)        AS total_operacoes,
+  SUM(valor)      AS valor_total_dia
+FROM transacoes_pix
+GROUP BY id_conta_origem, date(data_hora)
+HAVING COUNT(*) >= 4
+ORDER BY total_operacoes DESC, valor_total_dia DESC;`,
+    colunaChave: 'conta_origem',
+    rotuloEntidade: { singular: 'conta-dia', plural: 'contas-dia' },
+    dicasDivergencia: {
+      excesso:
+        'Há linhas a mais. Agrupe por origem e `date(data_hora)` (não pela data/hora completa) e corte `HAVING COUNT(*) >= 4`.',
+      falta:
+        'Faltam rajadas. O piso é inclusivo (4 envios). `data_operacao` é o dia civil (`date(data_hora)`), sem a hora.',
+      valores:
+        'As contas/datas batem, mas as métricas não. `total_operacoes` é `COUNT(*)` e `valor_total_dia` é `SUM(valor)`.',
+      ordenacao: 'Os dados estão corretos, mas a ordem não. Ordene pela quantidade e, em empate, pelo volume do dia.',
+    },
+    resumirSucesso(gabarito) {
+      return {
+        message: `Rajadas: ${gabarito.values.length} par(es) conta–data com 4 ou mais envios no mesmo dia civil.`,
+        entities: distinct(columnValues(gabarito, 'conta_origem')).slice(0, 8),
+        details: ['Falta cruzar a originação com a telemetria de acesso nos quinze minutos anteriores.'],
+      };
+    },
+  },
+  {
+    id: 'telemetria-ato-janela',
+    origem: 'base',
+    nivel: 3,
+    titulo: 'Telemetria de Acesso: Janela Crítica Pré-Transacional (ATO)',
+    enquadramento: 'Circular Bacen 3.978/2020 · canais eletrônicos e indícios de Account Takeover',
+    dossie:
+      'Account takeover costuma preceder o saque: sessão marcada como não confiável ou suspeita e, em seguida, a ' +
+      'originação. A mesa pede o cruzamento em janela curta (até quinze minutos) para não misturar logins antigos com o PIX.',
+    objetivo:
+      'Rastreie indícios de invasão de conta identificando transações de saída originadas em até 15 minutos logo após um acesso digital classificado com status não confiável ou suspeito, indicando comprometimento de credenciais.',
+    colunasEsperadas: ['id_conta', 'geolocalizacao_cidade', 'status_dispositivo', 'valor', 'data_hora'],
+    ordenacao: 'data_hora DESC',
+    dicaTexto:
+      'Associe cada envio ao acesso da mesma conta e meça os segundos entre os dois instantes (no máximo quinze minutos, acesso antes ou no mesmo momento do PIX). Descarte sessões classificadas como confiáveis.',
+    dicaSql: `-- unixepoch devolve segundos; 15 min = 900 s. BETWEEN 0 AND 900 evita produto cartesiano frouxo
+SELECT t.id_conta_origem AS id_conta,
+       a.geolocalizacao_cidade,
+       a.status_dispositivo,
+       t.valor,
+       t.data_hora
+FROM transacoes_pix t
+JOIN acessos_digitais a ON t.id_conta_origem = a.id_conta
+  AND (unixepoch(t.data_hora) - unixepoch(a.data_hora)) BETWEEN 0 AND 900
+WHERE a.status_dispositivo != 'CONFIÁVEL'
+ORDER BY t.data_hora DESC;`,
+    gabaritoSql: `-- Gabarito · PIX até 15 min após acesso não confiável (unixepoch)
+SELECT
+  t.id_conta_origem AS id_conta,
+  a.geolocalizacao_cidade,
+  a.status_dispositivo,
+  t.valor,
+  t.data_hora
+FROM transacoes_pix t
+JOIN acessos_digitais a ON t.id_conta_origem = a.id_conta
+  AND (unixepoch(t.data_hora) - unixepoch(a.data_hora)) BETWEEN 0 AND 900
+WHERE a.status_dispositivo != 'CONFIÁVEL'
+ORDER BY t.data_hora DESC;`,
+    colunaChave: 'id_conta',
+    rotuloEntidade: { singular: 'evento ATO', plural: 'eventos ATO' },
+    dicasDivergencia: {
+      excesso:
+        'Há linhas a mais. A janela é `(unixepoch(t.data_hora) - unixepoch(a.data_hora)) BETWEEN 0 AND 900` e o status não pode ser `CONFIÁVEL`.',
+      falta:
+        'Faltam eventos. O acesso precisa ser da mesma conta, anterior ou simultâneo ao PIX, em até 900 segundos. `!= \'CONFIÁVEL\'` inclui suspeito e demais status.',
+      valores:
+        'As contas batem, mas cidade, status, valor ou horário divergem. Projete os cinco campos pedidos; `id_conta` é a origem do PIX.',
+      ordenacao: 'Os dados estão corretos, mas a ordem não. Ordene pela data/hora da transação, da mais recente para a mais antiga.',
+    },
+    resumirSucesso(gabarito) {
+      return {
+        message: `ATO em janela de 15 min: ${gabarito.values.length} originação(ões) após acesso não confiável.`,
+        entities: distinct(columnValues(gabarito, 'id_conta')).slice(0, 8),
+        details: ['Os casos homologados seguintes no nível aprofundam rajada subminuto (LAG) e o recorte noturno da Res. BCB 142.'],
       };
     },
   },

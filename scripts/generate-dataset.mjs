@@ -518,7 +518,7 @@ const contasComPix = [...new Set(transacoes.flatMap((t) => [t.id_conta_origem, t
 const acessos_digitais = [];
 let acessoSeq = 0;
 
-function addAcesso(idConta, device, ip, cidade, uf, lat, lng, sucesso, dataHora) {
+function addAcesso(idConta, device, ip, cidade, uf, lat, lng, sucesso, dataHora, status = 'CONFIÁVEL') {
   acessoSeq += 1;
   acessos_digitais.push({
     id_acesso: seq('A', acessoSeq),
@@ -530,6 +530,7 @@ function addAcesso(idConta, device, ip, cidade, uf, lat, lng, sucesso, dataHora)
     latitude: lat,
     longitude: lng,
     sucesso,
+    status_dispositivo: status,
     data_hora: dataHora,
   });
 }
@@ -544,9 +545,9 @@ for (const id of contasComPix) {
   addAcesso(id, deviceHab, ipHab, geo.cidade, geo.uf, geo.lat, geo.lng, 1, '2026-08-10 19:02:11');
 }
 
-addAcesso('C001', 'DEV-C001-HAB', '187.44.1.10', 'São Paulo', 'SP', -23.5505, -46.6333, 0, '2026-08-21 14:04:02');
-addAcesso('C001', 'DEV-C001-ATO', '191.5.80.12', 'Manaus', 'AM', -3.119, -60.0217, 1, '2026-08-21 14:05:18');
-addAcesso('C005', 'DEV-C005-COA', '177.22.91.44', 'Recife', 'PE', -8.0476, -34.877, 1, '2026-08-23 23:38:40');
+addAcesso('C001', 'DEV-C001-HAB', '187.44.1.10', 'São Paulo', 'SP', -23.5505, -46.6333, 0, '2026-08-21 14:04:02', 'DESCONHECIDO');
+addAcesso('C001', 'DEV-C001-ATO', '191.5.80.12', 'Manaus', 'AM', -3.119, -60.0217, 1, '2026-08-21 14:05:18', 'SUSPEITO');
+addAcesso('C005', 'DEV-C005-COA', '177.22.91.44', 'Recife', 'PE', -8.0476, -34.877, 1, '2026-08-23 23:38:40', 'SUSPEITO');
 addAcesso('C013', 'DEV-C013-HAB', '187.44.13.10', 'Brasília', 'DF', -15.7939, -47.8828, 1, '2026-08-27 08:55:00');
 
 const operacoes_produtos = [

@@ -213,6 +213,73 @@ JOIN contas des
 ;`,
 };
 
+const LEVEL3_SKELETON: Readonly<Record<string, string>> = {
+  'limiar-noturno': `SELECT
+    -- 1. Identificador, origem, destino, valor e data/hora
+    
+FROM transacoes_pix
+WHERE
+    -- 2. Piso de R$ 1.000,00 E faixa noturna (20h em diante OU antes das 6h)
+    
+-- ORDER BY ...
+;`,
+  'liquidacoes-fim-de-semana': `SELECT
+    -- 1. Identificador, razão social da empresa, valor e data/hora
+    
+FROM transacoes_pix t
+JOIN contas c
+    ON
+    -- 2. Cruze pela conta de ORIGEM
+    
+WHERE
+    -- 3. Pessoa jurídica, piso de R$ 15.000,00 e sábado ou domingo
+    
+-- ORDER BY ...
+;`,
+  'volume-desproporcional-renda': `SELECT
+    -- 1. Identificador, titular, renda declarada e soma dos envios
+    
+FROM contas c
+JOIN transacoes_pix t
+    ON
+    -- 2. Cruze o cadastro com as originações
+    
+WHERE
+    -- 3. Somente pessoa física
+    
+GROUP BY
+    -- 4. Repita as colunas cadastrais (não agregadas) da projeção
+    
+-- 5. Volume acumulado ≥ 3 vezes a renda declarada:
+-- HAVING ...
+-- ORDER BY ...
+;`,
+  'rajada-mesma-data': `SELECT
+    -- 1. Conta de origem, dia civil, quantidade de envios e volume do dia
+    
+FROM transacoes_pix
+GROUP BY
+    -- 2. Pagador e dia (sem a hora)
+    
+-- 3. Pelo menos 4 envios no mesmo dia civil:
+-- HAVING ...
+-- ORDER BY ...
+;`,
+  'telemetria-ato-janela': `SELECT
+    -- 1. Conta, cidade do acesso, status do dispositivo, valor e data/hora do PIX
+    
+FROM transacoes_pix t
+JOIN acessos_digitais a
+    ON
+    -- 2. Mesma conta E diferença em segundos entre 0 e 900 (15 minutos)
+    
+WHERE
+    -- 3. Acesso com status diferente de confiável
+    
+-- ORDER BY ...
+;`,
+};
+
 const LEVEL5_SKELETON: Readonly<Record<string, string>> = {
   'ubo-aurora': `SELECT
     s.nome_socio,
@@ -283,6 +350,7 @@ export function buildStarterTemplate(scenario: InvestigationScenario): string {
     LEVEL0_SKELETON[scenario.id] ??
     LEVEL1_SKELETON[scenario.id] ??
     LEVEL2_SKELETON[scenario.id] ??
+    LEVEL3_SKELETON[scenario.id] ??
     LEVEL5_SKELETON[scenario.id];
   if (skeleton) return `${headerComments(scenario).join('\n')}${skeleton}`;
 

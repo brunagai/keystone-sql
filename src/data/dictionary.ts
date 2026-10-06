@@ -94,6 +94,10 @@ export const DATA_DICTIONARY: Record<string, TableDictionary> = {
       latitude: col('Latitude WGS84 (pode ser NULL).', '-3.119'),
       longitude: col('Longitude WGS84 (pode ser NULL).', '-60.0217'),
       sucesso: col('1 = login bem-sucedido; 0 = falha de autenticação.', '1'),
+      status_dispositivo: col(
+        'Classificação de risco do dispositivo: CONFIÁVEL, SUSPEITO ou DESCONHECIDO.',
+        'SUSPEITO',
+      ),
       data_hora: col("Instante do evento 'YYYY-MM-DD HH:MM:SS'.", '2026-08-21 14:05:18'),
     },
   },

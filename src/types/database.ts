@@ -20,6 +20,8 @@ export interface SocioEmpresa {
   data_entrada: DataIso;
 }
 
+export type StatusDispositivo = 'CONFIÁVEL' | 'SUSPEITO' | 'DESCONHECIDO';
+
 /** Login, dispositivo e geolocalização (account takeover / acesso atípico). */
 export interface AcessoDigital {
   id_acesso: string;
@@ -31,6 +33,7 @@ export interface AcessoDigital {
   latitude: number | null;
   longitude: number | null;
   sucesso: 0 | 1;
+  status_dispositivo: StatusDispositivo;
   data_hora: DataHoraSqlite;
 }
 

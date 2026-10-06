@@ -13426,6 +13426,7 @@
       "latitude": -27.5954,
       "longitude": -48.548,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-02 08:15:00"
     },
     {
@@ -13438,6 +13439,7 @@
       "latitude": -27.5954,
       "longitude": -48.548,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-10 19:02:11"
     },
     {
@@ -13450,6 +13452,7 @@
       "latitude": -22.9068,
       "longitude": -43.1729,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-02 08:15:00"
     },
     {
@@ -13462,6 +13465,7 @@
       "latitude": -22.9068,
       "longitude": -43.1729,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-10 19:02:11"
     },
     {
@@ -13474,6 +13478,7 @@
       "latitude": -1.4558,
       "longitude": -48.4902,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-02 08:15:00"
     },
     {
@@ -13486,6 +13491,7 @@
       "latitude": -1.4558,
       "longitude": -48.4902,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-10 19:02:11"
     },
     {
@@ -13498,6 +13504,7 @@
       "latitude": -12.9714,
       "longitude": -38.5014,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-02 08:15:00"
     },
     {
@@ -13510,6 +13517,7 @@
       "latitude": -12.9714,
       "longitude": -38.5014,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-10 19:02:11"
     },
     {
@@ -13522,6 +13530,7 @@
       "latitude": -5.7945,
       "longitude": -35.211,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-02 08:15:00"
     },
     {
@@ -13534,6 +13543,7 @@
       "latitude": -5.7945,
       "longitude": -35.211,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-10 19:02:11"
     },
     {
@@ -13546,6 +13556,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-02 08:15:00"
     },
     {
@@ -13558,6 +13569,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-10 19:02:11"
     },
     {
@@ -13570,6 +13582,7 @@
       "latitude": -3.7172,
       "longitude": -38.5433,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-02 08:15:00"
     },
     {
@@ -13582,6 +13595,7 @@
       "latitude": -3.7172,
       "longitude": -38.5433,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-10 19:02:11"
     },
     {
@@ -13594,6 +13608,7 @@
       "latitude": -8.0476,
       "longitude": -34.877,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-02 08:15:00"
     },
     {
@@ -13606,6 +13621,7 @@
       "latitude": -8.0476,
       "longitude": -34.877,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-10 19:02:11"
     },
     {
@@ -13618,6 +13634,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-02 08:15:00"
     },
     {
@@ -13630,6 +13647,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-10 19:02:11"
     },
     {
@@ -13642,6 +13660,7 @@
       "latitude": -15.7939,
       "longitude": -47.8828,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-02 08:15:00"
     },
     {
@@ -13654,6 +13673,7 @@
       "latitude": -15.7939,
       "longitude": -47.8828,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-10 19:02:11"
     },
     {
@@ -13666,6 +13686,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-02 08:15:00"
     },
     {
@@ -13678,6 +13699,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-10 19:02:11"
     },
     {
@@ -13690,6 +13712,7 @@
       "latitude": -20.3155,
       "longitude": -40.3128,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-02 08:15:00"
     },
     {
@@ -13702,6 +13725,7 @@
       "latitude": -20.3155,
       "longitude": -40.3128,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-10 19:02:11"
     },
     {
@@ -13714,6 +13738,7 @@
       "latitude": -25.4284,
       "longitude": -49.2733,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-02 08:15:00"
     },
     {
@@ -13726,6 +13751,7 @@
       "latitude": -25.4284,
       "longitude": -49.2733,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-10 19:02:11"
     },
     {
@@ -13738,6 +13764,7 @@
       "latitude": -3.119,
       "longitude": -60.0217,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-02 08:15:00"
     },
     {
@@ -13750,6 +13777,7 @@
       "latitude": -3.119,
       "longitude": -60.0217,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-10 19:02:11"
     },
     {
@@ -13762,6 +13790,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-02 08:15:00"
     },
     {
@@ -13774,6 +13803,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-10 19:02:11"
     },
     {
@@ -13786,6 +13816,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-02 08:15:00"
     },
     {
@@ -13798,6 +13829,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-10 19:02:11"
     },
     {
@@ -13810,6 +13842,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-02 08:15:00"
     },
     {
@@ -13822,6 +13855,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-10 19:02:11"
     },
     {
@@ -13834,6 +13868,7 @@
       "latitude": -20.4697,
       "longitude": -54.6201,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-02 08:15:00"
     },
     {
@@ -13846,6 +13881,7 @@
       "latitude": -20.4697,
       "longitude": -54.6201,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-10 19:02:11"
     },
     {
@@ -13858,6 +13894,7 @@
       "latitude": -19.9167,
       "longitude": -43.9345,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-02 08:15:00"
     },
     {
@@ -13870,6 +13907,7 @@
       "latitude": -19.9167,
       "longitude": -43.9345,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-10 19:02:11"
     },
     {
@@ -13882,6 +13920,7 @@
       "latitude": -30.0346,
       "longitude": -51.2177,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-02 08:15:00"
     },
     {
@@ -13894,6 +13933,7 @@
       "latitude": -30.0346,
       "longitude": -51.2177,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-10 19:02:11"
     },
     {
@@ -13906,6 +13946,7 @@
       "latitude": -30.0346,
       "longitude": -51.2177,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-02 08:15:00"
     },
     {
@@ -13918,6 +13959,7 @@
       "latitude": -30.0346,
       "longitude": -51.2177,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-10 19:02:11"
     },
     {
@@ -13930,6 +13972,7 @@
       "latitude": -16.6869,
       "longitude": -49.2648,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-02 08:15:00"
     },
     {
@@ -13942,6 +13985,7 @@
       "latitude": -16.6869,
       "longitude": -49.2648,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-10 19:02:11"
     },
     {
@@ -13954,6 +13998,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-02 08:15:00"
     },
     {
@@ -13966,6 +14011,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-10 19:02:11"
     },
     {
@@ -13978,6 +14024,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-02 08:15:00"
     },
     {
@@ -13990,6 +14037,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-10 19:02:11"
     },
     {
@@ -14002,6 +14050,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-02 08:15:00"
     },
     {
@@ -14014,6 +14063,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-10 19:02:11"
     },
     {
@@ -14026,6 +14076,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-02 08:15:00"
     },
     {
@@ -14038,6 +14089,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-10 19:02:11"
     },
     {
@@ -14050,6 +14102,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-02 08:15:00"
     },
     {
@@ -14062,6 +14115,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-10 19:02:11"
     },
     {
@@ -14074,6 +14128,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-02 08:15:00"
     },
     {
@@ -14086,6 +14141,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-10 19:02:11"
     },
     {
@@ -14098,6 +14154,7 @@
       "latitude": -7.1195,
       "longitude": -34.845,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-02 08:15:00"
     },
     {
@@ -14110,6 +14167,7 @@
       "latitude": -7.1195,
       "longitude": -34.845,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-10 19:02:11"
     },
     {
@@ -14122,6 +14180,7 @@
       "latitude": -19.9167,
       "longitude": -43.9345,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-02 08:15:00"
     },
     {
@@ -14134,6 +14193,7 @@
       "latitude": -19.9167,
       "longitude": -43.9345,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-10 19:02:11"
     },
     {
@@ -14146,6 +14206,7 @@
       "latitude": -22.9068,
       "longitude": -43.1729,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-02 08:15:00"
     },
     {
@@ -14158,6 +14219,7 @@
       "latitude": -22.9068,
       "longitude": -43.1729,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-10 19:02:11"
     },
     {
@@ -14170,6 +14232,7 @@
       "latitude": -25.4284,
       "longitude": -49.2733,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-02 08:15:00"
     },
     {
@@ -14182,6 +14245,7 @@
       "latitude": -25.4284,
       "longitude": -49.2733,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-10 19:02:11"
     },
     {
@@ -14194,6 +14258,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-02 08:15:00"
     },
     {
@@ -14206,6 +14271,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-10 19:02:11"
     },
     {
@@ -14218,6 +14284,7 @@
       "latitude": -15.6014,
       "longitude": -56.0979,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-02 08:15:00"
     },
     {
@@ -14230,6 +14297,7 @@
       "latitude": -15.6014,
       "longitude": -56.0979,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-10 19:02:11"
     },
     {
@@ -14242,6 +14310,7 @@
       "latitude": -22.9068,
       "longitude": -43.1729,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-02 08:15:00"
     },
     {
@@ -14254,6 +14323,7 @@
       "latitude": -22.9068,
       "longitude": -43.1729,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-10 19:02:11"
     },
     {
@@ -14266,6 +14336,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-02 08:15:00"
     },
     {
@@ -14278,6 +14349,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-10 19:02:11"
     },
     {
@@ -14290,6 +14362,7 @@
       "latitude": -22.9068,
       "longitude": -43.1729,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-02 08:15:00"
     },
     {
@@ -14302,6 +14375,7 @@
       "latitude": -22.9068,
       "longitude": -43.1729,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-10 19:02:11"
     },
     {
@@ -14314,6 +14388,7 @@
       "latitude": -22.9068,
       "longitude": -43.1729,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-02 08:15:00"
     },
     {
@@ -14326,6 +14401,7 @@
       "latitude": -22.9068,
       "longitude": -43.1729,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-10 19:02:11"
     },
     {
@@ -14338,6 +14414,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 0,
+      "status_dispositivo": "DESCONHECIDO",
       "data_hora": "2026-08-21 14:04:02"
     },
     {
@@ -14350,6 +14427,7 @@
       "latitude": -3.119,
       "longitude": -60.0217,
       "sucesso": 1,
+      "status_dispositivo": "SUSPEITO",
       "data_hora": "2026-08-21 14:05:18"
     },
     {
@@ -14362,6 +14440,7 @@
       "latitude": -8.0476,
       "longitude": -34.877,
       "sucesso": 1,
+      "status_dispositivo": "SUSPEITO",
       "data_hora": "2026-08-23 23:38:40"
     },
     {
@@ -14374,6 +14453,7 @@
       "latitude": -15.7939,
       "longitude": -47.8828,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-27 08:55:00"
     },
     {
@@ -14386,6 +14466,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -14398,6 +14479,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -14410,6 +14492,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -14422,6 +14505,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -14434,6 +14518,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -14446,6 +14531,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -14458,6 +14544,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -14470,6 +14557,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -14482,6 +14570,7 @@
       "latitude": -22.9068,
       "longitude": -43.1729,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -14494,6 +14583,7 @@
       "latitude": -22.9068,
       "longitude": -43.1729,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -14506,6 +14596,7 @@
       "latitude": -22.9068,
       "longitude": -43.1729,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -14518,6 +14609,7 @@
       "latitude": -22.9068,
       "longitude": -43.1729,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -14530,6 +14622,7 @@
       "latitude": -19.9167,
       "longitude": -43.9345,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -14542,6 +14635,7 @@
       "latitude": -19.9167,
       "longitude": -43.9345,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -14554,6 +14648,7 @@
       "latitude": -19.9167,
       "longitude": -43.9345,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -14566,6 +14661,7 @@
       "latitude": -19.9167,
       "longitude": -43.9345,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -14578,6 +14674,7 @@
       "latitude": -25.4284,
       "longitude": -49.2733,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -14590,6 +14687,7 @@
       "latitude": -25.4284,
       "longitude": -49.2733,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -14602,6 +14700,7 @@
       "latitude": -25.4284,
       "longitude": -49.2733,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -14614,6 +14713,7 @@
       "latitude": -25.4284,
       "longitude": -49.2733,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -14626,6 +14726,7 @@
       "latitude": -30.0346,
       "longitude": -51.2177,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -14638,6 +14739,7 @@
       "latitude": -30.0346,
       "longitude": -51.2177,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -14650,6 +14752,7 @@
       "latitude": -12.9714,
       "longitude": -38.5014,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -14662,6 +14765,7 @@
       "latitude": -12.9714,
       "longitude": -38.5014,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -14674,6 +14778,7 @@
       "latitude": -8.0476,
       "longitude": -34.877,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -14686,6 +14791,7 @@
       "latitude": -8.0476,
       "longitude": -34.877,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -14698,6 +14804,7 @@
       "latitude": -3.7172,
       "longitude": -38.5433,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -14710,6 +14817,7 @@
       "latitude": -3.7172,
       "longitude": -38.5433,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -14722,6 +14830,7 @@
       "latitude": -16.6869,
       "longitude": -49.2648,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -14734,6 +14843,7 @@
       "latitude": -16.6869,
       "longitude": -49.2648,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -14746,6 +14856,7 @@
       "latitude": -15.7939,
       "longitude": -47.8828,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -14758,6 +14869,7 @@
       "latitude": -15.7939,
       "longitude": -47.8828,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -14770,6 +14882,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -14782,6 +14895,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -14794,6 +14908,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -14806,6 +14921,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -14818,6 +14934,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -14830,6 +14947,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -14842,6 +14960,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -14854,6 +14973,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -14866,6 +14986,7 @@
       "latitude": -22.9068,
       "longitude": -43.1729,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -14878,6 +14999,7 @@
       "latitude": -22.9068,
       "longitude": -43.1729,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -14890,6 +15012,7 @@
       "latitude": -22.9068,
       "longitude": -43.1729,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -14902,6 +15025,7 @@
       "latitude": -22.9068,
       "longitude": -43.1729,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -14914,6 +15038,7 @@
       "latitude": -19.9167,
       "longitude": -43.9345,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -14926,6 +15051,7 @@
       "latitude": -19.9167,
       "longitude": -43.9345,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -14938,6 +15064,7 @@
       "latitude": -19.9167,
       "longitude": -43.9345,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -14950,6 +15077,7 @@
       "latitude": -19.9167,
       "longitude": -43.9345,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -14962,6 +15090,7 @@
       "latitude": -25.4284,
       "longitude": -49.2733,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -14974,6 +15103,7 @@
       "latitude": -25.4284,
       "longitude": -49.2733,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -14986,6 +15116,7 @@
       "latitude": -25.4284,
       "longitude": -49.2733,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -14998,6 +15129,7 @@
       "latitude": -25.4284,
       "longitude": -49.2733,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -15010,6 +15142,7 @@
       "latitude": -30.0346,
       "longitude": -51.2177,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -15022,6 +15155,7 @@
       "latitude": -30.0346,
       "longitude": -51.2177,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -15034,6 +15168,7 @@
       "latitude": -12.9714,
       "longitude": -38.5014,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -15046,6 +15181,7 @@
       "latitude": -12.9714,
       "longitude": -38.5014,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -15058,6 +15194,7 @@
       "latitude": -8.0476,
       "longitude": -34.877,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -15070,6 +15207,7 @@
       "latitude": -8.0476,
       "longitude": -34.877,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -15082,6 +15220,7 @@
       "latitude": -3.7172,
       "longitude": -38.5433,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -15094,6 +15233,7 @@
       "latitude": -3.7172,
       "longitude": -38.5433,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -15106,6 +15246,7 @@
       "latitude": -16.6869,
       "longitude": -49.2648,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -15118,6 +15259,7 @@
       "latitude": -16.6869,
       "longitude": -49.2648,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -15130,6 +15272,7 @@
       "latitude": -15.7939,
       "longitude": -47.8828,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -15142,6 +15285,7 @@
       "latitude": -15.7939,
       "longitude": -47.8828,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -15154,6 +15298,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -15166,6 +15311,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -15178,6 +15324,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -15190,6 +15337,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -15202,6 +15350,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -15214,6 +15363,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -15226,6 +15376,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -15238,6 +15389,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -15250,6 +15402,7 @@
       "latitude": -22.9068,
       "longitude": -43.1729,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -15262,6 +15415,7 @@
       "latitude": -22.9068,
       "longitude": -43.1729,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -15274,6 +15428,7 @@
       "latitude": -22.9068,
       "longitude": -43.1729,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -15286,6 +15441,7 @@
       "latitude": -22.9068,
       "longitude": -43.1729,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -15298,6 +15454,7 @@
       "latitude": -19.9167,
       "longitude": -43.9345,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -15310,6 +15467,7 @@
       "latitude": -19.9167,
       "longitude": -43.9345,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -15322,6 +15480,7 @@
       "latitude": -19.9167,
       "longitude": -43.9345,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -15334,6 +15493,7 @@
       "latitude": -19.9167,
       "longitude": -43.9345,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -15346,6 +15506,7 @@
       "latitude": -25.4284,
       "longitude": -49.2733,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -15358,6 +15519,7 @@
       "latitude": -25.4284,
       "longitude": -49.2733,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -15370,6 +15532,7 @@
       "latitude": -25.4284,
       "longitude": -49.2733,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -15382,6 +15545,7 @@
       "latitude": -25.4284,
       "longitude": -49.2733,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -15394,6 +15558,7 @@
       "latitude": -30.0346,
       "longitude": -51.2177,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -15406,6 +15571,7 @@
       "latitude": -30.0346,
       "longitude": -51.2177,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -15418,6 +15584,7 @@
       "latitude": -12.9714,
       "longitude": -38.5014,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -15430,6 +15597,7 @@
       "latitude": -12.9714,
       "longitude": -38.5014,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -15442,6 +15610,7 @@
       "latitude": -8.0476,
       "longitude": -34.877,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -15454,6 +15623,7 @@
       "latitude": -8.0476,
       "longitude": -34.877,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -15466,6 +15636,7 @@
       "latitude": -3.7172,
       "longitude": -38.5433,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -15478,6 +15649,7 @@
       "latitude": -3.7172,
       "longitude": -38.5433,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -15490,6 +15662,7 @@
       "latitude": -16.6869,
       "longitude": -49.2648,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -15502,6 +15675,7 @@
       "latitude": -16.6869,
       "longitude": -49.2648,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -15514,6 +15688,7 @@
       "latitude": -15.7939,
       "longitude": -47.8828,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -15526,6 +15701,7 @@
       "latitude": -15.7939,
       "longitude": -47.8828,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -15538,6 +15714,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -15550,6 +15727,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -15562,6 +15740,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -15574,6 +15753,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -15586,6 +15766,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -15598,6 +15779,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -15610,6 +15792,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -15622,6 +15805,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -15634,6 +15818,7 @@
       "latitude": -22.9068,
       "longitude": -43.1729,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -15646,6 +15831,7 @@
       "latitude": -22.9068,
       "longitude": -43.1729,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -15658,6 +15844,7 @@
       "latitude": -22.9068,
       "longitude": -43.1729,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -15670,6 +15857,7 @@
       "latitude": -22.9068,
       "longitude": -43.1729,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -15682,6 +15870,7 @@
       "latitude": -19.9167,
       "longitude": -43.9345,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -15694,6 +15883,7 @@
       "latitude": -19.9167,
       "longitude": -43.9345,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -15706,6 +15896,7 @@
       "latitude": -19.9167,
       "longitude": -43.9345,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -15718,6 +15909,7 @@
       "latitude": -19.9167,
       "longitude": -43.9345,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -15730,6 +15922,7 @@
       "latitude": -25.4284,
       "longitude": -49.2733,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -15742,6 +15935,7 @@
       "latitude": -25.4284,
       "longitude": -49.2733,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -15754,6 +15948,7 @@
       "latitude": -25.4284,
       "longitude": -49.2733,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -15766,6 +15961,7 @@
       "latitude": -25.4284,
       "longitude": -49.2733,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -15778,6 +15974,7 @@
       "latitude": -30.0346,
       "longitude": -51.2177,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -15790,6 +15987,7 @@
       "latitude": -30.0346,
       "longitude": -51.2177,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -15802,6 +16000,7 @@
       "latitude": -12.9714,
       "longitude": -38.5014,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -15814,6 +16013,7 @@
       "latitude": -12.9714,
       "longitude": -38.5014,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -15826,6 +16026,7 @@
       "latitude": -8.0476,
       "longitude": -34.877,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -15838,6 +16039,7 @@
       "latitude": -8.0476,
       "longitude": -34.877,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -15850,6 +16052,7 @@
       "latitude": -3.7172,
       "longitude": -38.5433,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -15862,6 +16065,7 @@
       "latitude": -3.7172,
       "longitude": -38.5433,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -15874,6 +16078,7 @@
       "latitude": -16.6869,
       "longitude": -49.2648,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -15886,6 +16091,7 @@
       "latitude": -16.6869,
       "longitude": -49.2648,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -15898,6 +16104,7 @@
       "latitude": -15.7939,
       "longitude": -47.8828,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -15910,6 +16117,7 @@
       "latitude": -15.7939,
       "longitude": -47.8828,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -15922,6 +16130,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -15934,6 +16143,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -15946,6 +16156,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -15958,6 +16169,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -15970,6 +16182,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -15982,6 +16195,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -15994,6 +16208,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -16006,6 +16221,7 @@
       "latitude": -23.5505,
       "longitude": -46.6333,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -16018,6 +16234,7 @@
       "latitude": -22.9068,
       "longitude": -43.1729,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -16030,6 +16247,7 @@
       "latitude": -22.9068,
       "longitude": -43.1729,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -16042,6 +16260,7 @@
       "latitude": -22.9068,
       "longitude": -43.1729,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -16054,6 +16273,7 @@
       "latitude": -22.9068,
       "longitude": -43.1729,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -16066,6 +16286,7 @@
       "latitude": -19.9167,
       "longitude": -43.9345,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -16078,6 +16299,7 @@
       "latitude": -19.9167,
       "longitude": -43.9345,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     },
     {
@@ -16090,6 +16312,7 @@
       "latitude": -19.9167,
       "longitude": -43.9345,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-03 09:10:00"
     },
     {
@@ -16102,6 +16325,7 @@
       "latitude": -19.9167,
       "longitude": -43.9345,
       "sucesso": 1,
+      "status_dispositivo": "CONFIÁVEL",
       "data_hora": "2026-08-18 18:40:22"
     }
   ],

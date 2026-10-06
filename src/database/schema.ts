@@ -63,6 +63,7 @@ export const SCHEMA_SQL = /* sql */ `
     latitude               REAL,
     longitude              REAL,
     sucesso                INTEGER NOT NULL CHECK (sucesso IN (0, 1)),
+    status_dispositivo     TEXT NOT NULL DEFAULT 'CONFIÁVEL',
     data_hora              TEXT NOT NULL
   );
 
