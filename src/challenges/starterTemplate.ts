@@ -141,6 +141,78 @@ GROUP BY
 ;`,
 };
 
+const LEVEL2_SKELETON: Readonly<Record<string, string>> = {
+  'enriquecimento-alto-valor': `SELECT
+    -- 1. Identificador da liquidação, titular remetente, renda/faturamento, valor e data/hora
+    
+FROM transacoes_pix t
+JOIN contas c
+    ON
+    -- 2. Cruze pela conta de ORIGEM
+    
+WHERE
+    -- 3. Piso de valor unitário (R$ 30.000,00)
+    
+-- ORDER BY ...
+;`,
+  'quadro-societario-admin': `SELECT
+    -- 1. Razão social, nome do administrador e percentual de participação
+    
+FROM contas c
+JOIN socios_empresas s
+    ON
+    -- 2. Cruze o cadastro da empresa com o quadro de sócios
+    
+WHERE
+    -- 3. Pessoa jurídica E sócio com poderes de administração
+    
+-- ORDER BY ...
+;`,
+  'contas-dormentes': `SELECT
+    -- 1. Identificador, titular e tipo de pessoa
+    
+FROM contas c
+LEFT JOIN transacoes_pix t
+    ON
+    -- 2. Tente localizar envios (origem) sem perder cadastros sem PIX
+    
+WHERE
+    -- 3. Quem ficou sem correspondência como remetente?
+    
+-- ORDER BY ...
+;`,
+  'volumetria-pep': `SELECT
+    -- 1. Titular PEP, ocupação, quantidade de envios e volume acumulado
+    
+FROM contas c
+JOIN transacoes_pix t
+    ON
+    -- 2. Cruze o cadastro com as originações
+    
+WHERE
+    -- 3. Somente quem o cadastro classifica como PEP
+    
+GROUP BY
+    -- 4. Consolide por titular e ocupação
+    
+-- ORDER BY ...
+;`,
+  'fluxos-intrabanco': `SELECT
+    -- 1. Identificador da operação, titular remetente, titular recebedor e valor
+    
+FROM transacoes_pix t
+JOIN contas rem
+    ON
+    -- 2. Cadastro do REMETENTE (conta de origem)
+    
+JOIN contas des
+    ON
+    -- 3. Cadastro do FAVORECIDO (conta de destino)
+    
+-- ORDER BY ...
+;`,
+};
+
 const LEVEL5_SKELETON: Readonly<Record<string, string>> = {
   'ubo-aurora': `SELECT
     s.nome_socio,
@@ -208,7 +280,10 @@ export function principalTableOf(scenario: InvestigationScenario): string {
 /** Cabeçalho e esqueleto SQL guiado para o desafio ativo. */
 export function buildStarterTemplate(scenario: InvestigationScenario): string {
   const skeleton =
-    LEVEL0_SKELETON[scenario.id] ?? LEVEL1_SKELETON[scenario.id] ?? LEVEL5_SKELETON[scenario.id];
+    LEVEL0_SKELETON[scenario.id] ??
+    LEVEL1_SKELETON[scenario.id] ??
+    LEVEL2_SKELETON[scenario.id] ??
+    LEVEL5_SKELETON[scenario.id];
   if (skeleton) return `${headerComments(scenario).join('\n')}${skeleton}`;
 
   const table = principalTableOf(scenario);

@@ -5,7 +5,7 @@ export type ScenarioId = string;
 
 export type ScenarioOrigin = 'base' | 'ia' | 'offline';
 
-/** Degraus da trilha; o 0 é SELECT/WHERE/GROUP BY, o 5 cobre QSA/telemetria/produtos e, em seguida, desafios gerados. */
+/** Degraus da trilha; o 2 cobre JOIN cadastral/QSA; o 5 cobre telemetria/produtos e, em seguida, desafios gerados. */
 export type TrailLevel = 0 | 1 | 2 | 3 | 4 | 5;
 
 /** Caso aberto na primeira carga (Nível 0.1). */
@@ -20,7 +20,7 @@ export interface TrailLevelInfo {
 export const TRAIL_LEVELS: Record<TrailLevel, TrailLevelInfo> = {
   0: { titulo: 'Fundamentos de Consulta', tecnica: 'SELECT, FROM, WHERE, ORDER BY e GROUP BY' },
   1: { titulo: 'Fundamentos de Agregação', tecnica: 'GROUP BY, HAVING, JOIN e limiares' },
-  2: { titulo: 'Janelas e Classificação', tecnica: 'ROW_NUMBER() OVER (PARTITION BY …)' },
+  2: { titulo: 'Cruzamentos Cadastrais e Relações Societárias', tecnica: 'JOIN, LEFT JOIN e duplo relacionamento de cadastro' },
   3: { titulo: 'Análise Temporal e Mudança de Padrão', tecnica: 'LAG / LEAD e recorte horário (strftime)' },
   4: { titulo: 'Composição Analítica com CTEs', tecnica: 'WITH + janelas, LAG e ROWS BETWEEN' },
   5: { titulo: 'Casos Avançados de PLD/FT', tecnica: 'JOIN em QSA, telemetria de acesso e produtos financeiros' },
@@ -884,6 +884,273 @@ ORDER BY fator_incompatibilidade DESC;         -- casos mais graves primeiro`,
         message: `Excelente! Você identificou as ${gabarito.values.length} transações com desproporção grave (≥ 30x a renda), com pico de ${formatDecimal(pico)}x a renda declarada.`,
         entities: titulares,
         details: ['Esses titulares são fortes candidatos a "contas de passagem"; o próximo passo é mapear a origem dos recursos.'],
+      };
+    },
+  },
+  {
+    id: 'enriquecimento-alto-valor',
+    origem: 'base',
+    nivel: 2,
+    titulo: 'Enriquecimento Cadastral: Remetentes de Alto Valor',
+    enquadramento: 'Circular Bacen 3.978/2020 · conhecimento do cliente (KYC) nas operações',
+    dossie:
+      'A mesa precisa ver, na mesma ficha, o PIX de montante elevado e o perfil de quem envia. Sem o titular e a renda ' +
+      'ou faturamento declarados, o valor isolado não sustenta a avaliação de incompatibilidade inicial.',
+    objetivo:
+      'Mapeie as transferências enviadas com valor individual igual ou superior a R$ 30.000,00, integrando aos dados da transação o nome do titular remetente e sua respectiva renda ou faturamento declarado.',
+    colunasEsperadas: ['id_transacao', 'titular_remetente', 'renda_mensal_declarada', 'valor', 'data_hora'],
+    ordenacao: 'valor DESC',
+    dicaTexto:
+      'Cruze a liquidação com o cadastro pela conta de origem e mantenha só os envios cujo valor unitário alcança o piso de R$ 30.000,00.',
+    dicaSql: `-- JOIN ... ON liga a transação ao cadastro pela chave da conta
+SELECT t.id_transacao,
+       c.titular AS titular_remetente,
+       c.renda_mensal_declarada,
+       t.valor,
+       t.data_hora
+FROM transacoes_pix t
+JOIN contas c ON t.id_conta_origem = c.id_conta
+WHERE t.valor >= ...
+ORDER BY t.valor DESC;`,
+    gabaritoSql: `-- Gabarito · enriquecimento cadastral de PIX ≥ R$ 30 mil
+SELECT
+  t.id_transacao,
+  c.titular AS titular_remetente,
+  c.renda_mensal_declarada,
+  t.valor,
+  t.data_hora
+FROM transacoes_pix t
+JOIN contas c ON t.id_conta_origem = c.id_conta
+WHERE t.valor >= 30000
+ORDER BY t.valor DESC;`,
+    colunaChave: 'id_transacao',
+    rotuloEntidade: { singular: 'transferência', plural: 'transferências' },
+    dicasDivergencia: {
+      excesso:
+        'Há PIX a mais. Cruze pela origem (`t.id_conta_origem = c.id_conta`) e recorte `t.valor >= 30000`.',
+      falta:
+        'Faltam operações. O piso é inclusivo (R$ 30.000,00). Não restrinja tipo de pessoa, canal ou destino.',
+      valores:
+        'As transações estão certas, mas algum campo diverge. `titular_remetente` vem do cadastro; `renda_mensal_declarada` e `valor`/`data_hora` da ficha e da liquidação.',
+      ordenacao: 'Os dados estão corretos, mas a ordem não. Ordene pelo valor, do maior para o menor.',
+    },
+    resumirSucesso(gabarito) {
+      const total = sum(columnValues(gabarito, 'valor'));
+      return {
+        message: `Enriquecimento: ${gabarito.values.length} PIX ≥ R$ 30 mil, com titular e renda/faturamento, somando ${formatBRL(total)}.`,
+        entities: distinct(columnValues(gabarito, 'titular_remetente')).slice(0, 8),
+        details: ['O próximo recorte sai da transação e entra no quadro de administradores das PJ.'],
+      };
+    },
+  },
+  {
+    id: 'quadro-societario-admin',
+    origem: 'base',
+    nivel: 2,
+    titulo: 'Quadro Societário: Representação e Administração PJ',
+    enquadramento: 'Circular Bacen 3.978/2020 · identificação de administradores e beneficiários',
+    dossie:
+      'Para escrutínio de pessoa jurídica, a esteira precisa saber quem assina pela empresa. O recorte pede sócios com ' +
+      'poderes de administração formalmente designados no quadro societário, com razão social e participação detida.',
+    objetivo:
+      'Localize todas as empresas cadastradas que possuem sócios formalmente designados com poderes de administração, apresentando a razão social da empresa, o nome civil do administrador e o percentual de participação societária detido.',
+    colunasEsperadas: ['razao_social', 'nome_administrador', 'percentual_participacao'],
+    ordenacao: 'razao_social ASC',
+    dicaTexto:
+      'Associe o cadastro empresarial ao quadro de sócios e mantenha apenas pessoas jurídicas cujo sócio esteja marcado como administrador.',
+    dicaSql: `-- Cadastro da empresa + quadro de sócios; eh_administrador = 1
+SELECT c.titular AS razao_social,
+       s.nome_socio AS nome_administrador,
+       s.percentual_participacao
+FROM contas c
+JOIN socios_empresas s ON c.id_conta = s.id_conta_empresa
+WHERE c.tipo_pessoa = '...'
+  AND s.eh_administrador = ...
+ORDER BY c.titular ASC;`,
+    gabaritoSql: `-- Gabarito · administradores do quadro societário (PJ)
+SELECT
+  c.titular AS razao_social,
+  s.nome_socio AS nome_administrador,
+  s.percentual_participacao
+FROM contas c
+JOIN socios_empresas s ON c.id_conta = s.id_conta_empresa
+WHERE c.tipo_pessoa = 'PJ'
+  AND s.eh_administrador = 1
+ORDER BY c.titular ASC;`,
+    colunaChave: 'razao_social',
+    rotuloEntidade: { singular: 'administrador', plural: 'administradores' },
+    dicasDivergencia: {
+      excesso:
+        'Há linhas a mais. Restrinja a PJ (`tipo_pessoa = \'PJ\'`) e a quem tem poderes de administração (`eh_administrador = 1`).',
+      falta:
+        'Faltam administradores. Cruze `contas` com `socios_empresas` pela conta da empresa e não corte percentual mínimo.',
+      valores:
+        'As empresas estão certas, mas nome ou participação divergem. `razao_social` é o titular da PJ; `nome_administrador` é o sócio administrador.',
+      ordenacao: 'Os dados estão corretos, mas a ordem não. Ordene pela razão social, em ordem alfabética.',
+    },
+    resumirSucesso(gabarito) {
+      return {
+        message: `Quadro societário: ${gabarito.values.length} administrador(es) com poderes formais nas PJ cadastradas.`,
+        entities: distinct(columnValues(gabarito, 'razao_social')).slice(0, 8),
+        details: ['Em seguida, a esteira olha quem está no cadastro mas não originou nenhum PIX no período.'],
+      };
+    },
+  },
+  {
+    id: 'contas-dormentes',
+    origem: 'base',
+    nivel: 2,
+    titulo: 'Contas Dormentes: Ausência Total de Movimentação Ativa',
+    enquadramento: 'Circular Bacen 3.978/2020 · monitoramento de contas sem movimentação',
+    dossie:
+      'Contas abertas sem nenhum envio no período merecem revisão de uso e de risco de dormência. O recorte pede o ' +
+      'cadastro completo de quem não originou transferência, ainda que possa ter recebido créditos.',
+    objetivo:
+      'Identifique as contas abertas na instituição que não realizaram nenhum envio de recursos no período monitorado, trazendo o identificador da conta, o nome do titular e o tipo de pessoa cadastrado.',
+    colunasEsperadas: ['id_conta', 'titular', 'tipo_pessoa'],
+    ordenacao: 'id_conta ASC',
+    dicaTexto:
+      'Parta de todo o cadastro e preserve quem não encontra correspondência como remetente nas liquidações — a ausência de envio é o sinal, não a falta de crédito recebido.',
+    dicaSql: `-- LEFT JOIN mantém todos os cadastros; IS NULL aponta quem não enviou
+SELECT c.id_conta, c.titular, c.tipo_pessoa
+FROM contas c
+LEFT JOIN transacoes_pix t ON c.id_conta = t.id_conta_origem
+WHERE t.id_transacao IS NULL
+ORDER BY c.id_conta ASC;`,
+    gabaritoSql: `-- Gabarito · contas sem nenhum PIX enviado
+SELECT
+  c.id_conta,
+  c.titular,
+  c.tipo_pessoa
+FROM contas c
+LEFT JOIN transacoes_pix t ON c.id_conta = t.id_conta_origem
+WHERE t.id_transacao IS NULL
+ORDER BY c.id_conta ASC;`,
+    colunaChave: 'id_conta',
+    rotuloEntidade: { singular: 'conta dormente', plural: 'contas dormentes' },
+    dicasDivergencia: {
+      excesso:
+        'Há contas a mais. O sinal é ausência de envio (`t.id_transacao IS NULL` após cruzar a origem). Não use junção interna: ela elimina quem não enviou.',
+      falta:
+        'Faltam contas. Parta de `contas` e cruze à esquerda com PIX pela origem. Quem só recebeu (e nunca enviou) deve entrar.',
+      valores: 'Os identificadores batem, mas titular ou tipo de pessoa divergem. Projete os três campos cadastrais pedidos.',
+      ordenacao: 'Os dados estão corretos, mas a ordem não. Ordene pelo identificador da conta.',
+    },
+    resumirSucesso(gabarito) {
+      return {
+        message: `Dormentes: ${gabarito.values.length} conta(s) sem nenhum envio no período monitorado.`,
+        entities: distinct(columnValues(gabarito, 'id_conta')).slice(0, 8),
+        details: ['O próximo recorte volta aos PEP, agora consolidando a volumetria enviada por titular.'],
+      };
+    },
+  },
+  {
+    id: 'volumetria-pep',
+    origem: 'base',
+    nivel: 2,
+    titulo: 'Monitoramento Agregado de PEP: Volumetria por Titular Classificado',
+    enquadramento: 'Circular Bacen 3.978/2020 · escrutínio reforçado de PEP',
+    dossie:
+      'A triagem cadastral de PEP (Nível 0) lista quem está marcado no cadastro. Aqui a mesa pede o comportamento ' +
+      'financeiro desses titulares: quantos envios e qual o montante acumulado, com a ocupação declarada.',
+    objetivo:
+      'Apure a volumetria financeira acumulada pelos clientes classificados como Pessoas Expostas Politicamente (PEP), consolidando por titular o total de operações enviadas e o montante financeiro total movimentado, trazendo também a ocupação declarada.',
+    colunasEsperadas: ['titular_pep', 'ocupacao', 'total_operacoes', 'valor_total_enviado'],
+    ordenacao: 'valor_total_enviado DESC',
+    dicaTexto:
+      'Cruze o cadastro com as originações, mantenha só quem está classificado como PEP e consolide por titular e ocupação as métricas de quantidade e volume.',
+    dicaSql: `-- JOIN + recorte cadastral + consolidação por titular
+SELECT c.titular AS titular_pep,
+       c.ocupacao,
+       COUNT(t.id_transacao) AS total_operacoes,
+       SUM(t.valor)          AS valor_total_enviado
+FROM contas c
+JOIN transacoes_pix t ON c.id_conta = t.id_conta_origem
+WHERE c.eh_pep = ...
+GROUP BY c.titular, c.ocupacao
+ORDER BY valor_total_enviado DESC;`,
+    gabaritoSql: `-- Gabarito · volumetria enviada por titular PEP
+SELECT
+  c.titular AS titular_pep,
+  c.ocupacao,
+  COUNT(t.id_transacao) AS total_operacoes,
+  SUM(t.valor)          AS valor_total_enviado
+FROM contas c
+JOIN transacoes_pix t ON c.id_conta = t.id_conta_origem
+WHERE c.eh_pep = 1
+GROUP BY c.titular, c.ocupacao
+ORDER BY valor_total_enviado DESC;`,
+    colunaChave: 'titular_pep',
+    rotuloEntidade: { singular: 'titular PEP', plural: 'titulares PEP' },
+    dicasDivergencia: {
+      excesso:
+        'Há titulares a mais. Mantenha só `eh_pep = 1` e agrupe por titular e ocupação. A junção é pela conta de origem (envios).',
+      falta:
+        'Faltam PEP. Quem está marcado no cadastro e enviou ao menos um PIX deve entrar. Use `COUNT(t.id_transacao)` e `SUM(t.valor)`.',
+      valores:
+        'Os titulares estão certos, mas as métricas não. `total_operacoes` conta envios e `valor_total_enviado` soma os valores.',
+      ordenacao: 'Os dados estão corretos, mas a ordem não. Ordene pelo montante enviado, do maior para o menor.',
+    },
+    resumirSucesso(gabarito) {
+      const total = sum(columnValues(gabarito, 'valor_total_enviado'));
+      return {
+        message: `PEP: ${gabarito.values.length} titular(es) com envios no período, somando ${formatBRL(total)}.`,
+        entities: distinct(columnValues(gabarito, 'titular_pep')),
+        details: ['Falta identificar remetente e favorecido na mesma liquidação, ambos no cadastro da instituição.'],
+      };
+    },
+  },
+  {
+    id: 'fluxos-intrabanco',
+    origem: 'base',
+    nivel: 2,
+    titulo: 'Fluxos Intrabanco: Identificação Completa de Remetente e Favorecido',
+    enquadramento: 'Circular Bacen 3.978/2020 · rastreabilidade de origem e destino',
+    dossie:
+      'Cada PIX do laboratório liquida entre contas da própria base. A mesa quer a ficha nominal dos dois polos — quem ' +
+      'envia e quem recebe — para seguir o dinheiro sem ficar só nos identificadores de conta.',
+    objetivo:
+      'Mapeie as transferências financeiras realizadas exclusivamente entre correntistas da própria instituição, apresentando o identificador da operação, o nome do titular remetente, o nome do titular recebedor e o montante transferido.',
+    colunasEsperadas: ['id_transacao', 'titular_remetente', 'titular_destinatario', 'valor'],
+    ordenacao: 'valor DESC',
+    dicaTexto:
+      'Relacione a liquidação duas vezes com o cadastro: uma pela conta de origem (remetente) e outra pela conta de destino (favorecido), cada polo com o seu apelido.',
+    dicaSql: `-- A mesma tabela contas entra duas vezes, com aliases distintos
+SELECT t.id_transacao,
+       rem.titular AS titular_remetente,
+       des.titular AS titular_destinatario,
+       t.valor
+FROM transacoes_pix t
+JOIN contas rem ON t.id_conta_origem = rem.id_conta
+JOIN contas des ON t.id_conta_destino = des.id_conta
+ORDER BY t.valor DESC;`,
+    gabaritoSql: `-- Gabarito · remetente e favorecido na mesma liquidação
+SELECT
+  t.id_transacao,
+  rem.titular AS titular_remetente,
+  des.titular AS titular_destinatario,
+  t.valor
+FROM transacoes_pix t
+JOIN contas rem ON t.id_conta_origem = rem.id_conta
+JOIN contas des ON t.id_conta_destino = des.id_conta
+ORDER BY t.valor DESC;`,
+    colunaChave: 'id_transacao',
+    rotuloEntidade: { singular: 'transferência', plural: 'transferências' },
+    dicasDivergencia: {
+      excesso:
+        'Há PIX a mais. Não há recorte de valor: qualquer liquidação entre duas contas cadastradas entra. Confira se não duplicou junções.',
+      falta:
+        'Faltam operações. Cruze origem e destino com `contas` (aliases distintos). Toda liquidação da base tem os dois polos cadastrados.',
+      valores:
+        'Os identificadores batem, mas os nomes divergem. `titular_remetente` vem da origem; `titular_destinatario` vem do destino.',
+      ordenacao: 'Os dados estão corretos, mas a ordem não. Ordene pelo valor, do maior para o menor.',
+    },
+    resumirSucesso(gabarito) {
+      const total = sum(columnValues(gabarito, 'valor'));
+      return {
+        message: `Intrabanco: ${gabarito.values.length} liquidação(ões) com remetente e favorecido nominais, somando ${formatBRL(total)}.`,
+        entities: distinct(columnValues(gabarito, 'id_transacao')).slice(0, 8),
+        details: ['O caso homologado seguinte no mesmo nível desduplica o pico diário por conta (classificação posicional).'],
       };
     },
   },
