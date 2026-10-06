@@ -22,7 +22,7 @@ export const TRAIL_LEVELS: Record<TrailLevel, TrailLevelInfo> = {
   1: { titulo: 'Fundamentos de Agregação', tecnica: 'GROUP BY, HAVING, JOIN e limiares' },
   2: { titulo: 'Cruzamentos Cadastrais e Relações Societárias', tecnica: 'JOIN, LEFT JOIN e duplo relacionamento de cadastro' },
   3: { titulo: 'Janelas Temporais e Anomalias Transacionais', tecnica: 'time/strftime, HAVING sobre renda, date() e unixepoch' },
-  4: { titulo: 'Composição Analítica com CTEs', tecnica: 'WITH + janelas, LAG e ROWS BETWEEN' },
+  4: { titulo: 'Funções de Janela (Window Functions)', tecnica: 'ROW_NUMBER, LAG, SUM OVER e CTE em duas fases' },
   5: { titulo: 'Casos Avançados de PLD/FT', tecnica: 'JOIN em QSA, telemetria de acesso e produtos financeiros' },
 };
 
@@ -1509,6 +1509,320 @@ ORDER BY maior_pix DESC, conta_origem;  -- maiores picos primeiro`,
         details: [
           'Repare no empate da C031 (dois PIX de R$ 4.990,00): sem o desempate por `data_hora`, o ROW_NUMBER escolheria um deles de forma arbitrária, e o resultado mudaria de uma execução para outra.',
         ],
+      };
+    },
+  },
+  {
+    id: 'sequenciamento-cronologico',
+    origem: 'base',
+    nivel: 4,
+    titulo: 'Rastreamento Cronológico: Sequenciamento de Operações por Conta',
+    enquadramento: 'Circular Bacen 3.978/2020 · reconstituição da linha do tempo transacional',
+    dossie:
+      'A mesa precisa reconstruir a ordem dos envios de cada titular: qual foi o primeiro PIX, o segundo, o terceiro. ' +
+      'Essa numeração cronológica é a base para cadência, salto de valor e acúmulo patrimonial nos recortes seguintes.',
+    objetivo:
+      'Ordene o histórico financeiro dos clientes, atribuindo a cada transferência enviada uma numeração sequencial estritamente cronológica por conta de origem, iniciando em 1 para a primeira operação histórica de cada titular.',
+    colunasEsperadas: ['id_transacao', 'id_conta_origem', 'data_hora', 'valor', 'sequencial_operacao'],
+    ordenacao: 'id_conta_origem ASC, sequencial_operacao ASC',
+    dicaTexto:
+      'Numere os envios dentro de cada conta na ordem do tempo. Se dois PIX caírem no mesmo instante, use o identificador da liquidação como desempate estável.',
+    dicaSql: `-- ROW_NUMBER reinicia em cada conta (PARTITION BY)
+-- ORDER BY data_hora, id_transacao evita empate aleatório
+SELECT id_transacao, id_conta_origem, data_hora, valor,
+       ROW_NUMBER() OVER (
+         PARTITION BY id_conta_origem
+         ORDER BY data_hora ASC, id_transacao ASC
+       ) AS sequencial_operacao
+FROM transacoes_pix
+ORDER BY id_conta_origem ASC, sequencial_operacao ASC;`,
+    gabaritoSql: `-- Gabarito · sequencial cronológico por origem (desempate por id_transacao)
+SELECT
+  id_transacao,
+  id_conta_origem,
+  data_hora,
+  valor,
+  ROW_NUMBER() OVER (
+    PARTITION BY id_conta_origem
+    ORDER BY data_hora ASC, id_transacao ASC
+  ) AS sequencial_operacao
+FROM transacoes_pix
+ORDER BY id_conta_origem ASC, sequencial_operacao ASC;`,
+    colunaChave: 'id_transacao',
+    rotuloEntidade: { singular: 'transferência', plural: 'transferências' },
+    dicasDivergencia: {
+      excesso:
+        'Há linhas a mais. Não recorte valor nem período: toda originação entra, com um número por conta.',
+      falta:
+        'Faltam transações. Não filtre contas. O sequencial começa em 1 na operação mais antiga de cada origem.',
+      valores:
+        'Os identificadores batem, mas `sequencial_operacao` diverge. Use `ROW_NUMBER() OVER (PARTITION BY id_conta_origem ORDER BY data_hora ASC, id_transacao ASC)`.',
+      ordenacao: 'Os dados estão corretos, mas a ordem não. Ordene por conta de origem e, dentro dela, pelo sequencial.',
+    },
+    resumirSucesso(gabarito) {
+      return {
+        message: `Linha do tempo: ${gabarito.values.length} envio(s) numerados cronologicamente por conta de origem.`,
+        entities: distinct(columnValues(gabarito, 'id_conta_origem')).slice(0, 8),
+        details: ['O próximo recorte fica só com o envio mais recente de cada pagador.'],
+      };
+    },
+  },
+  {
+    id: 'ultima-movimentacao',
+    origem: 'base',
+    nivel: 4,
+    titulo: 'Marco Recente: Identificação da Última Movimentação Ativa',
+    enquadramento: 'Circular Bacen 3.978/2020 · última posição transacional do cliente',
+    dossie:
+      'Para fila de revisão e contato com o titular, a esteira precisa da última originação de cada conta — não do maior ' +
+      'valor, e sim do envio mais recente no relógio. Empates de horário exigem desempate estável pelo identificador.',
+    objetivo:
+      'Mapeie a posição transacional mais recente da base, isolando para cada conta de origem cadastrada apenas a última transferência PIX realizada no histórico de envios.',
+    colunasEsperadas: ['id_transacao', 'id_conta_origem', 'id_conta_destino', 'valor', 'data_hora'],
+    ordenacao: 'data_hora DESC',
+    dicaTexto:
+      'Primeiro numere os envios de cada conta do mais recente para o mais antigo; depois mantenha só a posição 1. O recorte da posição não pode ir na mesma etapa em que o número é calculado.',
+    dicaSql: `-- SQLite não filtra função de janela no WHERE do mesmo SELECT
+-- Fase 1 (WITH): carimba o ranking; Fase 2: ranking_recente = 1
+WITH operacoes_ranqueadas AS (
+  SELECT ...,
+         ROW_NUMBER() OVER (
+           PARTITION BY id_conta_origem
+           ORDER BY data_hora DESC, id_transacao DESC
+         ) AS ranking_recente
+  FROM transacoes_pix
+)
+SELECT id_transacao, id_conta_origem, id_conta_destino, valor, data_hora
+FROM operacoes_ranqueadas
+WHERE ranking_recente = 1
+ORDER BY data_hora DESC;`,
+    gabaritoSql: `-- Gabarito · último PIX de cada origem (CTE em duas fases)
+WITH operacoes_ranqueadas AS (
+  SELECT
+    id_transacao,
+    id_conta_origem,
+    id_conta_destino,
+    valor,
+    data_hora,
+    ROW_NUMBER() OVER (
+      PARTITION BY id_conta_origem
+      ORDER BY data_hora DESC, id_transacao DESC
+    ) AS ranking_recente
+  FROM transacoes_pix
+)
+SELECT
+  id_transacao,
+  id_conta_origem,
+  id_conta_destino,
+  valor,
+  data_hora
+FROM operacoes_ranqueadas
+WHERE ranking_recente = 1
+ORDER BY data_hora DESC;`,
+    colunaChave: 'id_transacao',
+    rotuloEntidade: { singular: 'última movimentação', plural: 'últimas movimentações' },
+    dicasDivergencia: {
+      excesso:
+        'Há mais de uma linha por conta. Carimbe o ranking do mais recente para o mais antigo e filtre `ranking_recente = 1` na consulta externa.',
+      falta:
+        'Faltam contas. Toda origem que enviou ao menos um PIX deve aparecer. Desempate com `id_transacao DESC` no mesmo instante.',
+      valores:
+        'As contas batem, mas destino, valor ou horário divergem. A linha é a mais recente da origem, não o maior valor.',
+      ordenacao: 'Os dados estão corretos, mas a ordem não. Ordene pela data/hora da última movimentação, da mais nova para a mais antiga.',
+    },
+    resumirSucesso(gabarito) {
+      return {
+        message: `Última posição: ${gabarito.values.length} conta(s) de origem com o envio mais recente isolado.`,
+        entities: distinct(columnValues(gabarito, 'id_conta_origem')).slice(0, 8),
+        details: ['Em seguida, a esteira mede os segundos entre um envio e o anterior da mesma conta.'],
+      };
+    },
+  },
+  {
+    id: 'intervalo-entre-disparos',
+    origem: 'base',
+    nivel: 4,
+    titulo: 'Velocidade Transacional: Intervalo Temporal entre Disparos',
+    enquadramento: 'Carta Circular Bacen 4.001/2020 · Inciso IV - Alta Frequência',
+    dossie:
+      'A cadência entre envios sucessivos distingue uso humano de automação. A mesa pede, ao lado de cada PIX, o horário ' +
+      'do disparo anterior da mesma conta e quantos segundos separam os dois — o primeiro envio de cada titular fica sem antecessor.',
+    objetivo:
+      'Calcule a cadência de envios de cada remetente, projetando ao lado de cada transferência a data/hora do envio imediatamente anterior da mesma conta e o intervalo decorrido em segundos entre as duas operações sucessivas.',
+    colunasEsperadas: ['id_transacao', 'id_conta_origem', 'data_hora', 'data_hora_anterior', 'intervalo_segundos'],
+    ordenacao: 'id_conta_origem ASC, data_hora ASC',
+    dicaTexto:
+      'Para cada envio, busque o horário imediatamente anterior da mesma conta e converta a diferença para segundos. O marco zero de cada titular não tem operação prévia.',
+    dicaSql: `-- LAG pega a marcação anterior na mesma partição
+-- unixepoch transforma data/hora em segundos (a 1ª linha de cada conta fica NULL)
+SELECT id_transacao, id_conta_origem, data_hora,
+       LAG(data_hora) OVER (
+         PARTITION BY id_conta_origem
+         ORDER BY data_hora ASC, id_transacao ASC
+       ) AS data_hora_anterior,
+       (unixepoch(data_hora) - unixepoch(LAG(data_hora) OVER (
+         PARTITION BY id_conta_origem
+         ORDER BY data_hora ASC, id_transacao ASC
+       ))) AS intervalo_segundos
+FROM transacoes_pix
+ORDER BY id_conta_origem ASC, data_hora ASC;`,
+    gabaritoSql: `-- Gabarito · intervalo em segundos até o PIX anterior da mesma origem
+SELECT
+  id_transacao,
+  id_conta_origem,
+  data_hora,
+  LAG(data_hora) OVER (
+    PARTITION BY id_conta_origem
+    ORDER BY data_hora ASC, id_transacao ASC
+  ) AS data_hora_anterior,
+  (unixepoch(data_hora) - unixepoch(LAG(data_hora) OVER (
+    PARTITION BY id_conta_origem
+    ORDER BY data_hora ASC, id_transacao ASC
+  ))) AS intervalo_segundos
+FROM transacoes_pix
+ORDER BY id_conta_origem ASC, data_hora ASC;`,
+    colunaChave: 'id_transacao',
+    rotuloEntidade: { singular: 'transferência', plural: 'transferências' },
+    dicasDivergencia: {
+      excesso:
+        'Há linhas a mais. Não recorte intervalo mínimo: o recorte pede todos os envios, inclusive o primeiro de cada conta (sem antecessor).',
+      falta:
+        'Faltam transações. Particione só pela origem e desempate por `data_hora, id_transacao`. Não elimine nulos da primeira operação.',
+      valores:
+        'Os identificadores batem, mas o intervalo diverge. `intervalo_segundos` é `unixepoch(data_hora) - unixepoch(LAG(data_hora) ...)`.',
+      ordenacao: 'Os dados estão corretos, mas a ordem não. Ordene por origem e, dentro dela, pela data/hora crescente.',
+    },
+    resumirSucesso(gabarito) {
+      return {
+        message: `Cadência: ${gabarito.values.length} envio(s) com o horário anterior e o intervalo em segundos.`,
+        entities: distinct(columnValues(gabarito, 'id_conta_origem')).slice(0, 8),
+        details: ['O próximo recorte soma o patrimônio enviado até cada instante da linha do tempo.'],
+      };
+    },
+  },
+  {
+    id: 'montante-acumulado',
+    origem: 'base',
+    nivel: 4,
+    titulo: 'Curva Financeira: Evolução do Volume Acumulado no Tempo',
+    enquadramento: 'Circular Bacen 3.978/2020 · evolução da movimentação do cliente',
+    dossie:
+      'O volume acumulado até cada PIX mostra quando a conta sai do perfil e entra em exposição relevante. A esteira ' +
+      'pede a curva crescente por titular: cada linha traz o valor da operação e o total enviado até aquele momento.',
+    objetivo:
+      'Reconstitua a trajetória financeira de cada cliente, calculando para cada transferência enviada o montante financeiro total acumulado pela respectiva conta de origem até aquele momento.',
+    colunasEsperadas: ['id_transacao', 'id_conta_origem', 'data_hora', 'valor', 'montante_acumulado'],
+    ordenacao: 'id_conta_origem ASC, data_hora ASC',
+    dicaTexto:
+      'Some os valores da mesma conta em ordem cronológica, incluindo o envio corrente na soma até aquele ponto da linha do tempo.',
+    dicaSql: `-- SUM analítico: frame da primeira linha da conta até a linha atual
+SELECT id_transacao, id_conta_origem, data_hora, valor,
+       SUM(valor) OVER (
+         PARTITION BY id_conta_origem
+         ORDER BY data_hora ASC, id_transacao ASC
+         ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+       ) AS montante_acumulado
+FROM transacoes_pix
+ORDER BY id_conta_origem ASC, data_hora ASC;`,
+    gabaritoSql: `-- Gabarito · montante acumulado até o PIX corrente (por origem)
+SELECT
+  id_transacao,
+  id_conta_origem,
+  data_hora,
+  valor,
+  SUM(valor) OVER (
+    PARTITION BY id_conta_origem
+    ORDER BY data_hora ASC, id_transacao ASC
+    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+  ) AS montante_acumulado
+FROM transacoes_pix
+ORDER BY id_conta_origem ASC, data_hora ASC;`,
+    colunaChave: 'id_transacao',
+    rotuloEntidade: { singular: 'transferência', plural: 'transferências' },
+    dicasDivergencia: {
+      excesso:
+        'Há linhas a mais. Não recorte valor: toda originação entra na curva, com o acumulado até aquele instante.',
+      falta:
+        'Faltam transações. O acumulado inclui o PIX atual (`ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW`).',
+      valores:
+        'Os identificadores batem, mas `montante_acumulado` diverge. Some `valor` na partição da origem, em ordem cronológica com desempate por `id_transacao`.',
+      ordenacao: 'Os dados estão corretos, mas a ordem não. Ordene por origem e data/hora crescente.',
+    },
+    resumirSucesso(gabarito) {
+      return {
+        message: `Curva acumulada: ${gabarito.values.length} envio(s) com o montante até cada instante da linha do tempo.`,
+        entities: distinct(columnValues(gabarito, 'id_conta_origem')).slice(0, 8),
+        details: ['Falta comparar cada valor com o envio imediatamente anterior e expurgar o marco zero.'],
+      };
+    },
+  },
+  {
+    id: 'salto-variacao-consecutiva',
+    origem: 'base',
+    nivel: 4,
+    titulo: 'Salto Atípico: Variação Patrimonial Brusca em Envios Consecutivos',
+    enquadramento: 'Carta Circular Bacen 4.001/2020 · mudança abrupta de padrão transacional',
+    dossie:
+      'Saltos de valor entre PIX consecutivos da mesma conta indicam aquecimento, teste de canal ou mudança de propósito. ' +
+      'A mesa pede a diferença entre o envio atual e o anterior, descartando a primeira operação — que não tem base de comparação.',
+    objetivo:
+      'Detecte variações anômalas no padrão financeiro dos clientes, comparando cada transferência com o valor da operação imediatamente anterior da mesma conta e calculando o saldo da variação (diferença entre o valor atual e o anterior), desconsiderando a primeira operação sem histórico de comparação.',
+    colunasEsperadas: ['id_transacao', 'id_conta_origem', 'valor_anterior', 'valor_atual', 'variacao_absoluta'],
+    ordenacao: 'variacao_absoluta DESC',
+    dicaTexto:
+      'Carimbe o valor do envio anterior na mesma conta e, na etapa seguinte, elimine quem não tem antecessor. A variação é o valor atual menos o anterior (pode ser negativa).',
+    dicaSql: `-- Fase 1: LAG(valor) na linha do tempo da conta
+-- Fase 2: WHERE valor_anterior IS NOT NULL (expurga o marco zero)
+WITH historico_valores AS (
+  SELECT id_transacao, id_conta_origem, valor AS valor_atual,
+         LAG(valor) OVER (
+           PARTITION BY id_conta_origem
+           ORDER BY data_hora ASC, id_transacao ASC
+         ) AS valor_anterior
+  FROM transacoes_pix
+)
+SELECT id_transacao, id_conta_origem, valor_anterior, valor_atual,
+       (valor_atual - valor_anterior) AS variacao_absoluta
+FROM historico_valores
+WHERE valor_anterior IS NOT NULL
+ORDER BY variacao_absoluta DESC;`,
+    gabaritoSql: `-- Gabarito · variação vs. PIX anterior (sem a primeira operação da conta)
+WITH historico_valores AS (
+  SELECT
+    id_transacao,
+    id_conta_origem,
+    valor AS valor_atual,
+    LAG(valor) OVER (
+      PARTITION BY id_conta_origem
+      ORDER BY data_hora ASC, id_transacao ASC
+    ) AS valor_anterior
+  FROM transacoes_pix
+)
+SELECT
+  id_transacao,
+  id_conta_origem,
+  valor_anterior,
+  valor_atual,
+  (valor_atual - valor_anterior) AS variacao_absoluta
+FROM historico_valores
+WHERE valor_anterior IS NOT NULL
+ORDER BY variacao_absoluta DESC;`,
+    colunaChave: 'id_transacao',
+    rotuloEntidade: { singular: 'salto', plural: 'saltos' },
+    dicasDivergencia: {
+      excesso:
+        'Há linhas a mais. Na consulta externa, elimine `valor_anterior IS NULL` — a primeira operação de cada conta não entra.',
+      falta:
+        'Faltam saltos. Carimbe `LAG(valor)` na origem, em ordem cronológica com desempate por `id_transacao`, e só então filtre nulos.',
+      valores:
+        'Os identificadores batem, mas a variação diverge. `variacao_absoluta` é `valor_atual - valor_anterior` (sinal algébrico, não o módulo).',
+      ordenacao: 'Os dados estão corretos, mas a ordem não. Ordene pela variação, da maior (mais positiva) para a menor.',
+    },
+    resumirSucesso(gabarito) {
+      return {
+        message: `Saltos consecutivos: ${gabarito.values.length} envio(s) com antecessor e variação de valor calculada.`,
+        entities: distinct(columnValues(gabarito, 'id_conta_origem')).slice(0, 8),
+        details: ['Os casos homologados seguintes no nível combinam histórico curto, salto múltiplo e janela móvel de três PIX.'],
       };
     },
   },

@@ -280,6 +280,64 @@ WHERE
 ;`,
 };
 
+const LEVEL4_SKELETON: Readonly<Record<string, string>> = {
+  'sequenciamento-cronologico': `SELECT
+    -- 1. Identificador, origem, data/hora, valor e numeração cronológica por conta
+    
+FROM transacoes_pix
+-- 2. Numere os envios de cada origem no tempo (desempate pelo identificador):
+-- ROW_NUMBER() OVER (PARTITION BY ... ORDER BY ...)
+-- ORDER BY ...
+;`,
+  'ultima-movimentacao': `WITH operacoes_ranqueadas AS (
+    SELECT
+        -- 1. Campos da liquidação e ranking do mais recente para o mais antigo
+        
+    FROM transacoes_pix
+)
+SELECT
+    -- 2. Projete só as colunas pedidas (sem o ranking)
+    
+FROM operacoes_ranqueadas
+WHERE
+    -- 3. Fique apenas com a posição 1 de cada conta
+    
+-- ORDER BY ...
+;`,
+  'intervalo-entre-disparos': `SELECT
+    -- 1. Identificador, origem, data/hora atual, data/hora anterior e segundos entre elas
+    
+FROM transacoes_pix
+-- 2. Horário anterior da mesma conta + diferença em segundos:
+-- LAG(data_hora) OVER (...)
+-- unixepoch(...) - unixepoch(LAG(...))
+-- ORDER BY ...
+;`,
+  'montante-acumulado': `SELECT
+    -- 1. Identificador, origem, data/hora, valor e soma até o instante corrente
+    
+FROM transacoes_pix
+-- 2. Acúmulo cronológico incluindo o PIX atual:
+-- SUM(valor) OVER (... ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
+-- ORDER BY ...
+;`,
+  'salto-variacao-consecutiva': `WITH historico_valores AS (
+    SELECT
+        -- 1. Valor atual e valor do envio imediatamente anterior da mesma conta
+        
+    FROM transacoes_pix
+)
+SELECT
+    -- 2. Inclua a diferença (atual − anterior)
+    
+FROM historico_valores
+WHERE
+    -- 3. Descarte o primeiro envio de cada conta (sem antecessor)
+    
+-- ORDER BY ...
+;`,
+};
+
 const LEVEL5_SKELETON: Readonly<Record<string, string>> = {
   'ubo-aurora': `SELECT
     s.nome_socio,
@@ -351,6 +409,7 @@ export function buildStarterTemplate(scenario: InvestigationScenario): string {
     LEVEL1_SKELETON[scenario.id] ??
     LEVEL2_SKELETON[scenario.id] ??
     LEVEL3_SKELETON[scenario.id] ??
+    LEVEL4_SKELETON[scenario.id] ??
     LEVEL5_SKELETON[scenario.id];
   if (skeleton) return `${headerComments(scenario).join('\n')}${skeleton}`;
 
