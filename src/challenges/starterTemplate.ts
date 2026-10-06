@@ -339,6 +339,108 @@ WHERE
 };
 
 const LEVEL5_SKELETON: Readonly<Record<string, string>> = {
+  'ubo-pep-credito': `SELECT
+    -- 1. Identificador do crédito, razão social, sócio, participação e valor
+    
+FROM transacoes_pix t
+JOIN contas c_emp
+    ON
+    -- 2. Cadastro da empresa FAVORECIDA
+    
+JOIN socios_empresas s
+    ON
+    -- 3. Quadro societário da receptora
+    
+JOIN contas c_pep
+    ON
+    -- 4. Cadastro pessoal do sócio (documento = CPF do QSA)
+    
+WHERE
+    -- 5. PJ, piso de R$ 50 mil, participação ≥ 25% e classificação PEP
+    
+-- ORDER BY ...
+;`,
+  'conta-passagem-dwell': `SELECT
+    -- 1. Conta de passagem, ids de entrada/saída, valores e segundos entre elas
+    
+FROM transacoes_pix t_in
+JOIN transacoes_pix t_out
+    ON
+    -- 2. Destino da entrada = origem da saída; saída depois do crédito; no máximo 600 s
+    
+WHERE
+    -- 3. Crédito de entrada ≥ R$ 20.000,00
+    
+-- ORDER BY ...
+;`,
+  'vetor-geografico-impossivel': `WITH sessoes_sequenciais AS (
+    SELECT
+        -- 1. Cidade e horário atuais + cidade e horário da sessão anterior da mesma conta
+        
+    FROM acessos_digitais
+)
+SELECT
+    -- 2. Conta, cidade de origem, cidade de destino e intervalo em segundos
+    
+FROM sessoes_sequenciais
+WHERE
+    -- 3. Há sessão anterior, as cidades diferem e o intervalo é de até 1 hora
+    
+-- ORDER BY ...
+;`,
+  'triangulacao-societaria': `SELECT
+    -- 1. Conta A, intermediária B, destino C e os dois valores da cadeia
+    
+FROM transacoes_pix t_ab
+JOIN transacoes_pix t_bc
+    ON
+    -- 2. A→B depois B→C, com valor de B→C entre 90% e 110% de A→B
+    
+JOIN socios_empresas s_a
+    ON
+    -- 3. QSA da conta A
+    
+JOIN socios_empresas s_c
+    ON
+    -- 4. QSA da conta C
+    
+WHERE
+    -- 5. Mesmo CPF nos dois quadros e A diferente de C
+    
+-- ORDER BY ...
+;`,
+  'dossie-coaf-pj': `WITH volumetria_empresas AS (
+    SELECT
+        -- 1. Origem, quantidade, soma e ticket médio (piso de volume no grupo)
+        
+    FROM transacoes_pix
+    GROUP BY
+        -- 2. Consolide por pagador
+        
+),
+empresas_com_administrador AS (
+    SELECT
+        -- 3. Empresas com ao menos um administrador formal
+        
+    FROM socios_empresas
+)
+SELECT
+    -- 4. Razão social, faturamento, montante, ticket e quantidade
+    
+FROM volumetria_empresas v
+JOIN contas c
+    ON
+    -- 5. Cadastro da origem
+    
+JOIN empresas_com_administrador adm
+    ON
+    -- 6. QSA com administrador
+    
+WHERE
+    -- 7. Somente pessoa jurídica
+    
+-- ORDER BY ...
+;`,
   'ubo-aurora': `SELECT
     s.nome_socio,
     s.cpf_socio,

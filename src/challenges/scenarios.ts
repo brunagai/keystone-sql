@@ -23,7 +23,7 @@ export const TRAIL_LEVELS: Record<TrailLevel, TrailLevelInfo> = {
   2: { titulo: 'Cruzamentos Cadastrais e Relações Societárias', tecnica: 'JOIN, LEFT JOIN e duplo relacionamento de cadastro' },
   3: { titulo: 'Janelas Temporais e Anomalias Transacionais', tecnica: 'time/strftime, HAVING sobre renda, date() e unixepoch' },
   4: { titulo: 'Funções de Janela (Window Functions)', tecnica: 'ROW_NUMBER, LAG, SUM OVER e CTE em duas fases' },
-  5: { titulo: 'Casos Avançados de PLD/FT', tecnica: 'JOIN em QSA, telemetria de acesso e produtos financeiros' },
+  5: { titulo: 'Investigações Avançadas e Casos Complexos Bacen', tecnica: 'QSA/PEP, dwell time, telemetria, triangulação e dossiê COAF' },
 };
 
 export const TRAIL_ORDER: readonly TrailLevel[] = [0, 1, 2, 3, 4, 5];
@@ -2156,6 +2156,367 @@ ORDER BY acumulado_movel_pep DESC, id_transacao ASC;`,
         details: [
           'Compare o 4.2 (`>= 25000`, qualquer titular) com este corte (`> 20000` só em `eh_pep = 1`): o limiar cai porque o risco do cargo público justifica alerta mais cedo.',
         ],
+      };
+    },
+  },
+  {
+    id: 'ubo-pep-credito',
+    origem: 'base',
+    nivel: 5,
+    titulo: 'Rastreio de UBO: Beneficiário Efetivo e Exposição Política',
+    enquadramento: 'Circular Bacen 3.978/2020 · beneficiário final e escrutínio reforçado de PEP',
+    dossie:
+      'Créditos de grande porte em pessoa jurídica só fecham o dossiê quando se sabe quem é o beneficiário efetivo. ' +
+      'A mesa pediu operações em que a receptora é PJ, o sócio detém fatia relevante do capital e esse sócio está ' +
+      'classificado no cadastro como Pessoa Exposta Politicamente.',
+    objetivo:
+      'Localize operações de crédito de grande porte (valor individual igual ou superior a R$ 50.000,00) destinadas a empresas (PJ) cujo quadro societário possua sócio com participação societária relevante igual ou superior a 25% classificado na base cadastral como Pessoa Exposta Politicamente (PEP).',
+    colunasEsperadas: ['id_transacao', 'razao_social', 'nome_socio', 'percentual_participacao', 'valor'],
+    ordenacao: 'valor DESC',
+    dicaTexto:
+      'Cruze o crédito com a empresa favorecida, o quadro de sócios e o cadastro pessoal do sócio (pelo documento), mantendo só PJ, piso de valor, participação relevante e classificação PEP.',
+    dicaSql: `-- Empresa receptora + QSA + cadastro do sócio (cpf_socio = documento) para ler eh_pep
+SELECT t.id_transacao, c_emp.titular AS razao_social, s.nome_socio,
+       s.percentual_participacao, t.valor
+FROM transacoes_pix t
+JOIN contas c_emp ON t.id_conta_destino = c_emp.id_conta
+JOIN socios_empresas s ON c_emp.id_conta = s.id_conta_empresa
+JOIN contas c_pep ON s.cpf_socio = c_pep.documento
+WHERE c_emp.tipo_pessoa = 'PJ'
+  AND t.valor >= ...
+  AND s.percentual_participacao >= ...
+  AND c_pep.eh_pep = ...
+ORDER BY t.valor DESC;`,
+    gabaritoSql: `-- Gabarito · crédito ≥ R$ 50 mil em PJ com sócio PEP (≥ 25%)
+SELECT
+  t.id_transacao,
+  c_emp.titular AS razao_social,
+  s.nome_socio,
+  s.percentual_participacao,
+  t.valor
+FROM transacoes_pix t
+JOIN contas c_emp ON t.id_conta_destino = c_emp.id_conta
+JOIN socios_empresas s ON c_emp.id_conta = s.id_conta_empresa
+JOIN contas c_pep ON s.cpf_socio = c_pep.documento
+WHERE c_emp.tipo_pessoa = 'PJ'
+  AND t.valor >= 50000
+  AND s.percentual_participacao >= 25
+  AND c_pep.eh_pep = 1
+ORDER BY t.valor DESC;`,
+    colunaChave: 'id_transacao',
+    rotuloEntidade: { singular: 'crédito', plural: 'créditos' },
+    dicasDivergencia: {
+      excesso:
+        'Há linhas a mais. A receptora é PJ, `valor >= 50000`, `percentual_participacao >= 25` e o sócio precisa estar PEP (`cpf_socio = documento` e `eh_pep = 1`).',
+      falta:
+        'Faltam operações. Cruze destino → empresa → QSA → cadastro do sócio. O piso de participação e o de valor são inclusivos.',
+      valores:
+        'Os identificadores batem, mas razão social, sócio ou participação divergem. `razao_social` é o titular da PJ favorecida.',
+      ordenacao: 'Os dados estão corretos, mas a ordem não. Ordene pelo valor do crédito, do maior para o menor.',
+    },
+    resumirSucesso(gabarito) {
+      const total = sum(columnValues(gabarito, 'valor'));
+      return {
+        message: `UBO PEP: ${gabarito.values.length} crédito(s) ≥ R$ 50 mil em PJ com sócio PEP relevante, somando ${formatBRL(total)}.`,
+        entities: distinct(columnValues(gabarito, 'razao_social')).slice(0, 8),
+        details: ['O próximo recorte observa o trânsito rápido: crédito relevante seguido de saída em minutos.'],
+      };
+    },
+  },
+  {
+    id: 'conta-passagem-dwell',
+    origem: 'base',
+    nivel: 5,
+    titulo: 'Conta de Passagem: Esvaziamento Imediato de Recursos (Dwell Time Crítico)',
+    enquadramento: 'Carta Circular Bacen 4.001/2020 · contas de passagem e layering em janela curta',
+    dossie:
+      'Contas de passagem recebem um crédito relevante e esvaziam o saldo em minutos, no mesmo ciclo operacional. O ' +
+      'dwell time crítico da esteira é de até dez minutos entre a entrada e a saída pela mesma conta intermediária.',
+    objetivo:
+      'Mapeie contas intermediárias com padrão de trânsito rápido, identificando contas que receberam transferências de valor relevante (iguais ou superiores a R$ 20.000,00) e que, em uma janela de até 600 segundos (10 minutos) após o crédito, emitiram transferências de saída no mesmo dia.',
+    colunasEsperadas: [
+      'conta_passagem',
+      'transacao_entrada',
+      'transacao_saida',
+      'valor_entrada',
+      'valor_saida',
+      'intervalo_segundos',
+    ],
+    ordenacao: 'intervalo_segundos ASC',
+    dicaTexto:
+      'Pareie cada crédito relevante com saídas posteriores da mesma conta, medindo os segundos entre a entrada e a saída e mantendo só o trânsito de até dez minutos.',
+    dicaSql: `-- Autorelacionamento: destino da entrada = origem da saída; saída não pode preceder a entrada
+SELECT t_in.id_conta_destino AS conta_passagem,
+       t_in.id_transacao AS transacao_entrada,
+       t_out.id_transacao AS transacao_saida,
+       t_in.valor AS valor_entrada,
+       t_out.valor AS valor_saida,
+       (unixepoch(t_out.data_hora) - unixepoch(t_in.data_hora)) AS intervalo_segundos
+FROM transacoes_pix t_in
+JOIN transacoes_pix t_out ON t_in.id_conta_destino = t_out.id_conta_origem
+  AND unixepoch(t_out.data_hora) >= unixepoch(t_in.data_hora)
+  AND (unixepoch(t_out.data_hora) - unixepoch(t_in.data_hora)) <= 600
+WHERE t_in.valor >= ...
+ORDER BY intervalo_segundos ASC;`,
+    gabaritoSql: `-- Gabarito · dwell time ≤ 600 s após crédito ≥ R$ 20 mil
+SELECT
+  t_in.id_conta_destino AS conta_passagem,
+  t_in.id_transacao AS transacao_entrada,
+  t_out.id_transacao AS transacao_saida,
+  t_in.valor AS valor_entrada,
+  t_out.valor AS valor_saida,
+  (unixepoch(t_out.data_hora) - unixepoch(t_in.data_hora)) AS intervalo_segundos
+FROM transacoes_pix t_in
+JOIN transacoes_pix t_out ON t_in.id_conta_destino = t_out.id_conta_origem
+  AND unixepoch(t_out.data_hora) >= unixepoch(t_in.data_hora)
+  AND (unixepoch(t_out.data_hora) - unixepoch(t_in.data_hora)) <= 600
+WHERE t_in.valor >= 20000
+ORDER BY intervalo_segundos ASC;`,
+    colunaChave: 'transacao_entrada',
+    rotuloEntidade: { singular: 'par entrada–saída', plural: 'pares entrada–saída' },
+    dicasDivergencia: {
+      excesso:
+        'Há pares a mais. O crédito de entrada é `valor >= 20000` e a saída ocorre até 600 segundos depois, pela mesma conta (destino da entrada = origem da saída).',
+      falta:
+        'Faltam pares. A saída não pode ser anterior ao crédito. Inclua intervalo zero (saída no mesmo instante) se existir.',
+      valores:
+        'Os pares batem, mas valores ou `intervalo_segundos` divergem. O intervalo é `unixepoch(saída) - unixepoch(entrada)`.',
+      ordenacao: 'Os dados estão corretos, mas a ordem não. Ordene pelo intervalo, do mais curto para o mais longo.',
+    },
+    resumirSucesso(gabarito) {
+      return {
+        message: `Contas de passagem: ${gabarito.values.length} par(es) crédito–saída em até 10 minutos.`,
+        entities: distinct(columnValues(gabarito, 'conta_passagem')).slice(0, 8),
+        details: ['Em seguida, a telemetria aponta deslocamento geográfico incompatível entre sessões consecutivas.'],
+      };
+    },
+  },
+  {
+    id: 'vetor-geografico-impossivel',
+    origem: 'base',
+    nivel: 5,
+    titulo: 'Vetor Geográfico Impossível: Telemetria de Sessões Sucessivas',
+    enquadramento: 'Circular Bacen 3.978/2020 · canais eletrônicos e geolocalização incompatível',
+    dossie:
+      'Dois logins em cidades diferentes em menos de uma hora não se explicam por deslocamento físico habitual. A esteira ' +
+      'compara sessões consecutivas da mesma conta e isola a troca de cidade nesse intervalo.',
+    objetivo:
+      'Detecte anomalias de localização na telemetria de canais digitais, identificando contas que registraram acessos em cidades distintas em um intervalo inferior ou igual a 3.600 segundos (1 hora) entre logins consecutivos, caracterizando incompatibilidade física de deslocamento.',
+    colunasEsperadas: ['id_conta', 'cidade_origem', 'cidade_destino', 'intervalo_segundos'],
+    ordenacao: 'intervalo_segundos ASC',
+    dicaTexto:
+      'Para cada acesso, recupere a cidade e o horário da sessão imediatamente anterior da mesma conta; na etapa seguinte, mantenha só a troca de cidade em até uma hora e descarte quem não tem sessão prévia.',
+    dicaSql: `-- Fase 1: LAG da cidade e do horário na linha do tempo da conta
+-- Fase 2: troca de cidade e intervalo ≤ 3600 s
+WITH sessoes_sequenciais AS (
+  SELECT id_conta, geolocalizacao_cidade AS cidade_atual, data_hora,
+         LAG(geolocalizacao_cidade) OVER (
+           PARTITION BY id_conta ORDER BY data_hora ASC
+         ) AS cidade_anterior,
+         LAG(data_hora) OVER (
+           PARTITION BY id_conta ORDER BY data_hora ASC
+         ) AS data_hora_anterior
+  FROM acessos_digitais
+)
+SELECT id_conta, cidade_anterior AS cidade_origem, cidade_atual AS cidade_destino,
+       (unixepoch(data_hora) - unixepoch(data_hora_anterior)) AS intervalo_segundos
+FROM sessoes_sequenciais
+WHERE cidade_anterior IS NOT NULL
+  AND cidade_atual <> cidade_anterior
+  AND (unixepoch(data_hora) - unixepoch(data_hora_anterior)) <= 3600
+ORDER BY intervalo_segundos ASC;`,
+    gabaritoSql: `-- Gabarito · sessões consecutivas em cidades distintas em até 1 h
+WITH sessoes_sequenciais AS (
+  SELECT
+    id_conta,
+    geolocalizacao_cidade AS cidade_atual,
+    data_hora,
+    LAG(geolocalizacao_cidade) OVER (
+      PARTITION BY id_conta ORDER BY data_hora ASC
+    ) AS cidade_anterior,
+    LAG(data_hora) OVER (
+      PARTITION BY id_conta ORDER BY data_hora ASC
+    ) AS data_hora_anterior
+  FROM acessos_digitais
+)
+SELECT
+  id_conta,
+  cidade_anterior AS cidade_origem,
+  cidade_atual AS cidade_destino,
+  (unixepoch(data_hora) - unixepoch(data_hora_anterior)) AS intervalo_segundos
+FROM sessoes_sequenciais
+WHERE cidade_anterior IS NOT NULL
+  AND cidade_atual <> cidade_anterior
+  AND (unixepoch(data_hora) - unixepoch(data_hora_anterior)) <= 3600
+ORDER BY intervalo_segundos ASC;`,
+    colunaChave: 'id_conta',
+    rotuloEntidade: { singular: 'deslocamento', plural: 'deslocamentos' },
+    dicasDivergencia: {
+      excesso:
+        'Há linhas a mais. Compare só sessões consecutivas da mesma conta, com troca de cidade e intervalo `<= 3600` segundos.',
+      falta:
+        'Faltam eventos. Expurgue a primeira sessão (`cidade_anterior` nulo). C001 (São Paulo → Manaus em cerca de um minuto) deve entrar se a telemetria ATO estiver na base.',
+      valores:
+        'As contas batem, mas cidades ou intervalo divergem. `cidade_origem` é a sessão anterior; `cidade_destino` é a atual.',
+      ordenacao: 'Os dados estão corretos, mas a ordem não. Ordene pelo intervalo, do mais curto para o mais longo.',
+    },
+    resumirSucesso(gabarito) {
+      return {
+        message: `Vetor impossível: ${gabarito.values.length} troca(s) de cidade entre sessões consecutivas em até 1 hora.`,
+        entities: distinct(columnValues(gabarito, 'id_conta')).slice(0, 8),
+        details: ['O próximo recorte fecha o ciclo A→B→C quando o administrador de C é o mesmo CPF do quadro de A.'],
+      };
+    },
+  },
+  {
+    id: 'triangulacao-societaria',
+    origem: 'base',
+    nivel: 5,
+    titulo: 'Estruturação em Rede: Triangulação de Fundos com Vínculo Societário',
+    enquadramento: 'Carta Circular Bacen 4.001/2020 · estruturação e empresas coligadas',
+    dossie:
+      'Triangulação societária: A envia a B e B repassa a C um valor próximo, enquanto o mesmo CPF figura no quadro de A e ' +
+      'no de C. A margem de 10% absorve tarifas e arredondamentos sem perder o vínculo econômico.',
+    objetivo:
+      'Rastreie transferências triangulares em cadeia, identificando fluxos onde uma conta A envia recursos para uma conta B, e a conta B transfere um montante correspondente (margem de tolerância de 10%) para uma conta C cujo administrador possua vínculo societário direto (mesmo CPF) na conta A.',
+    colunasEsperadas: ['conta_origem', 'conta_intermediaria', 'conta_destino', 'valor_remessa_a', 'valor_remessa_b'],
+    ordenacao: 't_ab.data_hora ASC',
+    dicaTexto:
+      'Encadeie o envio A→B com o envio posterior B→C, aceite variação de até 10% no valor e confirme o mesmo documento de sócio nos quadros de A e de C, sem loop de A para A.',
+    dicaSql: `-- A→B depois B→C; valor de B→C entre 90% e 110% de A→B; mesmo cpf_socio em A e C
+SELECT t_ab.id_conta_origem AS conta_origem,
+       t_ab.id_conta_destino AS conta_intermediaria,
+       t_bc.id_conta_destino AS conta_destino,
+       t_ab.valor AS valor_remessa_a,
+       t_bc.valor AS valor_remessa_b
+FROM transacoes_pix t_ab
+JOIN transacoes_pix t_bc ON t_ab.id_conta_destino = t_bc.id_conta_origem
+  AND unixepoch(t_bc.data_hora) >= unixepoch(t_ab.data_hora)
+  AND t_bc.valor BETWEEN (t_ab.valor * 0.90) AND (t_ab.valor * 1.10)
+JOIN socios_empresas s_a ON t_ab.id_conta_origem = s_a.id_conta_empresa
+JOIN socios_empresas s_c ON t_bc.id_conta_destino = s_c.id_conta_empresa
+WHERE s_a.cpf_socio = s_c.cpf_socio
+  AND t_ab.id_conta_origem <> t_bc.id_conta_destino
+ORDER BY t_ab.data_hora ASC;`,
+    gabaritoSql: `-- Gabarito · triangulação A→B→C com sócio em comum (margem 10%)
+SELECT
+  t_ab.id_conta_origem AS conta_origem,
+  t_ab.id_conta_destino AS conta_intermediaria,
+  t_bc.id_conta_destino AS conta_destino,
+  t_ab.valor AS valor_remessa_a,
+  t_bc.valor AS valor_remessa_b
+FROM transacoes_pix t_ab
+JOIN transacoes_pix t_bc ON t_ab.id_conta_destino = t_bc.id_conta_origem
+  AND unixepoch(t_bc.data_hora) >= unixepoch(t_ab.data_hora)
+  AND t_bc.valor BETWEEN (t_ab.valor * 0.90) AND (t_ab.valor * 1.10)
+JOIN socios_empresas s_a ON t_ab.id_conta_origem = s_a.id_conta_empresa
+JOIN socios_empresas s_c ON t_bc.id_conta_destino = s_c.id_conta_empresa
+WHERE s_a.cpf_socio = s_c.cpf_socio
+  AND t_ab.id_conta_origem <> t_bc.id_conta_destino
+ORDER BY t_ab.data_hora ASC;`,
+    colunaChave: 'conta_origem',
+    rotuloEntidade: { singular: 'triângulo', plural: 'triângulos' },
+    dicasDivergencia: {
+      excesso:
+        'Há cadeias a mais. B→C precisa ser posterior ou simultâneo a A→B, com valor entre 90% e 110%, e o mesmo `cpf_socio` em A e C. A e C não podem ser a mesma conta.',
+      falta:
+        'Faltam triangulações. Cruze os dois PIX em sequência e os dois QSA pelo CPF. Sócios de A e C precisam ser o mesmo documento.',
+      valores:
+        'As contas batem, mas os valores divergem. `valor_remessa_a` é A→B e `valor_remessa_b` é B→C.',
+      ordenacao: 'Os dados estão corretos, mas a ordem não. Ordene pela data/hora do primeiro envio (A→B), da mais antiga para a mais recente.',
+    },
+    resumirSucesso(gabarito) {
+      return {
+        message: `Triangulação societária: ${gabarito.values.length} cadeia(s) A→B→C com sócio em comum e margem de 10%.`,
+        entities: distinct(columnValues(gabarito, 'conta_origem')).slice(0, 8),
+        details: ['O dossiê COAF consolida volumetria crítica de PJ que já têm administrador formal no QSA.'],
+      };
+    },
+  },
+  {
+    id: 'dossie-coaf-pj',
+    origem: 'base',
+    nivel: 5,
+    titulo: 'Dossiê Executivo de Comunicação Regulatória (COAF)',
+    enquadramento: 'Lei 9.613/1998 c/c Circular Bacen 3.978/2020 · comunicação de operações',
+    dossie:
+      'O relatório executivo da comunicação reúne PJ com volume enviado acima do piso interno e com administrador ' +
+      'identificado no quadro. A ficha traz razão social, faturamento declarado, montante, ticket médio e quantidade de envios.',
+    objetivo:
+      'Elabore o relatório consolidado de clientes corporativos com volumetria crítica, filtrando empresas que acumularam mais de R$ 150.000,00 em envios no período e que contam com pelo menos um administrador formal no quadro societário, sumarizando a razão social, o faturamento declarado, o montante total enviado, o ticket médio por transferência e a quantidade total de operações.',
+    colunasEsperadas: ['razao_social', 'renda_mensal_declarada', 'total_movimentado', 'ticket_medio', 'total_operacoes'],
+    ordenacao: 'total_movimentado DESC',
+    dicaTexto:
+      'Separe a consolidação dos envios (com o piso de volume) da lista de empresas que têm administrador; depois cruze com o cadastro PJ.',
+    dicaSql: `-- Bloco 1: volumetria com corte de grupo; Bloco 2: QSA com administrador; SELECT: só PJ
+WITH volumetria_empresas AS (
+  SELECT id_conta_origem,
+         COUNT(*) AS total_operacoes,
+         SUM(valor) AS total_movimentado,
+         AVG(valor) AS ticket_medio
+  FROM transacoes_pix
+  GROUP BY id_conta_origem
+  HAVING SUM(valor) > 150000
+),
+empresas_com_administrador AS (
+  SELECT DISTINCT id_conta_empresa
+  FROM socios_empresas
+  WHERE eh_administrador = 1
+)
+SELECT c.titular AS razao_social,
+       c.renda_mensal_declarada,
+       v.total_movimentado,
+       v.ticket_medio,
+       v.total_operacoes
+FROM volumetria_empresas v
+JOIN contas c ON v.id_conta_origem = c.id_conta
+JOIN empresas_com_administrador adm ON c.id_conta = adm.id_conta_empresa
+WHERE c.tipo_pessoa = 'PJ'
+ORDER BY v.total_movimentado DESC;`,
+    gabaritoSql: `-- Gabarito · dossiê COAF: PJ com volume > R$ 150 mil e administrador no QSA
+WITH volumetria_empresas AS (
+  SELECT
+    id_conta_origem,
+    COUNT(*) AS total_operacoes,
+    SUM(valor) AS total_movimentado,
+    AVG(valor) AS ticket_medio
+  FROM transacoes_pix
+  GROUP BY id_conta_origem
+  HAVING SUM(valor) > 150000
+),
+empresas_com_administrador AS (
+  SELECT DISTINCT id_conta_empresa
+  FROM socios_empresas
+  WHERE eh_administrador = 1
+)
+SELECT
+  c.titular AS razao_social,
+  c.renda_mensal_declarada,
+  v.total_movimentado,
+  v.ticket_medio,
+  v.total_operacoes
+FROM volumetria_empresas v
+JOIN contas c ON v.id_conta_origem = c.id_conta
+JOIN empresas_com_administrador adm ON c.id_conta = adm.id_conta_empresa
+WHERE c.tipo_pessoa = 'PJ'
+ORDER BY v.total_movimentado DESC;`,
+    colunaChave: 'razao_social',
+    rotuloEntidade: { singular: 'empresa', plural: 'empresas' },
+    dicasDivergencia: {
+      excesso:
+        'Há empresas a mais. O volume enviado é estritamente maior que R$ 150.000,00, a conta é PJ e existe `eh_administrador = 1` no QSA.',
+      falta:
+        'Faltam empresas. Some todos os envios da origem (`HAVING SUM(valor) > 150000`) e cruze com administradores distintos. Quem soma exatamente R$ 150 mil fica de fora.',
+      valores:
+        'As razões sociais batem, mas as métricas não. `total_movimentado` é a soma, `ticket_medio` a média e `total_operacoes` a contagem dos envios.',
+      ordenacao: 'Os dados estão corretos, mas a ordem não. Ordene pelo montante movimentado, do maior para o menor.',
+    },
+    resumirSucesso(gabarito) {
+      const total = sum(columnValues(gabarito, 'total_movimentado'));
+      return {
+        message: `Dossiê COAF: ${gabarito.values.length} PJ(s) acima de R$ 150 mil com administrador formal, somando ${formatBRL(total)} em envios.`,
+        entities: distinct(columnValues(gabarito, 'razao_social')).slice(0, 8),
+        details: ['Os casos homologados seguintes no nível aprofunda UBO da Aurora, ATO de dispositivo e consórcio em espécie.'],
       };
     },
   },
