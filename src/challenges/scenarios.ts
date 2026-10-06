@@ -137,8 +137,7 @@ SELECT
   titular,
   tipo_pessoa,
   renda_mensal_declarada
-FROM contas
-ORDER BY id_conta;`,
+FROM contas;`,
     colunaChave: 'id_conta',
     rotuloEntidade: { singular: 'cliente', plural: 'clientes' },
     dicasDivergencia: {
@@ -181,8 +180,7 @@ SELECT
   titular,
   ocupacao
 FROM contas
-WHERE eh_pep = 1
-ORDER BY id_conta;`,
+WHERE eh_pep = 1;`,
     colunaChave: 'id_conta',
     rotuloEntidade: { singular: 'conta PEP', plural: 'contas PEP' },
     dicasDivergencia: {
@@ -277,8 +275,7 @@ SELECT
   renda_mensal_declarada
 FROM contas
 WHERE tipo_pessoa = 'PF'
-  AND renda_mensal_declarada < 3000
-ORDER BY renda_mensal_declarada ASC;`,
+  AND renda_mensal_declarada < 3000;`,
     colunaChave: 'id_conta',
     rotuloEntidade: { singular: 'cliente', plural: 'clientes' },
     dicasDivergencia: {
@@ -323,8 +320,7 @@ SELECT
   COUNT(*)        AS total_operacoes,
   SUM(valor)      AS valor_total
 FROM transacoes_pix
-GROUP BY id_conta_origem
-ORDER BY total_operacoes DESC;`,
+GROUP BY id_conta_origem;`,
     colunaChave: 'conta_origem',
     rotuloEntidade: { singular: 'remetente', plural: 'remetentes' },
     dicasDivergencia: {
@@ -370,8 +366,7 @@ SELECT
   id_conta_origem AS conta_origem,
   COUNT(DISTINCT id_conta_destino) AS total_destinatarios_distintos
 FROM transacoes_pix
-GROUP BY id_conta_origem
-ORDER BY total_destinatarios_distintos DESC;`,
+GROUP BY id_conta_origem;`,
     colunaChave: 'conta_origem',
     rotuloEntidade: { singular: 'remetente', plural: 'remetentes' },
     dicasDivergencia: {
@@ -478,8 +473,7 @@ SELECT
   SUM(valor)      AS valor_total
 FROM transacoes_pix
 GROUP BY id_conta_origem
-HAVING COUNT(*) >= 10
-ORDER BY total_operacoes DESC;`,
+HAVING COUNT(*) >= 10;`,
     colunaChave: 'conta_origem',
     rotuloEntidade: { singular: 'remetente', plural: 'remetentes' },
     dicasDivergencia: {
@@ -533,8 +527,7 @@ SELECT
   AVG(valor)       AS valor_medio_operacao
 FROM transacoes_pix
 GROUP BY id_conta_destino
-HAVING SUM(valor) > 100000
-ORDER BY total_recebido DESC;`,
+HAVING SUM(valor) > 100000;`,
     colunaChave: 'conta_destino',
     rotuloEntidade: { singular: 'favorecido', plural: 'favorecidos' },
     dicasDivergencia: {
@@ -589,8 +582,7 @@ SELECT
 FROM transacoes_pix
 WHERE valor BETWEEN 8000 AND 9999
 GROUP BY id_conta_origem
-HAVING COUNT(*) >= 3
-ORDER BY total_operacoes_fracionadas DESC;`,
+HAVING COUNT(*) >= 3;`,
     colunaChave: 'conta_origem',
     rotuloEntidade: { singular: 'remetente', plural: 'remetentes' },
     dicasDivergencia: {
@@ -645,8 +637,7 @@ SELECT
 FROM transacoes_pix
 GROUP BY id_conta_origem
 HAVING COUNT(*) >= 5
-   AND SUM(valor) >= 40000
-ORDER BY valor_total DESC;`,
+   AND SUM(valor) >= 40000;`,
     colunaChave: 'conta_origem',
     rotuloEntidade: { singular: 'remetente', plural: 'remetentes' },
     dicasDivergencia: {
@@ -698,8 +689,7 @@ SELECT
   data_hora
 FROM transacoes_pix
 WHERE valor >= 1000
-  AND (time(data_hora) >= '20:00:00' OR time(data_hora) < '06:00:00')
-ORDER BY data_hora DESC;`,
+  AND (time(data_hora) >= '20:00:00' OR time(data_hora) < '06:00:00');`,
     colunaChave: 'id_transacao',
     rotuloEntidade: { singular: 'transferência', plural: 'transferências' },
     dicasDivergencia: {
@@ -752,8 +742,7 @@ FROM transacoes_pix t
 JOIN contas c ON t.id_conta_origem = c.id_conta
 WHERE c.tipo_pessoa = 'PJ'
   AND t.valor >= 15000
-  AND strftime('%w', t.data_hora) IN ('0', '6')
-ORDER BY t.data_hora ASC;`,
+  AND strftime('%w', t.data_hora) IN ('0', '6');`,
     colunaChave: 'id_transacao',
     rotuloEntidade: { singular: 'liquidação', plural: 'liquidações' },
     dicasDivergencia: {
@@ -808,8 +797,7 @@ FROM contas c
 JOIN transacoes_pix t ON c.id_conta = t.id_conta_origem
 WHERE c.tipo_pessoa = 'PF'
 GROUP BY c.id_conta, c.titular, c.renda_mensal_declarada
-HAVING SUM(t.valor) >= 3 * c.renda_mensal_declarada
-ORDER BY total_enviado DESC;`,
+HAVING SUM(t.valor) >= 3 * c.renda_mensal_declarada;`,
     colunaChave: 'id_conta',
     rotuloEntidade: { singular: 'cliente', plural: 'clientes' },
     dicasDivergencia: {
@@ -862,8 +850,7 @@ SELECT
   SUM(valor)      AS valor_total_dia
 FROM transacoes_pix
 GROUP BY id_conta_origem, date(data_hora)
-HAVING COUNT(*) >= 4
-ORDER BY total_operacoes DESC, valor_total_dia DESC;`,
+HAVING COUNT(*) >= 4;`,
     colunaChave: 'conta_origem',
     rotuloEntidade: { singular: 'conta-dia', plural: 'contas-dia' },
     dicasDivergencia: {
@@ -919,8 +906,7 @@ SELECT
 FROM transacoes_pix t
 JOIN acessos_digitais a ON t.id_conta_origem = a.id_conta
   AND (unixepoch(t.data_hora) - unixepoch(a.data_hora)) BETWEEN 0 AND 900
-WHERE a.status_dispositivo != 'CONFIÁVEL'
-ORDER BY t.data_hora DESC;`,
+WHERE a.status_dispositivo != 'CONFIÁVEL';`,
     colunaChave: 'id_conta',
     rotuloEntidade: { singular: 'evento ATO', plural: 'eventos ATO' },
     dicasDivergencia: {
@@ -1006,8 +992,7 @@ intervalos AS (
 )
 SELECT id_transacao, conta_origem, conta_destino, valor, data_hora, intervalo_segundos
 FROM intervalos
-WHERE intervalo_segundos <= 60       -- janela de alta frequência (inclusiva)
-ORDER BY conta_origem ASC, data_hora ASC;`,
+WHERE intervalo_segundos <= 60;      -- janela de alta frequência (inclusiva)`,
     colunaChave: 'id_transacao',
     rotuloEntidade: { singular: 'transação', plural: 'transações' },
     dicasDivergencia: {
@@ -1156,8 +1141,7 @@ FROM transacoes_pix AS t
 JOIN contas AS c
   ON c.id_conta = t.id_conta_origem            -- quem ENVIA o recurso
 WHERE c.renda_mensal_declarada > 0             -- protege contra divisão por zero
-  AND t.valor >= 30 * c.renda_mensal_declarada -- desproporção grave: 30x a renda mensal
-ORDER BY fator_incompatibilidade DESC;         -- casos mais graves primeiro`,
+  AND t.valor >= 30 * c.renda_mensal_declarada; -- desproporção grave: 30x a renda mensal`,
     colunaChave: 'id_transacao',
     rotuloEntidade: { singular: 'transação', plural: 'transações' },
     dicasDivergencia: {
@@ -1213,8 +1197,7 @@ SELECT
   t.data_hora
 FROM transacoes_pix t
 JOIN contas c ON t.id_conta_origem = c.id_conta
-WHERE t.valor >= 30000
-ORDER BY t.valor DESC;`,
+WHERE t.valor >= 30000;`,
     colunaChave: 'id_transacao',
     rotuloEntidade: { singular: 'transferência', plural: 'transferências' },
     dicasDivergencia: {
@@ -1267,8 +1250,7 @@ SELECT
 FROM contas c
 JOIN socios_empresas s ON c.id_conta = s.id_conta_empresa
 WHERE c.tipo_pessoa = 'PJ'
-  AND s.eh_administrador = 1
-ORDER BY c.titular ASC;`,
+  AND s.eh_administrador = 1;`,
     colunaChave: 'razao_social',
     rotuloEntidade: { singular: 'administrador', plural: 'administradores' },
     dicasDivergencia: {
@@ -1316,8 +1298,7 @@ SELECT
   c.tipo_pessoa
 FROM contas c
 LEFT JOIN transacoes_pix t ON c.id_conta = t.id_conta_origem
-WHERE t.id_transacao IS NULL
-ORDER BY c.id_conta ASC;`,
+WHERE t.id_transacao IS NULL;`,
     colunaChave: 'id_conta',
     rotuloEntidade: { singular: 'conta dormente', plural: 'contas dormentes' },
     dicasDivergencia: {
@@ -1370,8 +1351,7 @@ SELECT
 FROM contas c
 JOIN transacoes_pix t ON c.id_conta = t.id_conta_origem
 WHERE c.eh_pep = 1
-GROUP BY c.titular, c.ocupacao
-ORDER BY valor_total_enviado DESC;`,
+GROUP BY c.titular, c.ocupacao;`,
     colunaChave: 'titular_pep',
     rotuloEntidade: { singular: 'titular PEP', plural: 'titulares PEP' },
     dicasDivergencia: {
@@ -1424,8 +1404,7 @@ SELECT
   t.valor
 FROM transacoes_pix t
 JOIN contas rem ON t.id_conta_origem = rem.id_conta
-JOIN contas des ON t.id_conta_destino = des.id_conta
-ORDER BY t.valor DESC;`,
+JOIN contas des ON t.id_conta_destino = des.id_conta;`,
     colunaChave: 'id_transacao',
     rotuloEntidade: { singular: 'transferência', plural: 'transferências' },
     dicasDivergencia: {
@@ -1506,8 +1485,7 @@ SELECT
   qtd_no_dia,
   ROUND(soma_no_dia, 2) AS total_no_dia
 FROM pix_do_dia
-WHERE posicao = 1                       -- desduplicação: só o pico de cada conta
-ORDER BY maior_pix DESC, conta_origem;  -- maiores picos primeiro`,
+WHERE posicao = 1;                      -- desduplicação: só o pico de cada conta`,
     colunaChave: 'conta_origem',
     rotuloEntidade: { singular: 'conta', plural: 'contas' },
     dicasDivergencia: {
@@ -1637,8 +1615,7 @@ SELECT
   valor,
   data_hora
 FROM operacoes_ranqueadas
-WHERE ranking_recente = 1
-ORDER BY data_hora DESC;`,
+WHERE ranking_recente = 1;`,
     colunaChave: 'id_transacao',
     rotuloEntidade: { singular: 'última movimentação', plural: 'últimas movimentações' },
     dicasDivergencia: {
@@ -1699,8 +1676,7 @@ SELECT
     PARTITION BY id_conta_origem
     ORDER BY data_hora ASC, id_transacao ASC
   ))) AS intervalo_segundos
-FROM transacoes_pix
-ORDER BY id_conta_origem ASC, data_hora ASC;`,
+FROM transacoes_pix;`,
     colunaChave: 'id_transacao',
     rotuloEntidade: { singular: 'transferência', plural: 'transferências' },
     dicasDivergencia: {
@@ -1755,8 +1731,7 @@ SELECT
     ORDER BY data_hora ASC, id_transacao ASC
     ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
   ) AS montante_acumulado
-FROM transacoes_pix
-ORDER BY id_conta_origem ASC, data_hora ASC;`,
+FROM transacoes_pix;`,
     colunaChave: 'id_transacao',
     rotuloEntidade: { singular: 'transferência', plural: 'transferências' },
     dicasDivergencia: {
@@ -1825,8 +1800,7 @@ SELECT
   valor_atual,
   (valor_atual - valor_anterior) AS variacao_absoluta
 FROM historico_valores
-WHERE valor_anterior IS NOT NULL
-ORDER BY variacao_absoluta DESC;`,
+WHERE valor_anterior IS NOT NULL;`,
     colunaChave: 'id_transacao',
     rotuloEntidade: { singular: 'salto', plural: 'saltos' },
     dicasDivergencia: {
@@ -1941,8 +1915,7 @@ FROM metricas
 WHERE qtd_historico BETWEEN 1 AND 3        -- histórico curto: conta recém-"aquecida"
   AND valor >= 10 * media_historica        -- salto: 10x ou mais o padrão do próprio remetente
   AND valor >= 5000                        -- relevância: ignora saltos de centavos para reais
-  AND intervalo_segundos <= 10 * 86400     -- proximidade: até 10 dias após o PIX anterior
-ORDER BY salto DESC, id_transacao;`,
+  AND intervalo_segundos <= 10 * 86400;    -- proximidade: até 10 dias após o PIX anterior`,
     colunaChave: 'id_transacao',
     rotuloEntidade: { singular: 'transação', plural: 'transações' },
     dicasDivergencia: {
@@ -2039,7 +2012,7 @@ SELECT
   acumulado_movel_3
 FROM envelope_metricas
 WHERE acumulado_movel_3 >= 25000   -- corte: acúmulo móvel de 3 originações
-ORDER BY acumulado_movel_3 DESC, id_transacao;`,
+ORDER BY acumulado_movel_3 DESC;`,
     colunaChave: 'id_transacao',
     rotuloEntidade: { singular: 'transação', plural: 'transações' },
     dicasDivergencia: {
@@ -2152,7 +2125,7 @@ SELECT
 FROM envelope_metricas
 WHERE eh_pep = 1                    -- escrutínio reforçado: só PEP
   AND acumulado_movel_pep > 20000   -- corte: janela de 3 PIX acima de R$ 20 mil
-ORDER BY acumulado_movel_pep DESC, id_transacao ASC;`,
+ORDER BY acumulado_movel_pep DESC;`,
     colunaChave: 'id_transacao',
     rotuloEntidade: { singular: 'transação', plural: 'transações' },
     dicasDivergencia: {
@@ -2221,8 +2194,7 @@ JOIN contas c_pep ON s.cpf_socio = c_pep.documento
 WHERE c_emp.tipo_pessoa = 'PJ'
   AND t.valor >= 50000
   AND s.percentual_participacao >= 25
-  AND c_pep.eh_pep = 1
-ORDER BY t.valor DESC;`,
+  AND c_pep.eh_pep = 1;`,
     colunaChave: 'id_transacao',
     rotuloEntidade: { singular: 'crédito', plural: 'créditos' },
     dicasDivergencia: {
@@ -2290,15 +2262,15 @@ FROM transacoes_pix t_in
 JOIN transacoes_pix t_out ON t_in.id_conta_destino = t_out.id_conta_origem
   AND unixepoch(t_out.data_hora) >= unixepoch(t_in.data_hora)
   AND (unixepoch(t_out.data_hora) - unixepoch(t_in.data_hora)) <= 600
-WHERE t_in.valor >= 20000
-ORDER BY intervalo_segundos ASC;`,
+  AND date(t_out.data_hora) = date(t_in.data_hora)
+WHERE t_in.valor >= 20000;`,
     colunaChave: 'transacao_entrada',
     rotuloEntidade: { singular: 'par entrada–saída', plural: 'pares entrada–saída' },
     dicasDivergencia: {
       excesso:
-        'Há pares a mais. O crédito de entrada é `valor >= 20000` e a saída ocorre até 600 segundos depois, pela mesma conta (destino da entrada = origem da saída).',
+        'Há pares a mais. O crédito de entrada é `valor >= 20000`, a saída ocorre até 600 segundos depois pela mesma conta e no mesmo dia civil (`date(t_out.data_hora) = date(t_in.data_hora)`).',
       falta:
-        'Faltam pares. A saída não pode ser anterior ao crédito. Inclua intervalo zero (saída no mesmo instante) se existir.',
+        'Faltam pares. A saída não pode ser anterior ao crédito nem em outro dia. Inclua intervalo zero (saída no mesmo instante) se existir.',
       valores:
         'Os pares batem, mas valores ou `intervalo_segundos` divergem. O intervalo é `unixepoch(saída) - unixepoch(entrada)`.',
       ordenacao: 'Os dados estão corretos, mas a ordem não. Ordene pelo intervalo, do mais curto para o mais longo.',
@@ -2367,8 +2339,7 @@ SELECT
 FROM sessoes_sequenciais
 WHERE cidade_anterior IS NOT NULL
   AND cidade_atual <> cidade_anterior
-  AND (unixepoch(data_hora) - unixepoch(data_hora_anterior)) <= 3600
-ORDER BY intervalo_segundos ASC;`,
+  AND (unixepoch(data_hora) - unixepoch(data_hora_anterior)) <= 3600;`,
     colunaChave: 'id_conta',
     rotuloEntidade: { singular: 'deslocamento', plural: 'deslocamentos' },
     dicasDivergencia: {
@@ -2432,8 +2403,7 @@ JOIN transacoes_pix t_bc ON t_ab.id_conta_destino = t_bc.id_conta_origem
 JOIN socios_empresas s_a ON t_ab.id_conta_origem = s_a.id_conta_empresa
 JOIN socios_empresas s_c ON t_bc.id_conta_destino = s_c.id_conta_empresa
 WHERE s_a.cpf_socio = s_c.cpf_socio
-  AND t_ab.id_conta_origem <> t_bc.id_conta_destino
-ORDER BY t_ab.data_hora ASC;`,
+  AND t_ab.id_conta_origem <> t_bc.id_conta_destino;`,
     colunaChave: 'conta_origem',
     rotuloEntidade: { singular: 'triângulo', plural: 'triângulos' },
     dicasDivergencia: {
@@ -2518,8 +2488,7 @@ SELECT
 FROM volumetria_empresas v
 JOIN contas c ON v.id_conta_origem = c.id_conta
 JOIN empresas_com_administrador adm ON c.id_conta = adm.id_conta_empresa
-WHERE c.tipo_pessoa = 'PJ'
-ORDER BY v.total_movimentado DESC;`,
+WHERE c.tipo_pessoa = 'PJ';`,
     colunaChave: 'razao_social',
     rotuloEntidade: { singular: 'empresa', plural: 'empresas' },
     dicasDivergencia: {
@@ -2578,7 +2547,7 @@ FROM socios_empresas AS s
 WHERE s.id_conta_empresa = 'C025'          -- empresa do smurfing
   AND s.percentual_participacao >= 25      -- sócio relevante (CC 4.001 / UBO)
   AND s.eh_administrador = 1               -- poderes de gestão
-ORDER BY s.percentual_participacao DESC, s.nome_socio;`,
+ORDER BY s.percentual_participacao DESC;`,
     colunaChave: 'cpf_socio',
     rotuloEntidade: { singular: 'sócio', plural: 'sócios' },
     dicasDivergencia: {
@@ -2646,7 +2615,7 @@ WHERE a.sucesso = 1
   AND a.geolocalizacao_cidade <> c.cidade
   AND t.valor >= 10000
   AND unixepoch(t.data_hora) - unixepoch(a.data_hora) BETWEEN 0 AND 900
-ORDER BY t.valor DESC, a.id_conta;`,
+ORDER BY t.valor DESC;`,
     colunaChave: 'id_conta',
     rotuloEntidade: { singular: 'conta', plural: 'contas' },
     dicasDivergencia: {
@@ -2707,7 +2676,7 @@ FROM operacoes_produtos
 WHERE tipo_produto = 'CONSORCIO_LANCE'
   AND forma_liquidacao = 'ESPECIE'
   AND status_contemplacao = 1
-ORDER BY valor_aporte DESC, id_conta;`,
+ORDER BY valor_aporte DESC;`,
     colunaChave: 'id_conta',
     rotuloEntidade: { singular: 'conta', plural: 'contas' },
     dicasDivergencia: {
