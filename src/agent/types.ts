@@ -1,5 +1,10 @@
+/** Degrau da trilha pedagógica (0–1 Iniciante, 2–3 Intermediário, 4–5 Avançado). */
+export type ChallengeTrailLevel = 0 | 1 | 2 | 3 | 4 | 5;
+
 export interface GeneratedChallenge {
   id: string;
+  /** Nível 0–5 sanitizado conforme a dificuldade pedida. */
+  nivel?: ChallengeTrailLevel;
   titulo: string;
   tipologiaBacen: string;
   badgeEnquadramento: string;

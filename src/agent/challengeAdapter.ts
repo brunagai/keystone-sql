@@ -1,8 +1,16 @@
-import type { InvestigationScenario } from '../challenges/scenarios.ts';
+import type { InvestigationScenario, TrailLevel } from '../challenges/scenarios.ts';
 import { extractOrderBy } from '../database/safeQuery.ts';
+import { inferTrailLevelFromSql, isChallengeTrailLevel, parseIdTrailLevel } from './difficultyToolkit.ts';
 import type { GeneratedChallenge, GenerationSource } from './types.ts';
 
 const MAX_SUCCESS_ENTITIES = 8;
+
+function scenarioNivel(ch: GeneratedChallenge): TrailLevel {
+  if (isChallengeTrailLevel(ch.nivel)) return ch.nivel;
+  const fromId = parseIdTrailLevel(ch.id);
+  if (fromId !== null) return fromId;
+  return inferTrailLevelFromSql(ch.solutionQuery);
+}
 
 export interface StoredChallenge {
   challenge: GeneratedChallenge;
@@ -20,7 +28,7 @@ export function toScenario({ challenge: ch, source, model }: StoredChallenge): I
   return {
     id: ch.id,
     origem: source,
-    nivel: 5,
+    nivel: scenarioNivel(ch),
     ...(model ? { modelo: model } : {}),
     titulo: ch.titulo,
     enquadramento: ch.badgeEnquadramento,

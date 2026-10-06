@@ -389,7 +389,7 @@ export function generateOfflineChallenge(db: Database, request: GenerationReques
   const ordered = [...candidates.filter((c) => !avoid.has(c.titulo)), ...candidates.filter((c) => avoid.has(c.titulo))];
 
   for (const candidate of ordered) {
-    const verification = verifyChallenge(db, { ...candidate, id: `offline-${Date.now().toString(36)}` });
+    const verification = verifyChallenge(db, { ...candidate, id: `offline-${Date.now().toString(36)}` }, request.difficulty);
     if (verification.ok) return verification.challenge;
   }
   throw new Error('Nenhum template offline produziu um desafio válido para este dataset.');

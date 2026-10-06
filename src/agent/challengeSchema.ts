@@ -1,4 +1,5 @@
 import type { GeneratedChallenge } from './types.ts';
+import { isChallengeTrailLevel } from './difficultyToolkit.ts';
 
 /** JSON Schema estrito (OpenAI Structured Outputs) equivalente à interface GeneratedChallenge. */
 export const GENERATED_CHALLENGE_JSON_SCHEMA = {
@@ -9,6 +10,7 @@ export const GENERATED_CHALLENGE_JSON_SCHEMA = {
     additionalProperties: false,
     required: [
       'id',
+      'nivel',
       'titulo',
       'tipologiaBacen',
       'badgeEnquadramento',
@@ -20,6 +22,7 @@ export const GENERATED_CHALLENGE_JSON_SCHEMA = {
     ],
     properties: {
       id: { type: 'string' },
+      nivel: { type: 'integer', enum: [0, 1, 2, 3, 4, 5] },
       titulo: { type: 'string' },
       tipologiaBacen: { type: 'string' },
       badgeEnquadramento: { type: 'string' },
@@ -86,8 +89,12 @@ export function parseGeneratedChallenge(raw: string): GeneratedChallenge {
     throw new ChallengeFormatError('"criteriosValidacao.descricaoSucesso" ausente.');
   }
 
+  const rawNivel = obj['nivel'];
+  const nivelNum = typeof rawNivel === 'number' ? rawNivel : typeof rawNivel === 'string' ? Number(rawNivel) : NaN;
+
   return {
     id: typeof obj['id'] === 'string' ? obj['id'] : '',
+    ...(isChallengeTrailLevel(nivelNum) ? { nivel: nivelNum } : {}),
     titulo,
     tipologiaBacen,
     badgeEnquadramento,

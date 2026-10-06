@@ -9,10 +9,8 @@ export interface ReplacePrompt {
 }
 
 export interface EditorController {
-  /** SQL selecionado no editor ou, sem seleção, o conteúdo completo. */
   getSql(): string;
   getFullSql(): string;
-  hasSelection(): boolean;
   /** Troca programática (template/rascunho): não entra no histórico de desfazer nem dispara `onChange`. */
   setSql(sql: string): void;
   /** Troca pedida pela usuária (histórico, gabarito): preserva o Ctrl+Z e dispara `onChange`. */
@@ -24,14 +22,11 @@ export interface EditorController {
   confirmReplace(prompt: ReplacePrompt): Promise<boolean>;
   dismissPrompt(): void;
   flashStatus(message: string): void;
-  showSelectionHelp(): void;
-  showSnippetHint(rowCount: number): void;
   clearHint(): void;
 }
 
 export interface EditorHandlers {
   onRun: () => void;
-  onTestSelection: () => void;
   onValidate: () => void;
   onChange: () => void;
   onRestoreTemplate: () => void;
@@ -39,27 +34,14 @@ export interface EditorHandlers {
 
 const INDENT = '  ';
 const HINT_TIMEOUT_MS = 6000;
-const HELP_TIMEOUT_MS = 8000;
 
-export function initEditor({ onRun, onTestSelection, onValidate, onChange, onRestoreTemplate }: EditorHandlers): EditorController {
+export function initEditor({ onRun, onValidate, onChange, onRestoreTemplate }: EditorHandlers): EditorController {
   const textarea = byId<HTMLTextAreaElement>('sql-editor');
   const runButton = byId<HTMLButtonElement>('btn-run');
   const validateButton = byId<HTMLButtonElement>('btn-validate');
-  const selectionButton = byId<HTMLButtonElement>('btn-run-selection');
   const banner = byId('editor-banner');
   const hint = byId('editor-hint');
-  const selectionHelp = byId('selection-help');
   const restoreButton = byId<HTMLButtonElement>('btn-restore-template');
-
-  const hasSelection = (): boolean => textarea.selectionStart !== textarea.selectionEnd;
-
-  const syncSelectionAffordance = (): void => {
-    const armed = hasSelection();
-    selectionButton.classList.toggle('border-sky-400', armed);
-    selectionButton.classList.toggle('bg-sky-950/70', armed);
-    selectionButton.classList.toggle('text-sky-100', armed);
-    selectionButton.setAttribute('aria-pressed', String(armed));
-  };
 
   const insertAtCursor = (text: string): void => {
     const start = textarea.selectionStart;
@@ -67,24 +49,14 @@ export function initEditor({ onRun, onTestSelection, onValidate, onChange, onRes
     textarea.setRangeText(text, start, end, 'end');
     textarea.focus();
     onChange();
-    syncSelectionAffordance();
   };
 
   runButton.title = 'Executa sua consulta livremente no banco para explorar e conferir os dados.';
   validateButton.title = 'Submete sua query para a esteira AML conferir se você encontrou as evidências do caso.';
-  selectionButton.title =
-    'Executa apenas o pedaço de código selecionado com o cursor no editor (ideal para testar subqueries e blocos WITH/CTE).';
   runButton.addEventListener('click', onRun);
-  selectionButton.addEventListener('click', onTestSelection);
   validateButton.addEventListener('click', onValidate);
   restoreButton.addEventListener('click', onRestoreTemplate);
-  textarea.addEventListener('input', () => {
-    onChange();
-    syncSelectionAffordance();
-  });
-  textarea.addEventListener('select', syncSelectionAffordance);
-  textarea.addEventListener('keyup', syncSelectionAffordance);
-  textarea.addEventListener('mouseup', syncSelectionAffordance);
+  textarea.addEventListener('input', onChange);
 
   textarea.addEventListener('keydown', (event) => {
     if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
@@ -116,7 +88,6 @@ export function initEditor({ onRun, onTestSelection, onValidate, onChange, onRes
   });
 
   let hintTimer: ReturnType<typeof setTimeout> | undefined;
-  let helpTimer: ReturnType<typeof setTimeout> | undefined;
 
   const setHint = (message: string): void => {
     clearTimeout(hintTimer);
@@ -129,32 +100,9 @@ export function initEditor({ onRun, onTestSelection, onValidate, onChange, onRes
     }, HINT_TIMEOUT_MS);
   };
 
-  const hideSelectionHelp = (): void => {
-    clearTimeout(helpTimer);
-    selectionHelp.hidden = true;
-  };
-
-  const openSelectionHelp = (): void => {
-    selectionHelp.hidden = false;
-    clearTimeout(helpTimer);
-    helpTimer = setTimeout(hideSelectionHelp, HELP_TIMEOUT_MS);
-  };
-
-  document.addEventListener('pointerdown', (event) => {
-    const target = event.target as Node;
-    if (!selectionHelp.hidden && !selectionHelp.contains(target) && !selectionButton.contains(target)) {
-      hideSelectionHelp();
-    }
-  });
-
   return {
-    getSql() {
-      const { selectionStart, selectionEnd, value } = textarea;
-      const selected = value.slice(selectionStart, selectionEnd);
-      return selected.trim() ? selected : value;
-    },
+    getSql: () => textarea.value,
     getFullSql: () => textarea.value,
-    hasSelection,
     setSql(sql) {
       textarea.value = sql;
       textarea.setSelectionRange(sql.length, sql.length);
@@ -173,7 +121,6 @@ export function initEditor({ onRun, onTestSelection, onValidate, onChange, onRes
     setActionsEnabled(enabled) {
       runButton.disabled = !enabled;
       validateButton.disabled = !enabled;
-      selectionButton.disabled = !enabled;
     },
     focus() {
       textarea.focus();
@@ -198,22 +145,7 @@ export function initEditor({ onRun, onTestSelection, onValidate, onChange, onRes
       });
     },
     dismissPrompt: () => settlePrompt(false),
-    flashStatus(message) {
-      hideSelectionHelp();
-      setHint(message);
-    },
-    showSelectionHelp() {
-      setHint('');
-      openSelectionHelp();
-    },
-    showSnippetHint(rowCount) {
-      hideSelectionHelp();
-      const linhas = rowCount === 1 ? '1 linha' : `${rowCount} linhas`;
-      setHint(`Executando trecho selecionado (${linhas}).`);
-    },
-    clearHint() {
-      hideSelectionHelp();
-      setHint('');
-    },
+    flashStatus: setHint,
+    clearHint: () => setHint(''),
   };
 }

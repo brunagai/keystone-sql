@@ -1,8 +1,7 @@
 import { allScenarios, onScenariosChange } from '../challenges/registry.ts';
-import { getCompletedChallenges, PROGRESS_UPDATED_EVENT } from '../services/progressService.ts';
-import { showMobilePane } from './layout.ts';
+import { getCompletedChallenges, PROGRESS_UPDATED_EVENT, resetProgress } from '../services/progressService.ts';
 
-const FLOATING_MENU_IDS = ['history-panel', 'export-menu', 'selection-help'] as const;
+const FLOATING_MENU_IDS = ['history-panel', 'export-menu'] as const;
 
 /** Fecha popovers da chrome antes de qualquer init, para não ficarem soltos se o JS interromper. */
 export function hideFloatingMenus(): void {
@@ -45,11 +44,14 @@ function paintProgress(root: HTMLElement): void {
 }
 
 function createProgressMeter(): HTMLElement {
-  const root = document.createElement('div');
-  root.id = 'lab-progress';
-  root.setAttribute('role', 'progressbar');
-  root.className = 'flex min-w-0 max-w-full shrink-0 items-center gap-2';
-  root.innerHTML = `
+  const cluster = document.createElement('div');
+  cluster.id = 'lab-progress';
+  cluster.className = 'flex min-w-0 max-w-full shrink-0 items-center gap-1.5';
+
+  const meter = document.createElement('div');
+  meter.setAttribute('role', 'progressbar');
+  meter.className = 'flex min-w-0 items-center gap-2';
+  meter.innerHTML = `
     <span data-progress-desktop class="hidden whitespace-nowrap text-[11px] text-slate-400 md:inline">Progresso: 0/0 (0%)</span>
     <span class="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-300 md:hidden">
       <span aria-hidden="true">✓</span>
@@ -58,10 +60,26 @@ function createProgressMeter(): HTMLElement {
     <div class="hidden h-1.5 w-24 overflow-hidden rounded-full bg-slate-800 md:block" aria-hidden="true">
       <div data-progress-bar class="h-full rounded-full bg-emerald-500 transition-[width] duration-300" style="width: 0%"></div>
     </div>`;
-  paintProgress(root);
-  window.addEventListener(PROGRESS_UPDATED_EVENT, () => paintProgress(root));
-  onScenariosChange(() => paintProgress(root));
-  return root;
+
+  const reset = document.createElement('button');
+  reset.type = 'button';
+  reset.title = 'Zerar trilha';
+  reset.setAttribute('aria-label', 'Zerar progresso da trilha');
+  reset.className =
+    'shrink-0 rounded px-1.5 py-0.5 text-xs text-slate-400 hover:bg-slate-800/80 hover:text-rose-400';
+  reset.textContent = 'Zerar';
+  reset.addEventListener('click', () => {
+    if (!window.confirm('Deseja realmente zerar o seu progresso na trilha de desafios?')) return;
+    resetProgress();
+  });
+
+  const refresh = (): void => paintProgress(meter);
+  refresh();
+  window.addEventListener(PROGRESS_UPDATED_EVENT, refresh);
+  onScenariosChange(refresh);
+
+  cluster.append(meter, reset);
+  return cluster;
 }
 
 /**
@@ -120,8 +138,8 @@ export function initNavbar(): HTMLSelectElement | null {
   }
 
   if (select instanceof HTMLSelectElement) {
-    select.classList.add('min-h-[38px]', 'min-w-0', 'w-full', 'max-w-full', 'flex-1', 'truncate');
-    select.classList.remove('shrink-0');
+    select.classList.add('min-h-[38px]', 'min-w-[240px]', 'w-full', 'flex-1', 'truncate');
+    select.classList.remove('shrink-0', 'max-w-full', 'min-w-0');
   }
 
   if (nav) {
@@ -129,8 +147,6 @@ export function initNavbar(): HTMLSelectElement | null {
       button.classList.add('shrink-0', 'min-h-[38px]');
     }
   }
-
-  document.getElementById('btn-schema')?.addEventListener('click', () => showMobilePane('mission'));
 
   const selectEl = document.getElementById('scenario-select');
   return selectEl instanceof HTMLSelectElement ? selectEl : null;

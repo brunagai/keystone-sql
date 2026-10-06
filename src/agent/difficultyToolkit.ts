@@ -1,17 +1,18 @@
 import { maskSql } from '../database/sqlText.ts';
-import type { ChallengeDifficulty } from './types.ts';
+import type { ChallengeDifficulty, ChallengeTrailLevel, GeneratedChallenge } from './types.ts';
 
 export interface DifficultyToolkit {
   resumo: string;
   obrigatorio: string;
   proibido: string;
   foco: string;
+  idPrefixo: string;
 }
 
 export const ENVELOPE_HEADING = '-- FASE 1: O ENVELOPE ANALÍTICO (Criação da linha do tempo e carimbo de métricas linha a linha)';
 export const INSPECTOR_HEADING = '-- FASE 2: O INSPETOR DE RISCO (Corte regulatório e enriquecimento sobre os dados já carimbados)';
 
-/** Esqueleto didático injetado no system prompt (Intermediário e Avançado). */
+/** Esqueleto didático injetado no system prompt (Avançado). */
 export const COMPILER_SKELETON = `${ENVELOPE_HEADING}
 WITH envelope_metricas AS (
   SELECT
@@ -19,7 +20,7 @@ WITH envelope_metricas AS (
     id_conta_origem,
     valor,
     data_hora
-    -- métrica analítica (ROW_NUMBER/RANK no Intermediário; LAG/LEAD no Avançado)
+    -- métrica analítica (ROW_NUMBER / LAG)
   FROM transacoes_pix
 )
 ${INSPECTOR_HEADING}
@@ -29,112 +30,155 @@ FROM envelope_metricas
 WHERE /* critério de corte regulatório BACEN */
 ORDER BY /* ordenação determinística */;`;
 
+/** Faixa da trilha 0–5 amarrada à dificuldade do Agente. */
+export const DIFFICULTY_TRAIL_LEVELS: Record<ChallengeDifficulty, readonly ChallengeTrailLevel[]> = {
+  iniciante: [0, 1],
+  intermediario: [2, 3],
+  avancado: [4, 5],
+};
+
 export const DIFFICULTY_TOOLKIT: Record<ChallengeDifficulty, DifficultyToolkit> = {
   iniciante: {
-    resumo: 'Agregação relacional: GROUP BY, HAVING e WHERE (sem janelas e sem CTE)',
+    resumo: 'Nível 0 (SELECT, WHERE, ORDER BY, LIMIT) ou Nível 1 (COUNT, SUM, AVG, GROUP BY simples)',
     obrigatorio:
-      'Obrigatório: `GROUP BY`, `HAVING`, agregações clássicas (`COUNT`, `SUM`, `AVG`, `MAX`, `MIN`) e filtros lógicos no `WHERE` (múltiplos limiares, `BETWEEN`, `IN`, `AND`/`OR`). `JOIN` com `contas` quando o critério envolver KYC (`renda_mensal_declarada`, `titular`).',
+      'O desafio DEVE ser Nível 0 ou Nível 1. Nível 0: um SELECT sobre uma tabela, com WHERE, ORDER BY e opcionalmente LIMIT. ' +
+      'Nível 1: agregação básica (`COUNT`/`SUM`/`AVG`) com `GROUP BY` simples (HAVING opcional). Campo "id" com prefixo "0." ou "1." (ex.: "0.pix-alto", "1.volumetria"). ' +
+      'Campo "nivel" numérico 0 ou 1.',
     proibido:
-      'PROIBIDO de forma expressa: Window Functions (`OVER (...)`, `LAG`, `LEAD`, `ROW_NUMBER`, `RANK`, `DENSE_RANK`, `NTILE`) e CTEs (`WITH`). O foco é puramente agregação relacional (volumetria e fracionamento básico).',
-    foco: 'Detecção de volumetria e fracionamento básico (várias operações logo abaixo de um limiar, concentração por remetente/destino).',
+      'PROIBIDO: JOINs múltiplos, subconsultas (`(SELECT …)`), CTEs (`WITH`), Window Functions (`OVER`, `LAG`, `LEAD`, `ROW_NUMBER`, `RANK`). No máximo um JOIN simples, e só se for indispensável ao KYC.',
+    foco: 'Fundamentos: filtrar, ordenar, limitar ou agregar volumetria sem cruzamentos cadastrais complexos nem janelas temporais avançadas.',
+    idPrefixo: '0. ou 1.',
   },
   intermediario: {
-    resumo: 'Classificação posicional: ROW_NUMBER() / RANK() / DENSE_RANK() no envelope WITH',
+    resumo: 'Nível 2 (JOINs cadastrais) ou Nível 3 (anomalias temporais com data/hora)',
     obrigatorio:
-      'Obrigatório: `WITH envelope_metricas AS (...)` carimbando `ROW_NUMBER() OVER (PARTITION BY … ORDER BY …)` ou `RANK()`/`DENSE_RANK() OVER (...)`, e corte posicional no Inspetor (`WHERE posicao = 1`, `<= N`).',
+      'O desafio DEVE ser Nível 2 ou Nível 3. Nível 2: `JOIN`/`LEFT JOIN` com `contas` (e/ou cadastro) para cruzar titular, renda, PEP ou tipo de pessoa. ' +
+      'Nível 3: anomalias de data/hora com `strftime`, `unixepoch`, `date()` ou `julianday` (horário, dia, intervalo). Campo "id" com prefixo "2." ou "3.". Campo "nivel" 2 ou 3.',
     proibido:
-      'Não resolva só com `GROUP BY`/`HAVING` se o corte for posicional (maior PIX, top-N, primeiro/último do grupo). `LAG`/`LEAD` ficam para o Avançado.',
-    foco: 'Desduplicação de alertas, maior evento por conta em um período, isolamento de transações de pico relativo.',
+      'PROIBIDO neste pedido: Window Functions (`OVER`, `ROW_NUMBER`, `LAG`, `LEAD`, `RANK`) — isso é Nível 4. CTEs complexas com várias etapas — isso é Nível 5. Não atribua nivel 4 ou 5.',
+    foco: 'Cruzamento cadastral (KYC) ou recorte temporal (hora, dia, janela unixepoch) com SQL relacional clássico.',
+    idPrefixo: '2. ou 3.',
   },
   avancado: {
-    resumo: 'CTE + LAG/LEAD (ou múltiplas janelas) e corte no WHERE externo',
+    resumo: 'Nível 4 (Window Functions: ROW_NUMBER, LAG) ou Nível 5 (investigações com CTEs)',
     obrigatorio:
-      'Obrigatório: `WITH envelope_metricas AS (...)` combinado com `LAG()` ou `LEAD()` (desfasamento temporal) **ou** janelas `OVER` em partições distintas. As métricas são carimbadas no Envelope; o corte regulatório vai no `WHERE` do SELECT externo.',
-    proibido: 'Não entregue um `SELECT` plano sem CTE. Não use só `GROUP BY`/`HAVING` como solução principal. Não omita o filtro externo sobre o dado já carimbado.',
-    foco: 'Mudança abrupta de comportamento, velocidade anómala (burst) ou intervalos entre transações consecutivas com corte BACEN no WHERE externo.',
+      'O desafio DEVE ser Nível 4 ou Nível 5. Nível 4: `ROW_NUMBER`/`LAG`/`LEAD`/`SUM() OVER (...)`. Nível 5: CTE (`WITH`) para investigação em várias etapas. ' +
+      'Campo "id" com prefixo "4." ou "5.". Campo "nivel" 4 ou 5.',
+    proibido:
+      'Não entregue um SELECT plano só com WHERE/GROUP BY (isso é Iniciante) nem um JOIN cadastral sem janela/CTE (isso é Intermediário). Não use nivel 0, 1, 2 ou 3.',
+    foco: 'Ranking posicional, desfasamento temporal (LAG) ou dossiê multi-etapa com CTE.',
+    idPrefixo: '4. ou 5.',
   },
 };
 
 const WINDOW_FN = /\b(LAG|LEAD|ROW_NUMBER|RANK|DENSE_RANK|NTILE)\s*\(/i;
 const OVER = /\bOVER\s*\(/i;
-const ROW_OR_RANK = /\b(ROW_NUMBER|RANK|DENSE_RANK)\s*\(/i;
-const LAG_OR_LEAD = /\b(LAG|LEAD)\s*\(/i;
 const WITH_ANY = /\bWITH\b/i;
 const GROUP_BY = /\bGROUP\s+BY\b/i;
-const HAVING = /\bHAVING\b/i;
-const ENVELOPE_MARK = /fase\s*1\s*:\s*o\s*envelope\s*anal[ií]tico|bloco\s+envelope/i;
-const INSPECTOR_MARK = /fase\s*2\s*:\s*o\s*inspetor\s+de\s+risco|bloco\s+inspetor/i;
+const AGG = /\b(COUNT|SUM|AVG|MIN|MAX)\s*\(/i;
+const JOIN = /\b(?:INNER\s+|LEFT\s+(?:OUTER\s+)?|RIGHT\s+(?:OUTER\s+)?|CROSS\s+|FULL\s+(?:OUTER\s+)?)?JOIN\b/i;
+const SUBQUERY = /\(\s*SELECT\b/i;
+const TEMPORAL = /\b(strftime|unixepoch|julianday)\b/i;
 
-const countMatches = (text: string, pattern: RegExp): number => {
-  const flags = pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`;
-  return [...text.matchAll(new RegExp(pattern.source, flags))].length;
+const countJoins = (code: string): number => {
+  const flags = JOIN.flags.includes('g') ? JOIN.flags : `${JOIN.flags}g`;
+  return [...code.matchAll(new RegExp(JOIN.source, flags))].length;
 };
 
-const requireTwoPhaseComments = (sql: string): string | null => {
-  const envAt = sql.search(ENVELOPE_MARK);
-  const insAt = sql.search(INSPECTOR_MARK);
-  if (envAt < 0 || insAt < 0 || envAt > insAt) {
-    return (
-      'A solutionQuery deve separar Envelope e Inspetor, nesta ordem, com os comentários: ' +
-      `"${ENVELOPE_HEADING}" e depois "${INSPECTOR_HEADING}".`
-    );
-  }
-  return null;
-};
+export function parseIdTrailLevel(id: string): ChallengeTrailLevel | null {
+  const match = /^([0-5])(?:[.\-_]|$)/.exec(id.trim());
+  if (!match) return null;
+  const n = Number(match[1]);
+  return n === 0 || n === 1 || n === 2 || n === 3 || n === 4 || n === 5 ? n : null;
+}
 
-/** Confere se o gabarito respeita a amarração do nível. `null` = ok. */
+export function isChallengeTrailLevel(value: unknown): value is ChallengeTrailLevel {
+  return value === 0 || value === 1 || value === 2 || value === 3 || value === 4 || value === 5;
+}
+
+/** Infere o degrau 0–5 a partir do SQL (sem ainda recortar pela dificuldade). */
+export function inferTrailLevelFromSql(sql: string): ChallengeTrailLevel {
+  const code = maskSql(sql);
+  if (WITH_ANY.test(code)) return 5;
+  if (WINDOW_FN.test(code) || OVER.test(code)) return 4;
+  if (TEMPORAL.test(code)) return 3;
+  if (JOIN.test(code)) return 2;
+  if (GROUP_BY.test(code) || AGG.test(code)) return 1;
+  return 0;
+}
+
+/**
+ * Nível efetivo na faixa da dificuldade: usa `nivel`/prefixo do id se forem compatíveis;
+ * senão infere pelo SQL; se ainda for incompatível, força o degrau mais próximo da faixa.
+ */
+export function resolveTrailLevel(challenge: GeneratedChallenge, difficulty: ChallengeDifficulty): ChallengeTrailLevel {
+  const allowed = DIFFICULTY_TRAIL_LEVELS[difficulty];
+  const declared = isChallengeTrailLevel(challenge.nivel) ? challenge.nivel : parseIdTrailLevel(challenge.id);
+  if (declared !== null && allowed.includes(declared)) return declared;
+  const inferred = inferTrailLevelFromSql(challenge.solutionQuery);
+  if (allowed.includes(inferred)) return inferred;
+  if (difficulty === 'iniciante') return inferred >= 1 ? 1 : 0;
+  if (difficulty === 'intermediario') return inferred >= 3 ? 3 : 2;
+  return inferred <= 4 ? 4 : 5;
+}
+
+export function sanitizeGeneratedChallenge(challenge: GeneratedChallenge, difficulty: ChallengeDifficulty): GeneratedChallenge {
+  const nivel = resolveTrailLevel(challenge, difficulty);
+  const rest = challenge.id.replace(/^[0-5][.\-_]?/, '').replace(/[^a-zA-Z0-9-]+/g, '-') || 'caso';
+  return { ...challenge, nivel, id: `${nivel}.${rest}` };
+}
+
+/** Confere se o gabarito respeita a faixa da dificuldade. `null` = ok. */
 export function checkDifficultyToolkit(sql: string, difficulty: ChallengeDifficulty): string | null {
   const code = maskSql(sql);
+  const joins = countJoins(code);
 
   if (difficulty === 'iniciante') {
     if (WINDOW_FN.test(code) || OVER.test(code)) {
-      return 'Nível Iniciante: remova Window Functions (`OVER`, `LAG`, `LEAD`, `ROW_NUMBER`, `RANK`). Use só GROUP BY, HAVING, agregações e WHERE.';
+      return 'Nível Iniciante (0–1): remova Window Functions (`OVER`, `LAG`, `LEAD`, `ROW_NUMBER`). Use SELECT/WHERE/ORDER BY/LIMIT ou GROUP BY simples.';
     }
     if (WITH_ANY.test(code)) {
-      return 'Nível Iniciante: remova a CTE (`WITH`). O desafio deve ser agregação relacional pura (GROUP BY / HAVING / WHERE).';
+      return 'Nível Iniciante (0–1): remova a CTE (`WITH`). CTEs são Nível 5 (Avançado).';
     }
-    if (!GROUP_BY.test(code) || !HAVING.test(code)) {
-      return 'Nível Iniciante: a solutionQuery deve ter GROUP BY e HAVING (agregação + corte por limiar).';
+    if (SUBQUERY.test(code)) {
+      return 'Nível Iniciante (0–1): remova subconsultas. Use um SELECT direto, no máximo com um JOIN simples.';
+    }
+    if (joins > 1) {
+      return 'Nível Iniciante (0–1): no máximo um JOIN. JOINs múltiplos são Nível 2 (Intermediário).';
+    }
+    if (TEMPORAL.test(code)) {
+      return 'Nível Iniciante (0–1): não use strftime/unixepoch/julianday (Nível 3). Use WHERE em valor/canal ou GROUP BY simples.';
     }
     return null;
   }
-
-  const phase = requireTwoPhaseComments(sql);
-  if (phase) return phase;
 
   if (difficulty === 'intermediario') {
-    if (LAG_OR_LEAD.test(code)) {
-      return 'Nível Intermediário: não use LAG/LEAD (reserve para Avançado). Use ROW_NUMBER(), RANK() ou DENSE_RANK() com corte posicional.';
+    if (WINDOW_FN.test(code) || OVER.test(code)) {
+      return 'Nível Intermediário (2–3): não use Window Functions (`OVER`, `ROW_NUMBER`, `LAG`). Isso é Nível 4. Use JOIN cadastral (nível 2) ou strftime/unixepoch (nível 3).';
     }
-    if (!WITH_ANY.test(code)) {
-      return 'Nível Intermediário: a solutionQuery deve usar WITH (Envelope) para carimbar ROW_NUMBER/RANK e cortar no SELECT externo (Inspetor).';
+    if (WITH_ANY.test(code)) {
+      return 'Nível Intermediário (2–3): não use CTE (`WITH`). Isso é Nível 5. Resolva com JOIN e/ou funções de data/hora.';
     }
-    if (!ROW_OR_RANK.test(code) || !OVER.test(code)) {
-      return 'Nível Intermediário: é obrigatório ROW_NUMBER(), RANK() ou DENSE_RANK() com OVER (PARTITION BY … ORDER BY …) e um corte posicional no Inspetor.';
+    if (joins < 1 && !TEMPORAL.test(code)) {
+      return 'Nível Intermediário (2–3): a solutionQuery deve ter JOIN cadastral (nível 2) ou recorte temporal com strftime/unixepoch/julianday (nível 3).';
     }
     return null;
   }
 
-  if (!WITH_ANY.test(code)) {
-    return 'Nível Avançado: a solutionQuery deve ter WITH envelope_metricas AS (...) — o Envelope vive na CTE.';
-  }
-  const overCount = countMatches(code, OVER);
-  if (!LAG_OR_LEAD.test(code) && overCount < 2) {
-    return 'Nível Avançado: combine a CTE com LAG()/LEAD() (desfasamento temporal) ou com pelo menos duas janelas OVER (partições distintas).';
+  if (!WITH_ANY.test(code) && !WINDOW_FN.test(code) && !OVER.test(code)) {
+    return 'Nível Avançado (4–5): use Window Functions (`ROW_NUMBER`, `LAG`, `OVER`) no Nível 4 ou uma CTE (`WITH`) no Nível 5.';
   }
   return null;
 }
 
 export function formatToolkitForPrompt(difficulty: ChallengeDifficulty): string {
   const kit = DIFFICULTY_TOOLKIT[difficulty];
-  const structure =
-    difficulty === 'iniciante'
-      ? '- Não use WITH nem OVER. Comentários "--" explicam o WHERE/GROUP BY/HAVING, sem fingir um envelope de janela.'
-      : `- Estruture solutionQuery na ordem do compilador, com estes marcadores (nesta ordem):\n  ${ENVELOPE_HEADING}\n  ${INSPECTOR_HEADING}`;
+  const levels = DIFFICULTY_TRAIL_LEVELS[difficulty].join(' ou ');
   return `PRIORIDADE MÁXIMA — amarração deste pedido (${difficulty}):
+- Faixa de nível OBRIGATÓRIA: ${levels} (proibido qualquer outro número em "nivel").
+- Prefixo de "id": ${kit.idPrefixo}
 - Ferramentas: ${kit.resumo}
 - ${kit.obrigatorio}
 - ${kit.proibido}
-- Foco analítico: ${kit.foco}
-${structure}`;
+- Foco analítico: ${kit.foco}`;
 }

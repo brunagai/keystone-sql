@@ -16,18 +16,10 @@ export interface DatasetCounts {
 export interface HeaderController {
   setConnectionState(state: ConnectionState): void;
   setDatasetCounts(counts: DatasetCounts | null): void;
-  setResetEnabled(enabled: boolean): void;
 }
 
-export interface HeaderHandlers {
-  onReset: () => void;
-}
-
-export function initHeader({ onReset }: HeaderHandlers): HeaderController {
+export function initHeader(): HeaderController {
   const status = byId('wasm-status');
-  const resetButton = byId<HTMLButtonElement>('btn-reset');
-
-  resetButton.addEventListener('click', onReset);
 
   return {
     setConnectionState(state) {
@@ -41,9 +33,6 @@ export function initHeader({ onReset }: HeaderHandlers): HeaderController {
     },
     setDatasetCounts() {
       /* Contagens de linhas ficam no Dicionário de Tabelas. */
-    },
-    setResetEnabled(enabled) {
-      resetButton.disabled = !enabled;
     },
   };
 }

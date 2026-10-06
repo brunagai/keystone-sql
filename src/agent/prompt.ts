@@ -4,6 +4,7 @@ import { MAX_SOLUTION_ROWS } from './challengeVerifier.ts';
 import {
   COMPILER_SKELETON,
   DIFFICULTY_TOOLKIT,
+  DIFFICULTY_TRAIL_LEVELS,
   formatToolkitForPrompt,
 } from './difficultyToolkit.ts';
 import { DIFFICULTY_LABELS, FOCUS_LABELS, FOCUS_TYPOLOGY_GUIDE, ADVANCED_TYPOLOGY_CATALOG, type ChallengeDifficulty, type GenerationRequest } from './types.ts';
@@ -61,21 +62,28 @@ chave_pix_destino, descricao, canal.`;
 
 function compilerSection(difficulty: ChallengeDifficulty): string {
   if (difficulty === 'iniciante') {
-    return `## Gabarito (Iniciante) — agregação relacional
-solutionQuery é um SELECT (sem WITH e sem OVER). Comentários "--" explicam WHERE, GROUP BY e HAVING.
-O corte regulatório vive no HAVING (e/ou WHERE). Termine com ORDER BY determinístico (com desempate).`;
+    return `## Gabarito (Iniciante) — Nível 0 ou 1
+- Nível 0: \`SELECT … FROM tabela WHERE … ORDER BY … LIMIT …\` (sem agregação).
+- Nível 1: agregação simples (\`COUNT\`/\`SUM\`/\`AVG\` + \`GROUP BY\`; \`HAVING\` opcional).
+- Sem WITH, sem OVER, sem subconsulta, no máximo um JOIN.
+- "id" começa com "0." ou "1."; "nivel" é 0 ou 1.`;
   }
-  return `## Gabarito na ordem do compilador (Intermediário / Avançado) — OBRIGATÓRIO
-solutionQuery e os comentários "--" devem evidenciar a separação entre carimbo métrico e filtro de corte,
-nesta estrutura (nomes de CTE/colunas podem variar; os marcadores FASE 1 / FASE 2 não):
+  if (difficulty === 'intermediario') {
+    return `## Gabarito (Intermediário) — Nível 2 ou 3
+- Nível 2: JOIN cadastral (\`transacoes_pix\` ⋈ \`contas\` ou cadastro societário).
+- Nível 3: recorte temporal (\`strftime('%H', data_hora)\`, \`unixepoch\`, \`date()\`).
+- Sem Window Functions e sem CTE.
+- "id" começa com "2." ou "3."; "nivel" é 2 ou 3.`;
+  }
+  return `## Gabarito (Avançado) — Nível 4 ou 5
+- Nível 4: Window Functions (\`ROW_NUMBER\`, \`LAG\`, \`SUM() OVER\`).
+- Nível 5: investigação com CTE (\`WITH\`), eventualmente em duas fases:
 
 \`\`\`sql
 ${COMPILER_SKELETON}
 \`\`\`
 
-- FASE 1 (Envelope): gera e carimba a métrica linha a linha. Não filtre o critério BACEN aqui.
-- FASE 2 (Inspetor): projeta evidências, aplica o WHERE de corte sobre o dado já carimbado, ORDER BY.
-- dicaSql deve esboçar as duas fases, sem entregar o gabarito completo.`;
+- "id" começa com "4." ou "5."; "nivel" é 4 ou 5.`;
 }
 
 /**
@@ -131,8 +139,11 @@ ${compilerSection(difficulty)}
   artigos ou incisos dos quais não tenha certeza.
 - "tipologiaBacen": nomeie UMA das 15 tipologias do catálogo (não invente um 16º padrão).
 - "criteriosValidacao.descricaoSucesso": mensagem de parabéns explicando o que o resultado revela.
+- "nivel": inteiro na faixa ${DIFFICULTY_TRAIL_LEVELS[difficulty].join(' ou ')} — nunca fora dessa faixa.
+- "id": string com prefixo "${kit.idPrefixo}" (ex.: "${DIFFICULTY_TRAIL_LEVELS[difficulty][0]}.caso-curto").
+- O catálogo de 15 tipologias descreve o *negócio*; adapte o SQL às ferramentas DESTE nível. Não copie LAG/ROW_NUMBER/WITH do catálogo se este pedido for Iniciante ou Intermediário.
 
-Responda SOMENTE com um objeto JSON com as chaves: id, titulo, tipologiaBacen, badgeEnquadramento, contexto, objetivo,
+Responda SOMENTE com um objeto JSON com as chaves: id, nivel, titulo, tipologiaBacen, badgeEnquadramento, contexto, objetivo,
 dicaSql, solutionQuery, criteriosValidacao { colunasEsperadas: string[], descricaoSucesso }.`;
 }
 
@@ -141,6 +152,6 @@ export function buildUserPrompt({ focus, difficulty, avoidTitles }: GenerationRe
   return `Gere um novo desafio.
 - Foco da tipologia: ${FOCUS_LABELS[focus]}.
 - Alinhamento ao catálogo de 15 padrões: ${FOCUS_TYPOLOGY_GUIDE[focus]}
-- Dificuldade: ${DIFFICULTY_LABELS[difficulty]} (${difficulty}).
+- Dificuldade: ${DIFFICULTY_LABELS[difficulty]} (${difficulty}) — somente níveis ${DIFFICULTY_TRAIL_LEVELS[difficulty].join(' e ')}.
 ${formatToolkitForPrompt(difficulty)}${avoid}`;
 }

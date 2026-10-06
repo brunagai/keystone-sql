@@ -1,9 +1,10 @@
 import type { Database } from 'sql.js';
 import { ChallengeFormatError, GENERATED_CHALLENGE_JSON_SCHEMA, parseGeneratedChallenge } from './challengeSchema.ts';
 import { verifyChallenge } from './challengeVerifier.ts';
+import { sanitizeGeneratedChallenge } from './difficultyToolkit.ts';
 import { generateOfflineChallenge } from './offlineGenerator.ts';
 import { buildSystemPrompt, buildUserPrompt } from './prompt.ts';
-import { PROVIDERS } from './settingsStore.ts';
+import { PROVIDERS, isBlockedAiModel } from './settingsStore.ts';
 import type { AiSettings, GenerationOutcome, GenerationProgress, GenerationRequest } from './types.ts';
 
 const MAX_ATTEMPTS = 3;
@@ -42,17 +43,26 @@ async function request(settings: AiSettings, path: string, init: RequestInit, si
     });
   } catch (error) {
     if (error instanceof DOMException && error.name === 'TimeoutError') {
-      throw new AiServiceError(`${label} não respondeu em ${REQUEST_TIMEOUT_MS / 1000}s.`, 'timeout');
+      console.error(`[IA] timeout ao contatar ${label}`, error);
+      throw new AiServiceError(`${label} não respondeu a tempo.`, 'timeout');
     }
     if (error instanceof DOMException && error.name === 'AbortError') throw new AiServiceError('Operação cancelada.', 'aborted');
-    throw new AiServiceError(`Falha de rede ao contatar ${label} (verifique a conexão).`, 'network');
+    console.error(`[IA] falha de rede ao contatar ${label}`, error);
+    throw new AiServiceError('Falha de rede ao contatar o provedor de IA.', 'network');
   }
 
-  if (response.status === 401 || response.status === 403) throw new AiServiceError(`${label} recusou a API Key (HTTP ${response.status}).`, 'auth');
-  if (response.status === 429) throw new AiServiceError(`Limite de requisições do ${label} atingido. Aguarde e tente novamente.`, 'rate_limit');
+  if (response.status === 401 || response.status === 403) {
+    console.error(`[IA] ${label} recusou a API Key`, response.status);
+    throw new AiServiceError('A API Key foi recusada pelo provedor.', 'auth');
+  }
+  if (response.status === 429) {
+    console.error(`[IA] ${label} quota/limite atingido`, response.status);
+    throw new AiServiceError('Limite de uso do provedor atingido.', 'rate_limit');
+  }
   if (!response.ok) {
     const detail = await response.text().catch(() => '');
-    throw new AiServiceError(`${label} retornou HTTP ${response.status}. ${detail.slice(0, 200)}`, 'http');
+    console.error(`[IA] ${label} HTTP ${response.status}`, detail);
+    throw new AiServiceError('O provedor de IA recusou a solicitação.', 'http');
   }
   return response.json();
 }
@@ -85,19 +95,50 @@ async function chatCompletion(settings: AiSettings, messages: ChatMessage[], sig
 export interface ConnectionTestResult {
   ok: boolean;
   message: string;
+  /** IDs de modelos de chat retornados pela API (sem áudio/whisper/moderação). */
+  models?: string[];
 }
+
+export const STUDENT_AI_FALLBACK_MESSAGE =
+  'Não foi possível conectar ao provedor de IA neste instante. Ativamos automaticamente um desafio homologado do laboratório para você continuar praticando sem interrupções!';
+
+const isUsableChatModel = (id: string): boolean => !isBlockedAiModel(id);
+
+const parseModelIds = (payload: unknown): string[] => {
+  if (typeof payload !== 'object' || payload === null) return [];
+  const data = (payload as { data?: unknown }).data;
+  if (!Array.isArray(data)) return [];
+  const ids: string[] = [];
+  for (const item of data) {
+    if (typeof item !== 'object' || item === null) continue;
+    const id = (item as { id?: unknown }).id;
+    if (typeof id === 'string' && id.trim()) ids.push(id.trim());
+  }
+  return ids;
+};
 
 export async function testConnection(settings: AiSettings, signal?: AbortSignal): Promise<ConnectionTestResult> {
   const { label } = PROVIDERS[settings.provider];
   try {
     const data = await request(settings, '/models', { method: 'GET' }, signal);
-    const models = ((data as { data?: { id?: unknown }[] }).data ?? []).map((m) => String(m.id));
-    if (models.length && !models.includes(settings.model)) {
-      return { ok: false, message: `Chave válida, mas o modelo "${settings.model}" não está disponível no ${label}.` };
+    const filtered = parseModelIds(data).filter(isUsableChatModel);
+    const catalog = [...PROVIDERS[settings.provider].suggestedModels];
+    const models = filtered.length > 0 ? filtered : catalog;
+    if (models.length && !models.includes(settings.model) && !isBlockedAiModel(settings.model)) {
+      return {
+        ok: true,
+        models,
+        message: `Conectado ao ${label} (${models.length} modelos de texto). O modelo atual não está na lista da conta — escolha um item ou use Personalizado…`,
+      };
     }
-    return { ok: true, message: `Conectado ao ${label} · modelo ${settings.model} disponível.` };
+    return {
+      ok: true,
+      models,
+      message: `Conectado ao ${label} · modelo ${settings.model} disponível (${models.length} modelos de texto).`,
+    };
   } catch (error) {
-    return { ok: false, message: error instanceof Error ? error.message : String(error) };
+    console.error('[IA] teste de conexão', error);
+    return { ok: false, message: STUDENT_AI_FALLBACK_MESSAGE };
   }
 }
 
@@ -113,8 +154,11 @@ const yieldToBrowser = (): Promise<void> => new Promise((resolve) => setTimeout(
 async function offline(db: Database, req: GenerationRequest, reason: string, attempts: number, onProgress?: GenerationProgress): Promise<GenerationOutcome> {
   onProgress?.('Montando o desafio com o motor offline e rodando o Sanity Check no SQLite…');
   await yieldToBrowser();
-  const challenge = generateOfflineChallenge(db, req);
-  return { challenge: { ...challenge, id: newId('offline') }, source: 'offline', fallbackReason: reason, attempts };
+  const challenge = sanitizeGeneratedChallenge(
+    { ...generateOfflineChallenge(db, req), id: newId('offline') },
+    req.difficulty,
+  );
+  return { challenge, source: 'offline', fallbackReason: reason, attempts };
 }
 
 /**
@@ -147,8 +191,8 @@ export async function generateChallenge(db: Database, req: GenerationRequest, op
       raw = await chatCompletion(settings, messages, signal);
     } catch (error) {
       if (error instanceof AiServiceError && error.kind === 'aborted') throw error;
-      const reason = error instanceof Error ? error.message : String(error);
-      return offline(db, req, reason, attempt, onProgress);
+      console.error('[IA] geração via API', error);
+      return offline(db, req, STUDENT_AI_FALLBACK_MESSAGE, attempt, onProgress);
     }
 
     onProgress?.('Sanity Check: executando o gabarito gerado no SQLite em memória…');
@@ -156,7 +200,12 @@ export async function generateChallenge(db: Database, req: GenerationRequest, op
     try {
       const verification = verifyChallenge(db, parseGeneratedChallenge(raw), req.difficulty);
       if (verification.ok) {
-        return { challenge: { ...verification.challenge, id: newId('ia') }, source: 'ia', model: settings.model, attempts: attempt };
+        return {
+          challenge: sanitizeGeneratedChallenge({ ...verification.challenge, id: newId('ia') }, req.difficulty),
+          source: 'ia',
+          model: settings.model,
+          attempts: attempt,
+        };
       }
       lastProblem = verification.reason;
     } catch (error) {
@@ -166,9 +215,10 @@ export async function generateChallenge(db: Database, req: GenerationRequest, op
 
     messages.push(
       { role: 'assistant', content: raw },
-      { role: 'user', content: `Correção necessária: ${lastProblem}\nDevolva o JSON completo corrigido, no mesmo formato.` },
+      { role: 'user', content: `Correção necessária: ${lastProblem}\nRespeite estritamente a dificuldade ${req.difficulty} (níveis permitidos no system prompt). Devolva o JSON completo corrigido, no mesmo formato.` },
     );
   }
 
-  return offline(db, req, `A IA não gerou um gabarito executável após ${MAX_ATTEMPTS} tentativas (${lastProblem})`, MAX_ATTEMPTS, onProgress);
+  console.error('[IA] gabarito inválido após tentativas', lastProblem);
+  return offline(db, req, STUDENT_AI_FALLBACK_MESSAGE, MAX_ATTEMPTS, onProgress);
 }

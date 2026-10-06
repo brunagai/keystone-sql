@@ -234,13 +234,14 @@ export function startOnboardingTour(options?: { force?: boolean }): void {
 export function initLabGuide(): void {
   const dialog = byId<HTMLDialogElement>('lab-help-dialog');
   const openButton = byId<HTMLButtonElement>('btn-lab-help');
+  if (!dialog || !openButton) return;
 
   openButton.addEventListener('click', () => {
-    if (dialog.open) dialog.close();
-    startOnboardingTour({ force: true });
+    if (!dialog.open) dialog.showModal();
   });
   dialog.addEventListener('click', (event) => {
-    const target = event.target as HTMLElement;
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
     if (target === dialog || target.closest('[data-close-dialog]')) {
       dialog.close();
       return;

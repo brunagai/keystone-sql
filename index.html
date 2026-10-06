@@ -35,7 +35,7 @@
           </div>
           <label for="scenario-select" class="sr-only">Caso investigativo</label>
           <select id="scenario-select"
-            class="min-w-0 flex-1 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-[13px] text-slate-100 outline-none hover:border-slate-500 focus:border-sky-500"></select>
+            class="min-w-[240px] w-full flex-1 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-[13px] text-slate-100 outline-none hover:border-slate-500 focus:border-sky-500"></select>
         </div>
 
         <nav class="flex shrink-0 items-center gap-2" aria-label="Navegação do laboratório">
@@ -44,20 +44,9 @@
             🤖 Agente IA
           </button>
 
-          <button id="btn-schema" type="button" aria-haspopup="true" aria-controls="schema-drawer" aria-expanded="false"
-            class="rounded-lg px-3 py-2 text-xs font-medium text-slate-200 hover:bg-slate-800">
-            📖 Dicionário de Tabelas
-          </button>
-
           <button id="btn-lab-help" type="button" aria-haspopup="dialog" aria-controls="lab-help-dialog"
             class="rounded-lg border border-sky-700/50 bg-sky-950/40 px-3 py-2 text-xs font-medium text-sky-100 hover:border-sky-500 hover:bg-sky-950/70">
             ❓ Entenda o Laboratório
-          </button>
-
-          <button id="btn-reset" type="button" disabled
-            title="Restaura as tabelas e transações para o estado inicial"
-            class="rounded-lg px-3 py-2 text-xs font-medium text-slate-400 hover:bg-rose-950/40 hover:text-rose-200 disabled:cursor-not-allowed disabled:opacity-40">
-            ↻ Restaurar Dados Originais
           </button>
         </nav>
       </header>
@@ -123,17 +112,6 @@
                   class="rounded-md px-2.5 py-1.5 text-[12px] text-slate-400 hover:bg-slate-800 hover:text-slate-200">
                   ↺ Restaurar Modelo Inicial
                 </button>
-                <div class="relative">
-                  <button id="btn-run-selection" type="button" disabled
-                    title="Executa apenas o pedaço de código selecionado com o cursor no editor (ideal para testar subqueries e blocos WITH/CTE)."
-                    class="rounded-md px-2.5 py-1.5 text-[12px] text-slate-400 hover:bg-slate-800 hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-40">
-                    ✂ Testar Trecho
-                  </button>
-                  <div id="selection-help" hidden role="status"
-                    class="absolute right-0 top-full z-30 mt-1.5 w-72 rounded-xl border border-sky-800/60 bg-zinc-950 p-3 text-[12px] leading-relaxed text-slate-200 shadow-2xl shadow-black/60">
-                    💡 Dica: Selecione com o mouse qualquer parte do seu código SQL para testar apenas esse trecho isoladamente.
-                  </div>
-                </div>
                 <div class="relative">
                   <button id="btn-history" type="button"
                     class="rounded-md px-2.5 py-1.5 text-[12px] text-slate-400 hover:bg-slate-800 hover:text-slate-200 aria-expanded:bg-slate-800 aria-expanded:text-slate-200">
@@ -202,12 +180,16 @@
         </div>
         <section id="agent-panel" aria-labelledby="agent-panel-title" class="min-h-0 flex-1 overflow-y-auto p-5">
           <h3 id="agent-panel-title" class="sr-only">Gerar desafio com IA</h3>
-          <p class="text-sm leading-relaxed text-slate-400">Peça um caso novo. Sem chave, o laboratório usa o gerador local.</p>
-          <p id="agent-provider-status" class="mt-3 text-[12px] text-slate-500"></p>
+          <p class="text-sm leading-relaxed text-slate-300">Gere cenários investigativos e desafios de SQL sob demanda para treinar suas habilidades.</p>
+          <p id="agent-provider-status" class="mt-3 text-xs leading-relaxed text-slate-400">
+            <span class="text-slate-400" aria-hidden="true">○</span>
+            Modo offline ativo — desafios gerados a partir do catálogo local homologado.
+          </p>
           <button id="btn-ai-settings" type="button" aria-haspopup="dialog" aria-controls="ai-settings-dialog"
-            class="mt-3 inline-flex items-center gap-2 rounded-lg px-0 py-1 text-[12px] text-slate-400 hover:text-violet-200">
-            <span id="ai-key-indicator" aria-hidden="true" class="inline-block size-1.5 rounded-full bg-slate-500"></span>
-            ⚙ Configurar Chave de API
+            class="mt-3 inline-flex items-center gap-2 rounded-md border border-slate-700 bg-slate-800/70 px-3 py-1.5 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-700 hover:text-white">
+            <span id="ai-key-indicator" aria-hidden="true" class="inline-block size-1.5 shrink-0 rounded-full bg-slate-500"></span>
+            <span aria-hidden="true">⚙</span>
+            Configurar Chave de API
           </button>
           <div class="mt-5 grid gap-3">
             <label class="block">
@@ -233,36 +215,57 @@
     </div>
 
     <dialog id="lab-help-dialog" aria-labelledby="lab-help-title"
-      class="m-auto w-[min(36rem,calc(100vw-2rem))] rounded-2xl border border-slate-700 bg-zinc-950 p-0 text-slate-200 shadow-2xl backdrop:bg-slate-950/75">
-      <div class="p-6 sm:p-8">
+      class="m-auto w-[min(42rem,calc(100vw-2rem))] max-h-[min(90vh,44rem)] overflow-hidden rounded-2xl border border-slate-700 bg-zinc-950 p-0 text-slate-200 shadow-2xl backdrop:bg-slate-950/75">
+      <div class="max-h-[min(90vh,44rem)] overflow-y-auto p-6 sm:p-8">
         <div class="flex items-start gap-3">
-          <h2 id="lab-help-title" class="text-lg font-semibold text-slate-50">Como funciona o laboratório</h2>
+          <h2 id="lab-help-title" class="text-lg font-semibold text-slate-50">Entenda o Laboratório</h2>
           <button type="button" data-close-dialog aria-label="Fechar" class="ml-auto rounded-lg px-2 text-slate-500 hover:bg-slate-800 hover:text-slate-200">✕</button>
         </div>
-        <p class="mt-2 text-sm leading-relaxed text-slate-400">Três passos. Sem pressa — o banco está só no seu navegador.</p>
-        <ol class="mt-6 space-y-4">
-          <li class="flex gap-3">
-            <span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-sky-500/15 text-sm font-semibold text-sky-300">1</span>
-            <div>
-              <p class="font-medium text-slate-100">Escolha um caso no menu superior</p>
-              <p class="mt-1 text-sm leading-relaxed text-slate-400">No topo, escolha o nível (Iniciante, Intermediário ou Avançado) e depois o caso no seletor ao lado. Cada caso é uma história de movimentação suspeita.</p>
-            </div>
-          </li>
-          <li class="flex gap-3">
-            <span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-sky-500/15 text-sm font-semibold text-sky-300">2</span>
-            <div>
-              <p class="font-medium text-slate-100">Leia sua missão e use as dicas de SQL</p>
-              <p class="mt-1 text-sm leading-relaxed text-slate-400">À esquerda está o objetivo em uma frase. As abas mostram a dica passo a passo, o dossiê policial e as colunas da resposta.</p>
-            </div>
-          </li>
-          <li class="flex gap-3">
-            <span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-sky-500/15 text-sm font-semibold text-sky-300">3</span>
-            <div>
-              <p class="font-medium text-slate-100">Escreva a consulta e valide</p>
-              <p class="mt-1 text-sm leading-relaxed text-slate-400">No editor, complete o rascunho. <span class="text-slate-200">Rodar Teste</span> mostra a tabela (exploração); <span class="text-slate-200">Validar Resposta</span> submete o caso à esteira AML.</p>
-            </div>
-          </li>
-        </ol>
+        <p class="mt-2 text-sm leading-relaxed text-slate-400">Um mapa rápido da interface: missão, abas de apoio, execução, validação, Agente IA e progresso. O banco SQLite roda só no seu navegador.</p>
+        <div class="mt-6 grid gap-3">
+          <article class="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
+            <h3 class="flex items-center gap-2 text-sm font-semibold text-slate-100">
+              <span class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sky-500/15 text-base" aria-hidden="true">📁</span>
+              Sua missão e o dossiê investigativo
+            </h3>
+            <p class="mt-2 text-sm leading-relaxed text-slate-400">Cada desafio simula uma demanda real de PLD/FT ou auditoria regulatória. No painel esquerdo você encontra o contexto da investigação e o botão para inspecionar as tabelas disponíveis.</p>
+          </article>
+          <article class="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
+            <h3 class="flex items-center gap-2 text-sm font-semibold text-slate-100">
+              <span class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/15 text-base" aria-hidden="true">🗂️</span>
+              Onde consultar as colunas esperadas
+            </h3>
+            <p class="mt-2 text-sm leading-relaxed text-slate-400">Logo abaixo da missão, utilize as abas de apoio:</p>
+            <ul class="mt-2 list-disc space-y-1.5 pl-5 text-sm leading-relaxed text-slate-400">
+              <li><span class="font-medium text-slate-200">Dossiê / Contexto:</span> detalhes da tipologia e dicas de SQL passo a passo.</li>
+              <li><span class="font-medium text-slate-200">Colunas esperadas:</span> mostra exatamente os nomes das colunas e a ordem que a esteira de validação espera no seu <code class="rounded bg-slate-800 px-1 font-mono text-[12px] text-slate-200">SELECT</code> final para aprovar a entrega.</li>
+            </ul>
+          </article>
+          <article class="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
+            <h3 class="flex items-center gap-2 text-sm font-semibold text-slate-100">
+              <span class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 text-base" aria-hidden="true">▶</span>
+              Rodar teste vs validar resposta
+            </h3>
+            <ul class="mt-2 space-y-2 text-sm leading-relaxed text-slate-400">
+              <li><span class="font-medium text-slate-200">▶ Rodar Teste:</span> executa sua query sem compromisso para você analisar os dados retornados na tabela de resultados.</li>
+              <li><span class="font-medium text-slate-200">✓ Validar Resposta:</span> submete seu SQL à esteira de conformidade para auditar alertas capturados, falsos positivos e taxa de eficiência.</li>
+            </ul>
+          </article>
+          <article class="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
+            <h3 class="flex items-center gap-2 text-sm font-semibold text-slate-100">
+              <span class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/15 text-base" aria-hidden="true">✨</span>
+              Agente IA — praticar mais
+            </h3>
+            <p class="mt-2 text-sm leading-relaxed text-slate-400">Precisa de mais exercícios? O Agente IA formula novos desafios sob demanda adaptados ao nível escolhido. Funciona offline com catálogo local ou conectado à sua própria chave de API (Groq/OpenAI), armazenada com segurança direto no seu navegador.</p>
+          </article>
+          <article class="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
+            <h3 class="flex items-center gap-2 text-sm font-semibold text-slate-100">
+              <span class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/15 text-base" aria-hidden="true">✓</span>
+              Progresso e botão Zerar
+            </h3>
+            <p class="mt-2 text-sm leading-relaxed text-slate-400">Conforme você resolve as missões, seu progresso é salvo automaticamente no navegador e as opções ganham a marcação «✓». O botão «Zerar» permite resetar todo o histórico de conclusão caso queira recomeçar sua trilha de estudos do zero.</p>
+          </article>
+        </div>
         <button type="button" data-start-tour
           class="mt-8 w-full rounded-xl bg-sky-600 px-4 py-3 text-sm font-semibold text-white hover:bg-sky-500">
           Iniciar Tour Passo a Passo pela Tela
@@ -287,9 +290,14 @@
         </label>
         <label class="block">
           <span class="mb-1 block text-[11px] text-slate-400">Modelo</span>
-          <input id="ai-model" list="ai-model-options" autocomplete="off" spellcheck="false"
-            class="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1.5 font-mono text-xs outline-none focus:border-violet-600" />
-          <datalist id="ai-model-options"></datalist>
+          <select id="ai-model"
+            class="w-full cursor-pointer rounded border border-slate-700 bg-slate-900 px-2 py-1.5 font-mono text-xs outline-none focus:border-violet-600"></select>
+          <input id="ai-model-custom" type="text" hidden autocomplete="off" spellcheck="false"
+            placeholder="identificador do modelo (ex.: llama-3.1-8b-instant)"
+            class="mt-1.5 w-full rounded border border-slate-700 bg-slate-900 px-2 py-1.5 font-mono text-xs outline-none focus:border-violet-600" />
+          <p id="ai-model-custom-hint" hidden class="mt-1 text-xs leading-relaxed text-slate-400">
+            Use esta opção para testar manualmente IDs de modelos recém-lançados ou experimentais suportados pelo provedor.
+          </p>
         </label>
         <label class="block">
           <span class="mb-1 block text-[11px] text-slate-400">API Key</span>

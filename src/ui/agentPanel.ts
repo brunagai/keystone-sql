@@ -1,4 +1,4 @@
-import { PROVIDERS, maskApiKey } from '../agent/settingsStore.ts';
+import { PROVIDERS } from '../agent/settingsStore.ts';
 import {
   DIFFICULTY_LABELS,
   FOCUS_LABELS,
@@ -13,6 +13,7 @@ export interface AgentPanelHandlers {
   onGenerate: (focus: ChallengeFocus, difficulty: ChallengeDifficulty) => void;
   onCancel: () => void;
   onOpenAiSettings: () => void;
+  onOpen?: () => void;
 }
 
 export type AgentNoticeTone = 'success' | 'warning' | 'error';
@@ -21,6 +22,7 @@ export interface AgentPanelController {
   setSettings(settings: AiSettings | null): void;
   setEnabled(enabled: boolean): void;
   setBusy(busy: boolean): void;
+  setDifficulty(difficulty: ChallengeDifficulty): void;
   showProgress(message: string): void;
   showNotice(tone: AgentNoticeTone, message: string): void;
   clearProgress(): void;
@@ -38,7 +40,7 @@ const fillSelect = <T extends string>(select: HTMLSelectElement, labels: Record<
     .join('');
 };
 
-export function initAgentPanel({ onGenerate, onCancel, onOpenAiSettings }: AgentPanelHandlers): AgentPanelController {
+export function initAgentPanel({ onGenerate, onCancel, onOpenAiSettings, onOpen }: AgentPanelHandlers): AgentPanelController {
   const panel = byId('agent-panel');
   const providerStatus = byId('agent-provider-status');
   const focusSelect = byId<HTMLSelectElement>('agent-focus');
@@ -63,7 +65,10 @@ export function initAgentPanel({ onGenerate, onCancel, onOpenAiSettings }: Agent
     openButton.setAttribute('aria-expanded', String(open));
   };
   setOpen(false);
-  openButton.addEventListener('click', () => setOpen(true));
+  openButton.addEventListener('click', () => {
+    onOpen?.();
+    setOpen(true);
+  });
   closeButton.addEventListener('click', () => {
     if (!busy) setOpen(false);
   });
@@ -91,16 +96,24 @@ export function initAgentPanel({ onGenerate, onCancel, onOpenAiSettings }: Agent
 
   return {
     setSettings(settings) {
-      settingsIndicator.className = `inline-block size-1.5 rounded-full ${settings ? 'bg-emerald-400' : 'bg-slate-500'}`;
-      settingsButton.title = settings
-        ? `Chave ${PROVIDERS[settings.provider].label} salva (modelo ${settings.model})`
-        : 'Nenhuma chave salva: agente em modo offline';
+      if (settingsIndicator) {
+        settingsIndicator.className = `inline-block size-1.5 shrink-0 rounded-full ${settings ? 'bg-emerald-400' : 'bg-slate-500'}`;
+      }
+      if (settingsButton) {
+        settingsButton.title = settings
+          ? `Chave ${PROVIDERS[settings.provider].label} salva (modelo ${settings.model})`
+          : 'Nenhuma chave salva: agente em modo offline';
+        settingsButton.setAttribute('aria-label', settingsButton.title);
+      }
+      if (!providerStatus) return;
+      providerStatus.className = 'mt-3 text-xs leading-relaxed text-slate-400';
       providerStatus.innerHTML = settings
-        ? `<span class="inline-block size-1.5 rounded-full bg-violet-400 align-middle"></span>
-           <span class="text-slate-300">${escapeHtml(PROVIDERS[settings.provider].label)}</span>
-           · <span class="font-mono">${escapeHtml(settings.model)}</span>
-           · <span class="font-mono text-slate-600">${escapeHtml(maskApiKey(settings.apiKey))}</span>`
-        : '<span class="inline-block size-1.5 rounded-full bg-slate-500 align-middle"></span> Modo offline (templates locais). Use <span class="text-slate-300">⚙ Configurar Chave de API</span> para conectar uma LLM.';
+        ? `<span class="text-emerald-400" aria-hidden="true">●</span>
+           Conectado ao provedor <span class="font-medium text-slate-200">${escapeHtml(PROVIDERS[settings.provider].label)}</span>
+           (<span class="font-medium text-slate-200">${escapeHtml(settings.model)}</span>)
+           — desafios formulados em tempo real via IA.`
+        : `<span class="text-slate-400" aria-hidden="true">○</span>
+           Modo offline ativo — desafios gerados a partir do catálogo local homologado.`;
     },
     setEnabled(value) {
       enabled = value;
@@ -109,6 +122,9 @@ export function initAgentPanel({ onGenerate, onCancel, onOpenAiSettings }: Agent
     setBusy(value) {
       busy = value;
       syncButtons();
+    },
+    setDifficulty(difficulty) {
+      if (difficulty in DIFFICULTY_LABELS) difficultySelect.value = difficulty;
     },
     showProgress(message) {
       progress.innerHTML = `

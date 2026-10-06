@@ -121,7 +121,7 @@ export function initSchemaPanel(onInsertIdentifier: (identifier: string) => void
   const list = byId('schema-table-list');
   const inspector = byId('schema-tree');
   const filter = byId<HTMLInputElement>('schema-filter');
-  const openButton = byId<HTMLButtonElement>('btn-schema');
+  const openButton = document.getElementById('btn-schema');
   const closeButton = byId<HTMLButtonElement>('schema-toggle');
 
   let currentDb: Database | null = null;
@@ -136,8 +136,10 @@ export function initSchemaPanel(onInsertIdentifier: (identifier: string) => void
     drawer.hidden = !open;
     missionView.hidden = open;
     sidebar.dataset['view'] = open ? 'schema' : 'mission';
-    openButton.setAttribute('aria-expanded', String(open));
-    openButton.setAttribute('aria-pressed', String(open));
+    if (openButton instanceof HTMLButtonElement) {
+      openButton.setAttribute('aria-expanded', String(open));
+      openButton.setAttribute('aria-pressed', String(open));
+    }
   };
 
   const visibleTables = (): TableSchema[] => tables.filter((t) => tableMatches(t, query));
@@ -170,7 +172,9 @@ export function initSchemaPanel(onInsertIdentifier: (identifier: string) => void
 
   setOpen(false);
 
-  openButton.addEventListener('click', () => setOpen(!isOpen()));
+  if (openButton instanceof HTMLButtonElement) {
+    openButton.addEventListener('click', () => setOpen(!isOpen()));
+  }
   closeButton.addEventListener('click', () => setOpen(false));
   document.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape' || !isOpen() || document.querySelector('dialog[open]')) return;

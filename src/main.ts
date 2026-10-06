@@ -1,11 +1,11 @@
 import type { Database, QueryExecResult } from 'sql.js';
-import { AiServiceError, generateChallenge } from './agent/aiService.ts';
+import { AiServiceError, STUDENT_AI_FALLBACK_MESSAGE, generateChallenge } from './agent/aiService.ts';
 import { loadAiSettings } from './agent/settingsStore.ts';
 import type { ChallengeDifficulty, ChallengeFocus } from './agent/types.ts';
 import { pruneDrafts } from './challenges/drafts.ts';
 import { addGenerated, allScenarios, onScenariosChange } from './challenges/registry.ts';
 import { validateChallenge } from './challenges/validator.ts';
-import { executeTimedQuery, getDatabase, resetDatabase } from './database/sqlite.ts';
+import { executeTimedQuery, getDatabase } from './database/sqlite.ts';
 import { prepareExecutableSql } from './database/cteInspector.ts';
 import { initAgentPanel } from './ui/agentPanel.ts';
 import { initAiSettingsModal } from './ui/aiSettingsModal.ts';
@@ -61,7 +61,6 @@ const investigation = initInvestigationPanel({
 });
 const editor = initEditor({
   onRun: runCurrentQuery,
-  onTestSelection: () => runCurrentQuery({ inspectCte: true }),
   onValidate: () => void validateCurrentQuery(),
   onChange: () => session.noteEdit(),
   onRestoreTemplate: () => void session.restoreTemplate(),
@@ -80,9 +79,7 @@ function recordExecution(origin: HistoryOrigin, sql: string, executedAt: Date, e
 }
 
 const totalRows = (results: readonly QueryExecResult[]): number => results.reduce((acc, r) => acc + r.values.length, 0);
-const header = initHeader({
-  onReset: () => void handleReset(),
-});
+const header = initHeader();
 
 let aiSettings = loadAiSettings();
 let generation: AbortController | null = null;
@@ -95,6 +92,12 @@ const agent = initAgentPanel({
   onGenerate: (focus, difficulty) => void generateNewChallenge(focus, difficulty),
   onCancel: () => generation?.abort(),
   onOpenAiSettings: () => settingsModal.open(),
+  onOpen: () => {
+    const band = investigation.getTrailBand();
+    if (band === 'iniciante' || band === 'intermediario' || band === 'avancado') {
+      agent.setDifficulty(band);
+    }
+  },
 });
 agent.setSettings(aiSettings);
 
@@ -102,7 +105,6 @@ async function generateNewChallenge(focus: ChallengeFocus, difficulty: Challenge
   if (!db || generation) return;
   generation = new AbortController();
   agent.setBusy(true);
-  header.setResetEnabled(false);
   try {
     const outcome = await generateChallenge(
       db,
@@ -110,38 +112,36 @@ async function generateNewChallenge(focus: ChallengeFocus, difficulty: Challenge
       { settings: aiSettings, signal: generation.signal, onProgress: (message) => agent.showProgress(message) },
     );
     const scenario = addGenerated(outcome);
-    investigation.selectScenario(scenario.id);
+    investigation.selectScenario(scenario.id, { syncBand: true });
     editor.focus();
 
     if (outcome.source === 'ia') {
       const retries = outcome.attempts > 1 ? ` após ${outcome.attempts} tentativas de autocorreção` : '';
       agent.showNotice('success', `Desafio gerado por \`${outcome.model ?? 'IA'}\` e gabarito verificado no SQLite${retries}.`);
     } else if (aiSettings) {
-      agent.showNotice('warning', `IA indisponível; usei o gerador offline. Motivo: ${outcome.fallbackReason ?? 'desconhecido'}`);
+      agent.showNotice('warning', STUDENT_AI_FALLBACK_MESSAGE);
     } else {
       agent.showNotice('success', 'Desafio gerado offline e verificado no SQLite. Configure uma API Key para desafios inéditos via LLM.');
     }
   } catch (error) {
-    if (error instanceof AiServiceError && error.kind === 'aborted') agent.showNotice('warning', 'Geração cancelada.');
-    else agent.showNotice('error', errorMessage(error));
+    if (error instanceof AiServiceError && error.kind === 'aborted') {
+      agent.showNotice('warning', 'Geração cancelada.');
+    } else {
+      console.error('[IA] geração', error);
+      agent.showNotice('error', STUDENT_AI_FALLBACK_MESSAGE);
+    }
   } finally {
     generation = null;
     agent.setBusy(false);
-    header.setResetEnabled(db !== null);
   }
 }
 
-function runCurrentQuery(options?: { inspectCte?: boolean }): boolean {
+function runCurrentQuery(): boolean {
   if (!db) return false;
-  const selection = editor.hasSelection();
   const source = editor.getSql();
   if (!source.trim()) {
     output.showMessage('O editor está vazio.');
     showMobilePane('results');
-    return false;
-  }
-  if (options?.inspectCte && !selection) {
-    editor.showSelectionHelp();
     return false;
   }
   const prepared = prepareExecutableSql(source);
@@ -155,8 +155,7 @@ function runCurrentQuery(options?: { inspectCte?: boolean }): boolean {
     dossier.setData({ scenario: investigation.getSelectedScenario(), sql, results, executedAt, elapsedMs });
     recordExecution('execucao', sql, executedAt, elapsedMs, totalRows(results));
     output.showExploreBanner(totalRows(results));
-    if (selection) editor.showSnippetHint(totalRows(results));
-    else editor.clearHint();
+    editor.clearHint();
     showMobilePane('results');
     return true;
   } catch (error) {
@@ -216,27 +215,8 @@ function applyDatabase(next: Database): void {
   schema.render(next);
   header.setDatasetCounts(countRows(next));
   header.setConnectionState('ready');
-  header.setResetEnabled(true);
   editor.setActionsEnabled(true);
   agent.setEnabled(true);
-}
-
-async function handleReset(): Promise<void> {
-  header.setResetEnabled(false);
-  editor.setActionsEnabled(false);
-  agent.setEnabled(false);
-  header.setConnectionState('loading');
-  try {
-    applyDatabase(await resetDatabase());
-    output.clearValidation();
-    dossier.setData(null);
-    output.showMessage('Banco recriado a partir do dataset original.');
-  } catch (error) {
-    header.setConnectionState('error');
-    header.setResetEnabled(true);
-    output.showError(errorMessage(error));
-  }
-  editor.focus();
 }
 
 async function bootstrap(): Promise<void> {

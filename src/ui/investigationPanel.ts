@@ -16,7 +16,8 @@ function el<T extends HTMLElement>(id: string): T | null {
 
 export interface InvestigationPanelController {
   getSelectedScenario(): InvestigationScenario;
-  selectScenario(id: ScenarioId): void;
+  getTrailBand(): TrailBand;
+  selectScenario(id: ScenarioId, options?: { syncBand?: boolean }): void;
   showValidation(approved?: boolean): void;
 }
 
@@ -59,7 +60,7 @@ function renderTwoPhase(s: InvestigationScenario): string {
       ${step('2', phases.fase2)}
       <p class="text-[12px] leading-relaxed text-slate-500">
         Para ver o meio do caminho, selecione o trecho do <code class="font-mono text-slate-400">WITH</code> e use
-        <span class="text-sky-300">Testar Trecho</span>.
+        <span class="text-sky-300">Rodar Teste</span>.
       </p>
     </div>`;
 }
@@ -423,10 +424,11 @@ export function initInvestigationPanel({
 
   return {
     getSelectedScenario: () => selected,
-    selectScenario(id) {
+    getTrailBand: () => trailBand,
+    selectScenario(id, options) {
       const scenario = findScenario(id);
       if (!scenario) return;
-      if (trailBand !== 'todos' && !scenarioInBand(scenario, trailBand)) {
+      if (options?.syncBand || (trailBand !== 'todos' && !scenarioInBand(scenario, trailBand))) {
         trailBand = trailBandOf(scenario.nivel);
         paintTrailBand();
       }
