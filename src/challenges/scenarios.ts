@@ -146,7 +146,7 @@ ORDER BY id_conta;`,
       'Titulares com cargo público relevante exigem monitoramento mais rigoroso. O cadastro já traz o sinalizador de ' +
       'Pessoa Exposta Politicamente; a triagem inicial é listar essas contas para a mesa de PLD.',
     objetivo:
-      'Identifique as contas sinalizadas no cadastro como Pessoas Expostas Politicamente (PEP), trazendo o identificador da conta, o titular e a ocupação informada.',
+      'Identifique as contas sinalizadas no cadastro como Pessoas Expostas Politicamente (PEP), trazendo o identificador da conta, titular e a ocupação informada.',
     colunasEsperadas: ['id_conta', 'titular', 'ocupacao'],
     ordenacao: 'id_conta',
     dicaTexto:
@@ -224,7 +224,54 @@ ORDER BY valor DESC;`,
       return {
         message: `Alto valor: ${gabarito.values.length} PIX ≥ R$ 50 mil, somando ${formatBRL(total)}.`,
         entities: distinct(columnValues(gabarito, 'id_transacao')).slice(0, 8),
-        details: ['Esses montantes unitários costumam ir à fila de comunicação; o próximo degrau é consolidar volume por remetente.'],
+        details: ['O próximo degrau é combinar tipo de pessoa e um teto de renda cadastral.'],
+      };
+    },
+  },
+  {
+    id: 'baixa-renda-pf',
+    origem: 'base',
+    nivel: 0,
+    titulo: 'Perfil Vulnerável: Baixa Renda Cadastral',
+    enquadramento: 'Circular Bacen 3.978/2020 · abordagem baseada em risco e perfil do cliente',
+    dossie:
+      'A mesa de PLD recortou a base PF de baixa renda para cruzar, depois, movimentação incompatível. O primeiro passo é ' +
+      'isolar quem se declara pessoa física com renda mensal estritamente abaixo de R$ 3.000,00.',
+    objetivo:
+      'Filtre os clientes pessoa física (PF) cuja renda mensal declarada seja estritamente inferior a R$ 3.000,00, trazendo identificador da conta, titular, ocupação e renda declarada.',
+    colunasEsperadas: ['id_conta', 'titular', 'ocupacao', 'renda_mensal_declarada'],
+    ordenacao: 'renda_mensal_declarada ASC',
+    dicaTexto:
+      'Combine duas condições cadastrais: o tipo de pessoa e um teto de renda (menor que o valor de corte, sem incluir o próprio piso).',
+    dicaSql: `-- AND exige que as duas condições sejam verdadeiras ao mesmo tempo
+SELECT ...
+FROM contas
+WHERE tipo_pessoa = '...'
+  AND renda_mensal_declarada < ...
+ORDER BY renda_mensal_declarada ASC;`,
+    gabaritoSql: `-- Gabarito · PF com renda estritamente abaixo de R$ 3.000
+SELECT
+  id_conta,
+  titular,
+  ocupacao,
+  renda_mensal_declarada
+FROM contas
+WHERE tipo_pessoa = 'PF'
+  AND renda_mensal_declarada < 3000
+ORDER BY renda_mensal_declarada ASC;`,
+    colunaChave: 'id_conta',
+    rotuloEntidade: { singular: 'cliente', plural: 'clientes' },
+    dicasDivergencia: {
+      excesso: 'Há contas a mais. Mantenha só PF e renda estritamente menor que R$ 3.000,00 (`< 3000`, não `<=`).',
+      falta: 'Faltam clientes. Não exclua renda zero ou valores quebrados; o corte é exclusivo em R$ 3.000,00.',
+      valores: 'Os identificadores batem, mas ocupação ou renda divergem. Projete os quatro campos cadastrais pedidos.',
+      ordenacao: 'Os dados estão corretos, mas a ordem não. Ordene pela renda declarada, da menor para a maior.',
+    },
+    resumirSucesso(gabarito) {
+      return {
+        message: `Perfil vulnerável: ${gabarito.values.length} PF(s) com renda declarada abaixo de R$ 3.000,00.`,
+        entities: distinct(columnValues(gabarito, 'id_conta')).slice(0, 8),
+        details: ['Esse recorte alimenta depois a análise de incompatibilidade patrimonial (nível 1).'],
       };
     },
   },
@@ -238,7 +285,7 @@ ORDER BY valor DESC;`,
       'Depois de ver operações isoladas, a esteira consolida o comportamento de cada pagador: quantas remessas partem da ' +
       'conta e qual o volume financeiro acumulado. Essa visão alimenta o ranking de exposição antes dos cortes de fracionamento.',
     objetivo:
-      'Apure o comportamento transacional dos clientes, quantificando o total de remessas enviadas e o valor financeiro acumulado por cada conta de origem.',
+      'Apure o comportamento transacional dos clientes, quantificando o total de remessas enviadas e o volume financeiro acumulado por cada conta de origem.',
     colunasEsperadas: ['conta_origem', 'total_operacoes', 'valor_total'],
     ordenacao: 'total_operacoes DESC',
     dicaTexto:
@@ -274,6 +321,52 @@ ORDER BY total_operacoes DESC;`,
         message: `Volumetria: ${gabarito.values.length} conta(s) de origem, com ${formatBRL(total)} enviados no período.`,
         entities: contas.slice(0, 8),
         details: ['No Caso 1.1 você vai cruzar faixa logo abaixo de R$ 10 mil, destino C025 e recorrência mínima.'],
+      };
+    },
+  },
+  {
+    id: 'capilaridade-destinatarios',
+    origem: 'base',
+    nivel: 0,
+    titulo: 'Capilaridade de Rede: Destinatários Distintos',
+    enquadramento: 'Circular Bacen 3.978/2020 · monitoramento de relacionamento transacional',
+    dossie:
+      'Além do volume financeiro, a esteira observa a amplitude da rede de cada pagador: para quantas contas favorecidas ' +
+      'distintas cada remetente enviou recursos. Essa capilaridade ajuda a separar relações habituais de pulverização.',
+    objetivo:
+      'Identifique a abrangência das transferências de cada remetente, calculando para quantas contas favorecidas distintas cada conta de origem enviou recursos.',
+    colunasEsperadas: ['conta_origem', 'total_destinatarios_distintos'],
+    ordenacao: 'total_destinatarios_distintos DESC',
+    dicaTexto:
+      'Consolide pela conta pagadora e, em cada grupo, conte quantos destinos únicos aparecem — não a quantidade de PIX.',
+    dicaSql: `-- COUNT(DISTINCT ...) conta valores únicos dentro do grupo
+SELECT id_conta_origem AS conta_origem,
+       COUNT(DISTINCT id_conta_destino) AS total_destinatarios_distintos
+FROM transacoes_pix
+GROUP BY id_conta_origem
+ORDER BY total_destinatarios_distintos DESC;`,
+    gabaritoSql: `-- Gabarito · destinatários distintos por remetente
+SELECT
+  id_conta_origem AS conta_origem,
+  COUNT(DISTINCT id_conta_destino) AS total_destinatarios_distintos
+FROM transacoes_pix
+GROUP BY id_conta_origem
+ORDER BY total_destinatarios_distintos DESC;`,
+    colunaChave: 'conta_origem',
+    rotuloEntidade: { singular: 'remetente', plural: 'remetentes' },
+    dicasDivergencia: {
+      excesso: 'Há contas a mais. Agrupe só pela origem do PIX, sem filtrar valor, canal ou período.',
+      falta: 'Faltam remetentes. Toda conta que enviou ao menos um PIX deve aparecer, mesmo com um único favorecido.',
+      valores:
+        'Os remetentes estão certos, mas a métrica não. `total_destinatarios_distintos` conta contas de destino únicas, não o número de remessas.',
+      ordenacao: 'Os dados estão corretos, mas a ordem não. Ordene pela quantidade de favorecidos distintos, da maior para a menor.',
+    },
+    resumirSucesso(gabarito) {
+      const contas = distinct(columnValues(gabarito, 'conta_origem'));
+      return {
+        message: `Capilaridade: ${gabarito.values.length} remetente(s) com rede de favorecidos distintos mapeada.`,
+        entities: contas.slice(0, 8),
+        details: ['No Nível 1 a consolidação ganha filtros de faixa, destino e recorrência mínima.'],
       };
     },
   },

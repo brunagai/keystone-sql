@@ -70,6 +70,25 @@ FROM transacoes_pix
 -- GROUP BY ...
 -- ORDER BY ...
 ;`,
+  'baixa-renda-pf': `SELECT
+    -- 1. Identificador da conta, titular, ocupação e renda declarada
+    
+FROM contas
+WHERE
+    -- 2. Pessoa física E renda estritamente abaixo do teto cadastral
+    -- (as duas condições precisam valer ao mesmo tempo)
+    
+-- 3. Priorize as menores rendas:
+-- ORDER BY ...
+;`,
+  'capilaridade-destinatarios': `SELECT
+    -- 1. Conta de origem (com alias) e quantidade de favorecidos distintos
+    
+FROM transacoes_pix
+-- 2. Consolide por pagador e conte destinos únicos (não o total de PIX):
+-- GROUP BY ...
+-- ORDER BY ...
+;`,
 };
 
 const LEVEL5_SKELETON: Readonly<Record<string, string>> = {

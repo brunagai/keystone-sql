@@ -615,18 +615,227 @@ const operacoes_produtos = [
   },
 ];
 
+// ---------------------------------------------------------------------------
+// Expansão aditiva v1.5.0 — C039–C110 e ~1.000 PIX
+// PRNG isolado: não altera C001–C038, PIX homologados, QSA/ATO/produtos 1.4.0.
+// ---------------------------------------------------------------------------
+
+const expand = mulberry32(20261005);
+const eRandInt = (min, max) => Math.floor(expand() * (max - min + 1)) + min;
+const ePick = (arr) => arr[eRandInt(0, arr.length - 1)];
+const eRound2 = (n) => Math.round(n * 100) / 100;
+const eValor = (min, max) => eRound2(min + expand() * (max - min));
+
+function eGerarCpf() {
+  const base = Array.from({ length: 9 }, () => eRandInt(0, 9));
+  const d1 = dvCpf(base);
+  const d2 = dvCpf([...base, d1]);
+  return [...base, d1, d2].join('');
+}
+
+function eGerarCnpj() {
+  const base = [...Array.from({ length: 8 }, () => eRandInt(0, 9)), 0, 0, 0, 1];
+  const dv = (nums, pesos) => {
+    const resto = nums.reduce((acc, d, i) => acc + d * pesos[i], 0) % 11;
+    return resto < 2 ? 0 : 11 - resto;
+  };
+  const d1 = dv(base, [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  const d2 = dv([...base, d1], [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  return [...base, d1, d2].join('');
+}
+
+function eUuid() {
+  const hex = '0123456789abcdef';
+  const chars = Array.from({ length: 32 }, () => hex[eRandInt(0, 15)]);
+  chars[12] = '4';
+  chars[16] = ePick(['8', '9', 'a', 'b']);
+  const s = chars.join('');
+  return `${s.slice(0, 8)}-${s.slice(8, 12)}-${s.slice(12, 16)}-${s.slice(16, 20)}-${s.slice(20)}`;
+}
+
+function eE2e(ispb, ms) {
+  const d = new Date(ms).toISOString();
+  const carimbo = d.slice(0, 4) + d.slice(5, 7) + d.slice(8, 10) + d.slice(11, 13) + d.slice(14, 16);
+  let id;
+  do {
+    const sufixo = Array.from({ length: 11 }, () => ALFANUM[eRandInt(0, ALFANUM.length - 1)]).join('');
+    id = `E${ispb}${carimbo}${sufixo}`;
+  } while (e2eUsados.has(id));
+  e2eUsados.add(id);
+  return id;
+}
+
+const NOMES_PF = [
+  'Aline', 'Beatriz', 'Caio', 'Débora', 'Elton', 'Fernanda', 'Gustavo', 'Helena', 'Ícaro', 'Jéssica',
+  'Kevin', 'Lívia', 'Murilo', 'Natália', 'Otávio', 'Priscila', 'Quésia', 'Ruan', 'Simone', 'Tales',
+  'Úrsula', 'Vinícius', 'Wanda', 'Yuri', 'Zélia', 'André', 'Bárbara', 'César', 'Denise', 'Elias',
+];
+const SOBRENOMES = [
+  'Alencar', 'Borges', 'Cavalcanti', 'Dantas', 'Esteves', 'Farias', 'Guimarães', 'Holanda', 'Iglesias',
+  'Junqueira', 'Klein', 'Leal', 'Macedo', 'Nogueira', 'Ottoni', 'Pacheco', 'Queiroz', 'Rezende', 'Siqueira',
+  'Tavares', 'Uchoa', 'Vasconcelos', 'Werneck', 'Xavier',
+];
+const OCUPACOES_PF = [
+  'Auxiliar de Serviços', 'Vendedora', 'Motorista', 'Estudante', 'Diarista', 'Operador de Caixa',
+  'Analista Administrativo', 'Técnico de Enfermagem', 'Professor Particular', 'Autônomo',
+  'Assistente Financeiro', 'Recepcionista', 'Pedreiro', 'Cabeleireira', 'Programador',
+];
+const ATIVIDADES_PJ = [
+  'Comércio Varejista', 'Serviços de Limpeza', 'Consultoria Empresarial', 'Transporte de Cargas',
+  'Alimentação Fora do Lar', 'Assistência Técnica', 'Material de Construção', 'Pet Shop',
+];
+const MUNICIPIOS = [
+  ['São Paulo', 'SP'], ['Guarulhos', 'SP'], ['Campinas', 'SP'], ['Ribeirão Preto', 'SP'],
+  ['Rio de Janeiro', 'RJ'], ['Niterói', 'RJ'], ['Belo Horizonte', 'MG'], ['Uberlândia', 'MG'],
+  ['Curitiba', 'PR'], ['Londrina', 'PR'], ['Porto Alegre', 'RS'], ['Salvador', 'BA'],
+  ['Recife', 'PE'], ['Fortaleza', 'CE'], ['Goiânia', 'GO'], ['Brasília', 'DF'],
+];
+const BANCO_KEYS = Object.keys(BANCOS);
+const horariosExpansao = new Map();
+
+function horarioExpandido() {
+  const dia = eRandInt(1, ULTIMO_DIA);
+  const hora = ePick([8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]);
+  return ts(dia, hora, eRandInt(0, 59), eRandInt(0, 59));
+}
+
+function addExpandTx(origem, destino, valor, ms, { descricao = null, canal = 'APP' } = {}) {
+  if (origem === destino) return false;
+  const par = `${origem}>${destino}`;
+  const ocupados = horariosExpansao.get(par) ?? [];
+  if (ocupados.some((t) => Math.abs(t - ms) < 7_200_000)) return false;
+  ocupados.push(ms);
+  horariosExpansao.set(par, ocupados);
+  const contaOrigem = contaPorId.get(origem);
+  const contaDestino = contaPorId.get(destino);
+  transacoes.push({
+    id_transacao: eE2e(contaOrigem.banco_ispb, ms),
+    id_conta_origem: origem,
+    id_conta_destino: destino,
+    valor: eRound2(valor),
+    data_hora: fmtDataHora(ms),
+    tipo_chave_destino: contaDestino.tipo_chave_pix,
+    chave_pix_destino: contaDestino.chave_pix,
+    descricao,
+    canal,
+  });
+  return true;
+}
+
+const idsNovos = [];
+for (let n = 39; n <= 110; n += 1) {
+  const id = `C${String(n).padStart(3, '0')}`;
+  const ehPf = n - 38 <= 50;
+  const tipo = ehPf ? 'PF' : 'PJ';
+  const [cidade, uf] = MUNICIPIOS[(n - 39) % MUNICIPIOS.length];
+  const bancoKey = BANCO_KEYS[(n - 39) % BANCO_KEYS.length];
+  const banco = BANCOS[bancoKey];
+  const titular = ehPf
+    ? `${NOMES_PF[(n - 39) % NOMES_PF.length]} ${SOBRENOMES[(n * 3) % SOBRENOMES.length]} ${SOBRENOMES[(n * 7) % SOBRENOMES.length]}`
+    : `${ATIVIDADES_PJ[(n - 39) % ATIVIDADES_PJ.length]} ${SOBRENOMES[(n * 5) % SOBRENOMES.length]} ${ePick(['Ltda', 'ME', 'Eireli'])}`;
+  const ocupacao = ehPf ? OCUPACOES_PF[(n - 39) % OCUPACOES_PF.length] : ATIVIDADES_PJ[(n - 39) % ATIVIDADES_PJ.length];
+  const renda = ehPf
+    ? n % 5 === 0
+      ? eRound2(1500 + ((n * 37) % 1400))
+      : eRound2(3000 + ((n * 113) % 82000))
+    : eRound2(12000 + ((n * 211) % 73000));
+  const documento = ehPf ? eGerarCpf() : eGerarCnpj();
+  const tipoChave = ehPf ? ePick(['CPF', 'EMAIL', 'ALEATORIA']) : 'CNPJ';
+  const abertura = `${eRandInt(2016, 2025)}-${String(eRandInt(1, 12)).padStart(2, '0')}-${String(eRandInt(1, 28)).padStart(2, '0')}`;
+  const nomes = titular.split(' ');
+  const chaves = {
+    CPF: documento,
+    CNPJ: documento,
+    ALEATORIA: eUuid(),
+    EMAIL: `${slug(nomes[0])}.${slug(nomes[nomes.length - 1])}@${ePick(DOMINIOS_EMAIL)}`,
+  };
+  const conta = {
+    id_conta: id,
+    titular,
+    tipo_pessoa: tipo,
+    documento,
+    ocupacao,
+    renda_mensal_declarada: renda,
+    banco_ispb: banco.ispb,
+    banco_nome: banco.nome,
+    agencia: BANCOS_DIGITAIS.has(bancoKey) ? '0001' : String(eRandInt(1, 9999)).padStart(4, '0'),
+    numero_conta: `${eRandInt(10000, 99999999)}-${eRandInt(0, 9)}`,
+    tipo_chave_pix: tipoChave,
+    chave_pix: chaves[tipoChave],
+    cidade,
+    uf,
+    data_abertura: abertura,
+    eh_pep: 0,
+    cargo_pep: null,
+  };
+  contas.push(conta);
+  contaPorId.set(id, conta);
+  idsNovos.push(id);
+}
+
+const comerciosBase = ['C019', 'C020', 'C023'];
+const pfNovos = idsNovos.filter((id) => contaPorId.get(id).tipo_pessoa === 'PF');
+const pjNovos = idsNovos.filter((id) => contaPorId.get(id).tipo_pessoa === 'PJ');
+const ALVO_PIX = 1000;
+
+let tentativas = 0;
+while (transacoes.length < ALVO_PIX && tentativas < 12000) {
+  tentativas += 1;
+  const tipoFluxo = expand();
+  if (tipoFluxo < 0.55) {
+    addExpandTx(ePick(pfNovos), ePick(comerciosBase), eValor(8, 220), horarioExpandido(), {
+      descricao: ePick([null, 'compras', 'padaria', 'mercado']),
+    });
+  } else if (tipoFluxo < 0.88) {
+    const origem = ePick(pfNovos);
+    let destino = ePick(pfNovos);
+    if (destino === origem) destino = ePick(pfNovos);
+    addExpandTx(origem, destino, eValor(20, 900), horarioExpandido(), {
+      descricao: ePick([null, 'Rachando', 'Presente', 'Devolvendo']),
+    });
+  } else if (tipoFluxo < 0.97) {
+    const origem = ePick(pjNovos);
+    let destino = ePick(pjNovos);
+    if (destino === origem) destino = ePick(comerciosBase);
+    addExpandTx(origem, destino, eValor(400, 8900), horarioExpandido(), {
+      descricao: ePick(['NF serviço', 'Fornecedor', 'Aluguel ponto']),
+      canal: 'INTERNET_BANKING',
+    });
+  } else {
+    const origem = ePick(pjNovos);
+    let destino = ePick(pjNovos);
+    if (destino === origem) continue;
+    addExpandTx(origem, destino, eValor(51000, 82000), horarioExpandido(), {
+      descricao: 'Contrato / aporte',
+      canal: 'INTERNET_BANKING',
+    });
+  }
+}
+
+for (const id of idsNovos) {
+  const conta = contaPorId.get(id);
+  const geo = geoDaConta(conta);
+  const n = Number(id.slice(1));
+  addAcesso(id, `DEV-${id}-HAB`, `191.8.${n % 250}.20`, geo.cidade, geo.uf, geo.lat, geo.lng, 1, '2026-08-03 09:10:00');
+  addAcesso(id, `DEV-${id}-HAB`, `191.8.${n % 250}.20`, geo.cidade, geo.uf, geo.lat, geo.lng, 1, '2026-08-18 18:40:22');
+}
+
+transacoes.sort((a, b) =>
+  a.data_hora < b.data_hora ? -1 : a.data_hora > b.data_hora ? 1 : a.id_transacao.localeCompare(b.id_transacao),
+);
+
 const pad = (n) => String(n).padStart(2, '0');
 
 const dataset = {
   metadata: {
-    versao: '1.4.0',
+    versao: '1.5.0',
     gerado_em: '2026-09-30 21:00:00',
     moeda: 'BRL',
     fuso_horario: 'America/Sao_Paulo',
     periodo: { inicio: `${ANO}-${pad(MES)}-01`, fim: `${ANO}-${pad(MES)}-${ULTIMO_DIA}` },
     limiar_regulatorio_brl: LIMIAR_REGULATORIO,
     observacao:
-      'Dados 100% sintéticos para fins educacionais. CPFs/CNPJs possuem dígitos verificadores válidos, mas são gerados aleatoriamente e não pertencem a pessoas reais. Tabelas QSA, acessos digitais e produtos financeiros são extensão 1.4.0 e não alteram contas/PIX da v1.3.0.',
+      'Dados 100% sintéticos. C001–C038 e os PIX/QSA/ATO/produtos da v1.4.0 permanecem íntegros. C039–C110 e PIX adicionais (alvo ~1.000 liquidações) usam PRNG isolado (semente 20261005), sem Math.random().',
     cenarios: [
       {
         tipologia: 'SMURFING',
@@ -681,6 +890,12 @@ const dataset = {
         descricao:
           'Aportes em consórcio com liquidação em espécie na receptora Aurora (C025) após o consolidado de smurfing.',
         contas_envolvidas: ['C025'],
+      },
+      {
+        tipologia: 'EXPANSAO_BASE',
+        descricao:
+          'Contas C039–C110 e PIX cotidianos extras (comércio, P2P e alguns contratos ≥ R$ 50 mil) sem alterar tipologias plantadas em C001–C038.',
+        contas_envolvidas: ['C039', 'C110'],
       },
     ],
   },
