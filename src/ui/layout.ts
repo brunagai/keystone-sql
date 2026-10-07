@@ -169,9 +169,9 @@ export function initWorkspaceSplit(): void {
     resultsSheetOpen = false;
     missionOverlayOpen = false;
     document.body.classList.add('h-screen', 'overflow-hidden');
-    document.body.classList.remove('min-h-[100dvh]', 'overflow-y-auto');
+    document.body.classList.remove('h-[100dvh]', 'min-h-[100dvh]', 'overflow-y-auto');
     document.getElementById('app')?.classList.add('h-screen', 'overflow-hidden');
-    document.getElementById('app')?.classList.remove('min-h-[100dvh]', 'overflow-visible');
+    document.getElementById('app')?.classList.remove('h-[100dvh]', 'min-h-[100dvh]', 'overflow-y-auto', 'overflow-visible');
     sidebar.hidden = false;
     queryPanel.hidden = false;
     editorContainer.hidden = false;
@@ -190,21 +190,19 @@ export function initWorkspaceSplit(): void {
   };
 
   const applyMobilePanes = (): void => {
-    document.body.classList.add('h-[100dvh]', 'overflow-hidden');
-    document.body.classList.remove('min-h-[100dvh]', 'overflow-y-auto');
-    document.getElementById('app')?.classList.add('h-[100dvh]', 'overflow-hidden');
-    document.getElementById('app')?.classList.remove('min-h-[100dvh]', 'overflow-visible');
+    document.body.classList.remove('h-screen', 'h-[100dvh]', 'overflow-hidden');
+    document.body.classList.add('min-h-[100dvh]', 'overflow-y-auto');
+    document.getElementById('app')?.classList.remove('h-screen', 'h-[100dvh]', 'overflow-hidden');
+    document.getElementById('app')?.classList.add('min-h-[100dvh]', 'overflow-y-auto');
     sidebar.style.width = '100%';
     sidebar.style.maxWidth = '100%';
     sidebar.hidden = false;
     queryPanel.hidden = false;
     editorContainer.hidden = false;
     outputPane.hidden = false;
-    queryPanel.style.flex = '1 1 auto';
-    editorContainer.classList.add('flex-1');
-    editorContainer.classList.remove('flex-[1.15]');
-    const vh = window.visualViewport?.height ?? window.innerHeight;
-    document.documentElement.style.setProperty('--lab-vh', `${Math.round(vh)}px`);
+    queryPanel.style.removeProperty('flex');
+    editorContainer.classList.remove('flex-[1.15]', 'flex-1');
+    document.documentElement.style.removeProperty('--lab-vh');
     paintResultsSheet();
     paintMissionOverlay();
   };
@@ -271,9 +269,6 @@ export function initWorkspaceSplit(): void {
     persistWidth(apply(current + delta));
   });
 
-  window.visualViewport?.addEventListener('resize', () => {
-    if (media.matches) sync();
-  });
   media.addEventListener('change', () => {
     sync();
   });

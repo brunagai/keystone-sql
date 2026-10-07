@@ -1,4 +1,4 @@
-/* Layout global: desktop intacto; mobile usa dvh e editor em tela cheia. */
+/* Layout global: desktop intacto; mobile usa dvh e rolagem do documento. */
 
 html {
   height: 100%;
@@ -29,11 +29,18 @@ body {
 
 @media (max-width: 767px) {
   html,
+  html.h-full,
   body,
-  #app {
-    height: var(--lab-vh, 100dvh);
-    max-height: var(--lab-vh, 100dvh);
-    overflow: hidden;
+  body.h-screen,
+  #app,
+  #app.h-screen {
+    height: auto;
+    max-height: none;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
   }
 
   #app-header {
@@ -42,9 +49,13 @@ body {
     overflow: visible;
   }
 
-  #workspace {
+  #workspace,
+  #query-panel,
+  #editor-container {
+    height: auto;
+    max-height: none;
     min-height: 0;
-    overflow: hidden;
+    overflow: visible;
   }
 
   #mobile-view-switcher {
@@ -66,8 +77,7 @@ body {
 
   #query-panel,
   #editor-container {
-    min-height: 0;
-    flex: 1 1 auto;
+    flex: none;
   }
 
   #output-pane {
@@ -81,8 +91,8 @@ body {
   }
 
   #sql-editor {
-    min-height: 220px;
-    overflow-y: auto;
+    min-height: max(220px, 50dvh);
+    overflow: hidden;
   }
 
   #output-scroll,
