@@ -19,6 +19,9 @@ export interface InvestigationPanelController {
   getSelectedScenario(): InvestigationScenario;
   getTrailBand(): TrailBand;
   selectScenario(id: ScenarioId, options?: { syncBand?: boolean }): void;
+  /** Avança ou recua na trilha completa (`SCENARIOS` + gerados). Devolve false nas extremidades. */
+  stepScenario(delta: -1 | 1): boolean;
+  hasNextScenario(): boolean;
   showValidation(approved?: boolean): void;
 }
 
@@ -352,8 +355,17 @@ export function initInvestigationPanel({
 
   let selected = firstScenario;
   const attempts = new Map<ScenarioId, number>();
+  const prevButton = el<HTMLButtonElement>('btn-prev-scenario');
+  const nextButton = el<HTMLButtonElement>('btn-next-scenario');
 
   const catalog = (): InvestigationScenario[] => [...baseScenarios(), ...generatedScenarios()];
+
+  const paintStepButtons = (): void => {
+    const all = catalog();
+    const index = all.findIndex((s) => s.id === selected.id);
+    if (prevButton) prevButton.disabled = index <= 0;
+    if (nextButton) nextButton.disabled = index < 0 || index >= all.length - 1;
+  };
 
   const firstInBand = (band: TrailBand): InvestigationScenario | undefined => {
     const levels = TRAIL_BAND_LEVELS[band];
@@ -425,7 +437,20 @@ export function initInvestigationPanel({
     }
     renderSolutionToggle();
     paintMobileBriefing(scenario, attempts.get(scenario.id) ?? 0);
+    paintStepButtons();
     if (notify && changed) onScenarioChange(scenario);
+  };
+
+  const stepScenario = (delta: -1 | 1): boolean => {
+    const all = catalog();
+    const index = all.findIndex((s) => s.id === selected.id);
+    const next = index >= 0 ? all[index + delta] : undefined;
+    if (!next) return false;
+    trailBand = trailBandOf(next.nivel);
+    paintTrailBand();
+    renderOptions();
+    show(next);
+    return true;
   };
 
   const applyTrailBand = (band: TrailBand): void => {
@@ -456,6 +481,13 @@ export function initInvestigationPanel({
       if (scenario) show(scenario);
     });
   }
+
+  prevButton?.addEventListener('click', () => {
+    stepScenario(-1);
+  });
+  nextButton?.addEventListener('click', () => {
+    stepScenario(1);
+  });
 
   const dossierDialog = el<HTMLDialogElement>('mobile-dossier-dialog');
   const dossierButton = el('btn-mobile-dossier');
@@ -505,6 +537,7 @@ export function initInvestigationPanel({
     const current = findScenario(selected.id);
     renderOptions();
     if (!current) show(firstScenario);
+    else paintStepButtons();
   });
 
   window.addEventListener(PROGRESS_UPDATED_EVENT, () => renderOptions());
@@ -525,6 +558,12 @@ export function initInvestigationPanel({
       }
       renderOptions();
       show(scenario);
+    },
+    stepScenario,
+    hasNextScenario() {
+      const all = catalog();
+      const index = all.findIndex((s) => s.id === selected.id);
+      return index >= 0 && index < all.length - 1;
     },
     showValidation(approved = false) {
       attempts.set(selected.id, (attempts.get(selected.id) ?? 0) + 1);

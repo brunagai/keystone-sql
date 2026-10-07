@@ -14,7 +14,7 @@ import { initEditor } from './ui/editor.ts';
 import { createEditorSession } from './ui/editorSession.ts';
 import { initHeader } from './ui/header.ts';
 import { initInvestigationPanel } from './ui/investigationPanel.ts';
-import { initWorkspaceSplit, showMobilePane } from './ui/layout.ts';
+import { hideResultsSheet, initWorkspaceSplit, showMobilePane } from './ui/layout.ts';
 import { hideFloatingMenus, initNavbar } from './ui/navbar.ts';
 import { initLabGuide, startOnboardingTour } from './ui/onboardingTour.ts';
 import { initOutputPanel } from './ui/outputPanel.ts';
@@ -30,7 +30,16 @@ let validating = false;
 hideFloatingMenus();
 initNavbar();
 
-const output = initOutputPanel();
+const output = initOutputPanel({
+  hasNextScenario: () => investigation.hasNextScenario(),
+  onSuccessNext: () => {
+    if (!investigation.stepScenario(1)) return;
+    hideResultsSheet();
+    showMobilePane('editor');
+    editor.focus();
+    document.getElementById('mobile-briefing')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  },
+});
 const dossier = initDossierExport();
 try {
   initLabGuide();

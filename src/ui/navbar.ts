@@ -93,7 +93,7 @@ export function initNavbar(): void {
   const header = document.getElementById('app-header');
   const brand = header?.querySelector<HTMLElement>(':scope > div:first-child');
   const trail = document.getElementById('trail-bands');
-  const tools = trail?.parentElement;
+  const tools = document.getElementById('case-picker') ?? trail?.parentElement;
   const nav = header?.querySelector('nav');
   const select = document.getElementById('scenario-select');
   const progress = createProgressMeter();
@@ -118,14 +118,16 @@ export function initNavbar(): void {
       'max-md:gap-2',
       'max-md:py-2',
       'max-md:overflow-x-hidden',
-      'md:h-16',
+      'md:h-auto',
+      'md:min-h-16',
       'md:flex-row',
       'md:items-center',
+      'md:py-2',
     );
     header.classList.remove('h-16', 'overflow-x-auto');
     nav.classList.add('ml-auto', 'flex-wrap', 'shrink-0');
-    tools.classList.add('min-w-0', 'w-full', 'max-w-full', 'flex-1', 'flex-wrap', 'md:flex-nowrap');
-    tools.classList.remove('overflow-x-auto');
+    tools.classList.add('min-w-0', 'w-full', 'max-w-full', 'flex-1');
+    tools.classList.remove('overflow-x-auto', 'flex-wrap');
   } else if (header) {
     header.append(progress);
   }
@@ -138,8 +140,12 @@ export function initNavbar(): void {
   }
 
   if (select instanceof HTMLSelectElement) {
-    select.classList.add('min-h-[38px]', 'min-w-[240px]', 'w-full', 'flex-1', 'truncate');
-    select.classList.remove('shrink-0', 'max-w-full', 'min-w-0');
+    select.classList.add('min-h-[38px]', 'w-full', 'truncate');
+    select.classList.remove('shrink-0', 'max-w-full', 'min-w-0', 'min-w-[240px]', 'flex-1');
+  }
+
+  for (const id of ['btn-prev-scenario', 'btn-next-scenario'] as const) {
+    document.getElementById(id)?.classList.add('min-h-[38px]', 'min-w-[38px]');
   }
 
   if (nav) {

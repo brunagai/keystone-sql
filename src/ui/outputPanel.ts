@@ -3,6 +3,11 @@ import type { ErrorHighlight } from '../challenges/sqlErrors.ts';
 import type { ValidationResult } from '../challenges/validator.ts';
 import { byId } from './dom.ts';
 import { showResultsSheet } from './layout.ts';
+
+export interface OutputPanelHandlers {
+  onSuccessNext?: () => void;
+  hasNextScenario?: () => boolean;
+}
 import { escapeHtml, formatInline, formatInteiro, formatMs } from './format.ts';
 import { renderResultTable } from './resultTable.ts';
 
@@ -80,7 +85,7 @@ function renderFailure(result: ValidationResult, expectedColumns: readonly strin
     </div>`;
 }
 
-function renderSuccess(result: ValidationResult): string {
+function renderSuccess(result: ValidationResult, hasNext: boolean): string {
   const entities = result.entities.length
     ? `<div class="mt-2 flex flex-wrap gap-1">${result.entities
         .map(
@@ -106,9 +111,15 @@ function renderSuccess(result: ValidationResult): string {
           </div>
         </div>`
       : '';
+  const nextAction = hasNext
+    ? `<button type="button" id="btn-success-next" class="inline-flex shrink-0 items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow hover:bg-emerald-500">Próximo Desafio →</button>`
+    : `<button type="button" disabled class="inline-flex shrink-0 items-center gap-1 rounded-lg bg-emerald-800/80 px-3 py-1.5 text-xs font-semibold text-emerald-100/90 opacity-80">Trilha Concluída! 🎉</button>`;
   return `
     <div role="status" class="rounded-xl border border-emerald-500/50 bg-emerald-950/50 px-4 py-3">
-      <p class="text-sm font-semibold text-emerald-200">🎉 Missão Cumprida</p>
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <p class="text-sm font-semibold text-emerald-200">🎉 Missão Cumprida</p>
+        ${nextAction}
+      </div>
       <p class="mt-1 text-[12px] font-medium leading-relaxed text-emerald-100/90">${formatInline(result.title)}</p>
       <p class="mt-1 text-[12px] leading-relaxed text-emerald-100/80">${formatInline(result.message)}</p>
       ${metrics}
@@ -134,7 +145,7 @@ function renderSuccess(result: ValidationResult): string {
     </div>`;
 }
 
-export function initOutputPanel(): OutputPanelController {
+export function initOutputPanel(handlers: OutputPanelHandlers = {}): OutputPanelController {
   const pane = byId('output-pane');
   const scroll = byId('output-scroll');
   const meta = byId('output-meta');
@@ -174,6 +185,14 @@ export function initOutputPanel(): OutputPanelController {
   const setSheetTitle = (label: string): void => {
     if (sheetTitle) sheetTitle.textContent = label;
   };
+
+  banner.addEventListener('click', (event) => {
+    const alvo = event.target;
+    if (!(alvo instanceof Element)) return;
+    const botao = alvo.closest<HTMLButtonElement>('#btn-success-next');
+    if (!botao || botao.disabled) return;
+    handlers.onSuccessNext?.();
+  });
 
   const focusResults = (): void => {
     showResultsSheet();
@@ -239,7 +258,7 @@ export function initOutputPanel(): OutputPanelController {
       const run = result.studentRun;
       if (result.status === 'success') {
         setSheetTitle('Missão cumprida');
-        setBanner(renderSuccess(result));
+        setBanner(renderSuccess(result, handlers.hasNextScenario?.() ?? false));
         if (run?.ok) {
           const rows = run.results.reduce((acc, r) => acc + r.values.length, 0);
           paintMeta(run.elapsedMs, rows);

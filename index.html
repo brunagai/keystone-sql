@@ -26,16 +26,30 @@
           <div id="wasm-status" role="status" aria-live="polite" class="flex items-center gap-1.5"></div>
         </div>
 
-        <div class="flex min-w-0 flex-1 items-center gap-3">
-          <div id="trail-bands" role="tablist" aria-label="Nível da trilha" class="flex shrink-0 items-center gap-1 rounded-full bg-slate-900/80 p-1">
+        <div id="case-picker" class="flex w-full min-w-0 flex-1 flex-col gap-1.5 rounded-xl border border-slate-800 bg-slate-900/80 p-1.5">
+          <div id="trail-bands" role="tablist" aria-label="Faixa da trilha" class="flex min-w-0 flex-wrap items-center gap-1">
             <button type="button" data-trail-band="todos" class="rounded-full bg-sky-600 px-3 py-1 text-[12px] font-medium text-white">Todos</button>
             <button type="button" data-trail-band="iniciante" class="rounded-full px-3 py-1 text-[12px] font-medium text-slate-400 hover:bg-slate-800 hover:text-slate-100">Iniciante</button>
             <button type="button" data-trail-band="intermediario" class="rounded-full px-3 py-1 text-[12px] font-medium text-slate-400 hover:bg-slate-800 hover:text-slate-100">Intermediário</button>
             <button type="button" data-trail-band="avancado" class="rounded-full px-3 py-1 text-[12px] font-medium text-slate-400 hover:bg-slate-800 hover:text-slate-100">Avançado</button>
           </div>
-          <label for="scenario-select" class="sr-only">Caso investigativo</label>
-          <select id="scenario-select"
-            class="min-w-[240px] w-full flex-1 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-[13px] text-slate-100 outline-none hover:border-slate-500 focus:border-sky-500"></select>
+          <div id="scenario-nav" class="flex w-full min-w-0 items-center gap-1.5">
+            <button type="button" id="btn-prev-scenario" title="Desafio anterior" aria-label="Desafio anterior"
+              class="shrink-0 rounded-lg bg-slate-800 p-2 text-xs font-medium text-slate-300 hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-30">
+              ←
+            </button>
+            <div class="min-w-0 flex-1">
+              <label for="scenario-select" class="mb-0.5 block px-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                Nível &amp; Caso
+              </label>
+              <select id="scenario-select"
+                class="w-full truncate rounded-lg border border-slate-800 bg-slate-950 px-2 py-1.5 text-xs text-slate-200 outline-none focus:border-indigo-500"></select>
+            </div>
+            <button type="button" id="btn-next-scenario" title="Próximo desafio" aria-label="Próximo desafio"
+              class="shrink-0 rounded-lg bg-slate-800 p-2 text-xs font-medium text-slate-300 hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-30">
+              →
+            </button>
+          </div>
         </div>
 
         <nav class="flex shrink-0 items-center gap-2" aria-label="Navegação do laboratório">
