@@ -168,10 +168,12 @@ export function initWorkspaceSplit(): void {
   const restoreDesktop = (): void => {
     resultsSheetOpen = false;
     missionOverlayOpen = false;
+    document.documentElement.classList.add('h-full');
+    document.documentElement.classList.remove('overflow-y-auto');
     document.body.classList.add('h-screen', 'overflow-hidden');
-    document.body.classList.remove('h-[100dvh]', 'min-h-[100dvh]', 'overflow-y-auto');
-    document.getElementById('app')?.classList.add('h-screen', 'overflow-hidden');
-    document.getElementById('app')?.classList.remove('h-[100dvh]', 'min-h-[100dvh]', 'overflow-y-auto', 'overflow-visible');
+    document.body.classList.remove('h-[100dvh]', 'min-h-[100dvh]', 'min-h-full', 'overflow-y-auto');
+    document.getElementById('app')?.classList.add('h-screen', 'flex', 'flex-col', 'overflow-hidden');
+    document.getElementById('app')?.classList.remove('h-[100dvh]', 'min-h-[100dvh]', 'min-h-full', 'overflow-y-auto', 'overflow-visible', 'block');
     sidebar.hidden = false;
     queryPanel.hidden = false;
     editorContainer.hidden = false;
@@ -190,10 +192,11 @@ export function initWorkspaceSplit(): void {
   };
 
   const applyMobilePanes = (): void => {
+    document.documentElement.classList.remove('h-full');
     document.body.classList.remove('h-screen', 'h-[100dvh]', 'overflow-hidden');
-    document.body.classList.add('min-h-[100dvh]', 'overflow-y-auto');
-    document.getElementById('app')?.classList.remove('h-screen', 'h-[100dvh]', 'overflow-hidden');
-    document.getElementById('app')?.classList.add('min-h-[100dvh]', 'overflow-y-auto');
+    document.body.classList.add('min-h-full', 'overflow-y-auto');
+    document.getElementById('app')?.classList.remove('h-screen', 'h-[100dvh]', 'overflow-hidden', 'flex', 'flex-col');
+    document.getElementById('app')?.classList.add('block', 'min-h-full', 'overflow-visible');
     sidebar.style.width = '100%';
     sidebar.style.maxWidth = '100%';
     sidebar.hidden = false;

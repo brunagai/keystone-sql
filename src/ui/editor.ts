@@ -34,12 +34,6 @@ export interface EditorHandlers {
 
 const INDENT = '  ';
 const HINT_TIMEOUT_MS = 6000;
-const MOBILE_MEDIA = '(max-width: 767px)';
-const EDITOR_MIN_HEIGHT_PX = 220;
-
-function isMobileEditor(): boolean {
-  return window.matchMedia(MOBILE_MEDIA).matches;
-}
 
 export function initEditor({ onRun, onValidate, onChange, onRestoreTemplate }: EditorHandlers): EditorController {
   const textarea = byId<HTMLTextAreaElement>('sql-editor');
@@ -49,23 +43,11 @@ export function initEditor({ onRun, onValidate, onChange, onRestoreTemplate }: E
   const hint = byId('editor-hint');
   const restoreButton = byId<HTMLButtonElement>('btn-restore-template');
 
-  const ajustarAlturaNoMobile = (): void => {
-    if (!isMobileEditor()) {
-      textarea.style.height = '';
-      textarea.style.overflowY = '';
-      return;
-    }
-    textarea.style.overflowY = 'hidden';
-    textarea.style.height = 'auto';
-    textarea.style.height = `${Math.max(EDITOR_MIN_HEIGHT_PX, textarea.scrollHeight)}px`;
-  };
-
   const insertAtCursor = (text: string): void => {
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
     textarea.setRangeText(text, start, end, 'end');
     textarea.focus();
-    ajustarAlturaNoMobile();
     onChange();
   };
 
@@ -75,13 +57,7 @@ export function initEditor({ onRun, onValidate, onChange, onRestoreTemplate }: E
   runButton.addEventListener('click', onRun);
   validateButton.addEventListener('click', onValidate);
   restoreButton.addEventListener('click', onRestoreTemplate);
-  textarea.addEventListener('input', () => {
-    ajustarAlturaNoMobile();
-    onChange();
-  });
-  textarea.addEventListener('focus', ajustarAlturaNoMobile);
-  window.matchMedia(MOBILE_MEDIA).addEventListener('change', ajustarAlturaNoMobile);
-  ajustarAlturaNoMobile();
+  textarea.addEventListener('input', onChange);
 
   textarea.addEventListener('keydown', (event) => {
     if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
@@ -132,7 +108,6 @@ export function initEditor({ onRun, onValidate, onChange, onRestoreTemplate }: E
       textarea.value = sql;
       textarea.setSelectionRange(sql.length, sql.length);
       textarea.scrollTop = 0;
-      ajustarAlturaNoMobile();
     },
     replaceSql(sql) {
       textarea.focus();
@@ -142,7 +117,6 @@ export function initEditor({ onRun, onValidate, onChange, onRestoreTemplate }: E
         onChange();
       }
       textarea.scrollTop = 0;
-      ajustarAlturaNoMobile();
     },
     insertAtCursor,
     setActionsEnabled(enabled) {

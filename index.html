@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pt-BR" class="h-full">
+<html lang="pt-BR" class="h-full max-md:h-auto max-md:min-h-full">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content" />
@@ -17,8 +17,8 @@
       .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
     </style>
   </head>
-  <body class="h-screen overflow-hidden bg-slate-950 text-[14px] text-slate-200 antialiased max-md:h-auto max-md:min-h-[100dvh] max-md:overflow-y-auto">
-    <div id="app" class="flex h-screen flex-col overflow-hidden max-md:h-auto max-md:min-h-[100dvh] max-md:overflow-y-auto">
+  <body class="h-screen overflow-hidden bg-slate-950 text-[14px] text-slate-200 antialiased max-md:h-auto max-md:min-h-full max-md:overflow-y-auto">
+    <div id="app" class="flex h-screen flex-col overflow-hidden max-md:block max-md:h-auto max-md:min-h-full max-md:overflow-visible">
       <header id="app-header" class="flex h-16 shrink-0 items-center gap-4 border-b border-slate-800/80 bg-zinc-950/95 px-4">
         <div class="flex shrink-0 items-center gap-2.5">
           <span class="rounded-md bg-emerald-500/15 px-1.5 py-0.5 font-mono text-[11px] font-bold tracking-wide text-emerald-400">AML</span>
@@ -51,7 +51,7 @@
         </nav>
       </header>
 
-      <main id="workspace" class="flex min-h-0 flex-1 overflow-hidden max-md:h-auto max-md:min-h-0 max-md:flex-none max-md:overflow-visible">
+      <main id="workspace" class="flex min-h-0 flex-1 overflow-hidden max-md:block max-md:h-auto max-md:min-h-0 max-md:overflow-visible">
         <section id="investigation-panel" aria-labelledby="investigation-panel-title"
           class="flex min-h-0 shrink-0 flex-col overflow-hidden bg-zinc-950">
           <div id="investigation-mission-view" class="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -95,9 +95,9 @@
           aria-label="Redimensionar a coluna O que fazer" tabindex="0"
           class="w-1.5 shrink-0 cursor-col-resize bg-slate-800 hover:bg-indigo-500/50 focus:bg-indigo-500/60 focus:outline-none"></div>
 
-        <section id="query-panel" aria-label="Editor SQL e resultados" class="flex min-h-0 min-w-0 flex-1 flex-col bg-slate-950 max-md:h-auto max-md:min-h-0 max-md:flex-none max-md:overflow-visible">
-          <div id="editor-container" class="flex min-h-0 flex-[1.15] flex-col max-md:h-auto max-md:min-h-0 max-md:flex-none max-md:pb-40">
-            <div id="mobile-briefing" class="sticky top-0 z-20 block shrink-0 border-b border-slate-800 bg-slate-950/95 px-4 py-2.5 backdrop-blur md:hidden">
+        <section id="query-panel" aria-label="Editor SQL e resultados" class="flex min-h-0 min-w-0 flex-1 flex-col bg-slate-950 max-md:block max-md:h-auto max-md:min-h-0 max-md:overflow-visible max-md:pb-40">
+          <div id="editor-container" class="flex min-h-0 flex-[1.15] flex-col max-md:block max-md:h-auto max-md:min-h-0 max-md:overflow-visible">
+            <div id="mobile-briefing" class="block border-b border-slate-800 bg-zinc-950/90 px-4 py-2.5 md:hidden">
               <div class="flex min-w-0 items-start gap-2">
                 <span id="mobile-briefing-level" class="mt-0.5 shrink-0 rounded-full bg-slate-800 px-2 py-0.5 text-[10px] font-medium text-slate-300">Nível</span>
                 <h3 id="mobile-briefing-title" class="min-w-0 flex-1 truncate text-sm font-semibold leading-snug text-slate-50">Missão</h3>
@@ -146,8 +146,8 @@
             <div id="editor-banner" hidden aria-live="assertive"
               class="flex w-full min-w-0 shrink-0 flex-col items-start justify-between gap-3 border-y border-amber-700/50 bg-amber-950/40 px-4 py-3 text-xs sm:flex-row sm:items-center sm:px-5"></div>
             <label for="sql-editor" class="sr-only">Editor SQL</label>
-            <textarea id="sql-editor" spellcheck="false" autocomplete="off" autocapitalize="off" autofocus
-              class="min-h-[220px] flex-1 resize-none overflow-y-auto bg-slate-950 px-6 py-5 font-mono text-[14px] leading-7 text-emerald-200 caret-emerald-400 outline-none placeholder:text-slate-600 max-md:min-h-[50dvh] max-md:flex-none"
+            <textarea id="sql-editor" spellcheck="false" autocomplete="off" autocapitalize="off"
+              class="min-h-[220px] flex-1 resize-none overflow-y-auto bg-slate-950 px-6 py-5 font-mono text-[14px] leading-7 text-emerald-200 caret-emerald-400 outline-none placeholder:text-slate-600 max-md:h-[260px] max-md:min-h-[200px] max-md:max-h-[260px] max-md:flex-none"
               placeholder="-- Escreva sua consulta SQL aqui"></textarea>
             <p id="editor-hint" hidden role="status" aria-live="polite"
               class="shrink-0 border-t border-slate-800/60 px-5 py-1.5 text-[12px] text-slate-400"></p>

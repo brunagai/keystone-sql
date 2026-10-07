@@ -1,4 +1,4 @@
-/* Layout global: desktop intacto; mobile usa dvh e rolagem do documento. */
+/* Desktop: colunas fixas. Mobile: um único scroll nativo no documento. */
 
 html {
   height: 100%;
@@ -9,7 +9,7 @@ body {
 }
 
 #app {
-  min-height: 100dvh;
+  min-height: 100%;
 }
 
 #output-body,
@@ -28,22 +28,44 @@ body {
 }
 
 @media (max-width: 767px) {
+  /* Um só scroller: html/#app visíveis; o body rola. Overflow aninhado no iOS trava o gesto. */
   html,
-  html.h-full,
+  html.h-full {
+    position: static !important;
+    height: auto !important;
+    max-height: none !important;
+    min-height: 100% !important;
+    overflow: visible !important;
+    touch-action: pan-y !important;
+  }
+
   body,
   body.h-screen,
-  #app,
-  #app.h-screen {
-    height: auto;
-    max-height: none;
-    min-height: 100dvh;
-    overflow-x: hidden;
-    overflow-y: auto;
+  body.overflow-hidden {
+    position: static !important;
+    height: auto !important;
+    max-height: none !important;
+    min-height: 100% !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
     -webkit-overflow-scrolling: touch;
-    overscroll-behavior-y: contain;
+    touch-action: pan-y !important;
+  }
+
+  #app,
+  #app.h-screen,
+  #app.overflow-hidden {
+    position: static !important;
+    display: block !important;
+    height: auto !important;
+    max-height: none !important;
+    min-height: 100% !important;
+    overflow: visible !important;
+    touch-action: pan-y !important;
   }
 
   #app-header {
+    position: static;
     height: auto;
     min-height: 2.5rem;
     overflow: visible;
@@ -52,10 +74,13 @@ body {
   #workspace,
   #query-panel,
   #editor-container {
-    height: auto;
-    max-height: none;
-    min-height: 0;
-    overflow: visible;
+    position: static !important;
+    display: block !important;
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    touch-action: pan-y !important;
   }
 
   #mobile-view-switcher {
@@ -75,24 +100,25 @@ body {
     max-width: none !important;
   }
 
-  #query-panel,
-  #editor-container {
-    flex: none;
-  }
-
   #output-pane {
     transform: translateY(100%);
     pointer-events: none;
+    visibility: hidden;
   }
 
   #output-pane[data-sheet='open'] {
     transform: translateY(0);
     pointer-events: auto;
+    visibility: visible;
   }
 
   #sql-editor {
-    min-height: max(220px, 50dvh);
-    overflow: hidden;
+    height: 260px;
+    min-height: 200px;
+    max-height: 260px;
+    overflow-y: auto;
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
   }
 
   #output-scroll,
