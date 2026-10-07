@@ -274,16 +274,8 @@ function paintMobileBriefing(s: InvestigationScenario, tentativas = 0): void {
   const dossier = document.getElementById('mobile-dossier-body');
   const nivelMeta = TRAIL_LEVELS[s.nivel];
   if (level) level.textContent = `Nível ${s.nivel}${nivelMeta ? ` · ${nivelMeta.titulo}` : ''}`;
-  if (title) {
-    title.textContent = s.titulo ?? 'Caso investigativo';
-    title.title = s.titulo ?? '';
-  }
-  if (text) {
-    text.textContent = missionLine(s);
-    text.classList.add('line-clamp-2');
-  }
-  const toggle = document.getElementById('mobile-briefing-toggle');
-  if (toggle) toggle.setAttribute('aria-expanded', 'false');
+  if (title) title.textContent = s.titulo ?? 'Caso investigativo';
+  if (text) text.textContent = missionLine(s);
   if (dossier) dossier.innerHTML = renderMobileDossier(s, tentativas);
 }
 
@@ -466,20 +458,11 @@ export function initInvestigationPanel({
   }
 
   const dossierDialog = el<HTMLDialogElement>('mobile-dossier-dialog');
-  const briefingToggle = el('mobile-briefing-toggle');
-  const briefingText = el('mobile-briefing-text');
   const dossierButton = el('btn-mobile-dossier');
 
   const closeDossier = (): void => {
     if (dossierDialog?.open) dossierDialog.close();
   };
-
-  briefingToggle?.addEventListener('click', () => {
-    if (!briefingText || !briefingToggle) return;
-    const expanded = briefingToggle.getAttribute('aria-expanded') === 'true';
-    briefingToggle.setAttribute('aria-expanded', String(!expanded));
-    briefingText.classList.toggle('line-clamp-2', expanded);
-  });
 
   dossierButton?.addEventListener('click', () => {
     paintMobileBriefing(selected, attempts.get(selected.id) ?? 0);
