@@ -30,6 +30,65 @@ function cellToken(value: SqlValue): string {
 
 export const normalizeColumnName = (name: string): string => name.trim().toLowerCase();
 
+/** Famílias de aliases usuais em relatórios PLD/AML (sinónimos aceites sem aviso). */
+const ALIAS_FAMILIES: readonly (readonly string[])[] = [
+  ['id_conta_origem', 'conta_origem', 'conta', 'remetente'],
+  ['qtdd_transacao', 'total_operacoes', 'qtd_operacoes', 'quantidade', 'total', 'qtd_transacoes'],
+  ['valor_total', 'volume_total', 'total_valor', 'soma_valor', 'valor'],
+];
+
+const aliasCanonical = (name: string): string => {
+  const normalized = normalizeColumnName(name);
+  for (const family of ALIAS_FAMILIES) {
+    if (family.includes(normalized)) return family[0] ?? normalized;
+  }
+  return normalized;
+};
+
+export function aliasesEquivalent(expectedName: string, studentName: string): boolean {
+  return aliasCanonical(expectedName) === aliasCanonical(studentName);
+}
+
+export function namesMatchContract(expectedName: string, studentName: string): boolean {
+  return normalizeColumnName(expectedName) === normalizeColumnName(studentName);
+}
+
+/** Mesmas células na mesma posição de linha/coluna, ignorando o nome do alias. */
+export function rowsMatchPositionally(expected: QueryExecResult, student: QueryExecResult): boolean {
+  if (expected.columns.length !== student.columns.length) return false;
+  if (expected.values.length !== student.values.length) return false;
+  return expected.values.every((row, i) =>
+    expected.columns.every((_, j) => cellsEqual(row[j] ?? null, student.values[i]?.[j] ?? null)),
+  );
+}
+
+function formatListaContrato(colunas: readonly string[]): string {
+  return `[${colunas.join(', ')}]`;
+}
+
+export function formatAvisoAlias(colunasOficiais: readonly string[]): string {
+  return (
+    '🎉 Excelente! Sua query filtrou e calculou os dados com precisão.\n' +
+    '💡 Dica de Mercado: Em esteiras reais de dados (APIs e relatórios regulatórios Bacen), usamos contratos com schemas padronizados. ' +
+    `Para habituar-se com produção, uma boa prática é nomear as colunas como: ${formatListaContrato(colunasOficiais)}.`
+  );
+}
+
+export function formatAvisoOrdemColunas(ordemEsperada: readonly string[]): string {
+  return (
+    '📐 Ordem do Relatório: Os dados e cálculos estão impecáveis! Note apenas que em pipelines de produção e exportações CSV/Parquet rígidas, ' +
+    `a ordem posicional costuma seguir estritamente o layout do contrato: ${formatListaContrato(ordemEsperada)}.`
+  );
+}
+
+export function composeAvisoGovernanca(aliasDivergiu: boolean, ordemDivergiu: boolean, colunasOficiais: readonly string[]): string | undefined {
+  if (!aliasDivergiu && !ordemDivergiu) return undefined;
+  const partes: string[] = [];
+  if (aliasDivergiu) partes.push(formatAvisoAlias(colunasOficiais));
+  if (ordemDivergiu) partes.push(formatAvisoOrdemColunas(colunasOficiais));
+  return partes.join('\n\n');
+}
+
 function columnMatches(expected: QueryExecResult, student: QueryExecResult, j: number, k: number): boolean {
   return expected.values.every((row, i) => cellsEqual(row[j] ?? null, student.values[i]?.[k] ?? null));
 }
@@ -79,13 +138,6 @@ export function mapColumnsByContent(expected: QueryExecResult, student: QueryExe
     }
     return null;
   });
-}
-
-export function describeAliasPractice(expectedName: string, returnedName: string): string {
-  return (
-    '🎉 Excelente! A sua extração de dados está correta.\n' +
-    `💡 Dica de Boas Práticas: No ambiente corporativo, padronizar os aliases facilita a automação (ex: use \`${expectedName}\` em vez de \`${returnedName}\`).`
-  );
 }
 
 /** Verdadeiro se cada linha do gabarito tem uma linha correspondente no aluno, ignorando ordem de linhas e colunas. */

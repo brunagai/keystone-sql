@@ -114,6 +114,14 @@ function renderSuccess(result: ValidationResult): string {
       ${metrics}
       ${entities}
       ${
+        result.avisoConformidade
+          ? `<div class="mt-3 rounded-xl border border-sky-500/35 bg-sky-950/35 px-3 py-2.5">
+              <p class="text-[10px] font-semibold uppercase tracking-wider text-sky-300">Dica de Governança</p>
+              <p class="mt-1.5 whitespace-pre-line text-[12px] leading-relaxed text-slate-200">${formatInline(result.avisoConformidade)}</p>
+            </div>`
+          : ''
+      }
+      ${
         result.details.length
           ? `<div class="mt-3 space-y-2 border-t border-emerald-800/50 pt-3">${result.details
               .map(

@@ -1,7 +1,7 @@
 import type { Database, QueryExecResult } from 'sql.js';
 import { findForbiddenCommand, runIsolated } from '../database/safeQuery.ts';
 import {
-  describeAliasPractice,
+  composeAvisoGovernanca,
   describePrioritizationMismatch,
   describeRowAudit,
   findKeyColumn,
@@ -9,8 +9,9 @@ import {
   computeComplianceMetrics,
   mapColumns,
   mapColumnsByContent,
-  normalizeColumnName,
+  namesMatchContract,
   rowsMatchIgnoringOrder,
+  rowsMatchPositionally,
   type ComplianceMetrics,
 } from './compare.ts';
 import type { InvestigationScenario } from './scenarios.ts';
@@ -32,6 +33,8 @@ export interface ValidationResult {
   highlight: ErrorHighlight | null;
   /** Métricas da esteira no card verde (sucesso). */
   compliance?: ComplianceMetrics;
+  /** Aliases divergentes do contrato, sem bloquear a aprovação. */
+  avisoConformidade?: string;
   /** Execução da query do aluno, para exibição no painel de resultados. */
   studentRun: StudentRun | null;
 }
@@ -93,6 +96,21 @@ function describeEntityDiff(scenario: InvestigationScenario, diff: EntityDiff): 
   return lines;
 }
 
+function aliasDivergiuDoContrato(
+  expected: QueryExecResult,
+  student: QueryExecResult,
+  mapping: readonly (number | null)[],
+): boolean {
+  return expected.columns.some((name, j) => {
+    const k = mapping[j] ?? j;
+    return !namesMatchContract(name, student.columns[k] ?? '');
+  });
+}
+
+function ordemFisicaDivergiu(mapping: readonly (number | null)[]): boolean {
+  return mapping.every((k) => k != null) && mapping.some((k, j) => k !== j);
+}
+
 function successWithNotes(
   scenario: InvestigationScenario,
   expected: QueryExecResult,
@@ -101,31 +119,14 @@ function successWithNotes(
   extraNotes: readonly string[],
 ): Omit<ValidationResult, 'studentRun' | 'highlight'> {
   const summary = scenario.resumirSucesso(expected);
-  const details = [...extraNotes];
-  const complete = mapping.every((k) => k != null);
-
-  if (complete) {
-    const extraCols = student.columns.filter((_, k) => !mapping.includes(k));
-    if (extraCols.length) {
-      details.push(`Dica de boas práticas: as colunas extras \`${extraCols.join(', ')}\` não eram necessárias.`);
-    }
-
-    const aliasPair = expected.columns.flatMap((name, j) => {
-      const k = mapping[j];
-      if (k == null) return [];
-      const returned = student.columns[k] ?? '';
-      return normalizeColumnName(returned) !== normalizeColumnName(name) ? [{ expected: name, returned }] : [];
-    })[0];
-    if (aliasPair) details.unshift(describeAliasPractice(aliasPair.expected, aliasPair.returned));
-
-    if (mapping.some((k, j) => k !== j)) {
-      details.push('As colunas estão em ordem diferente da sugerida, mas o conteúdo confere.');
-    }
-  }
-
-  details.push(...(summary.details ?? []));
+  const details = [...extraNotes, ...(summary.details ?? [])];
   const captured = expected.values.length;
   const compliance = computeComplianceMetrics(captured, captured, 0);
+  const avisoConformidade = composeAvisoGovernanca(
+    aliasDivergiuDoContrato(expected, student, mapping),
+    ordemFisicaDivergiu(mapping),
+    expected.columns,
+  );
   return {
     status: 'success',
     title: formatComplianceBanner(compliance),
@@ -133,6 +134,7 @@ function successWithNotes(
     details,
     entities: summary.entities,
     compliance,
+    ...(avisoConformidade ? { avisoConformidade } : {}),
   };
 }
 
@@ -140,31 +142,20 @@ function formatColumnList(columns: readonly string[]): string {
   return `[${columns.join(', ')}]`;
 }
 
-function columnsMatchReport(expected: QueryExecResult, student: QueryExecResult): boolean {
-  if (expected.columns.length !== student.columns.length) return false;
-  return expected.columns.every(
-    (name, index) => normalizeColumnName(name) === normalizeColumnName(student.columns[index] ?? ''),
-  );
-}
-
-function namesPresent(expected: QueryExecResult, student: QueryExecResult): boolean {
-  const have = new Set(student.columns.map((name) => normalizeColumnName(name)));
-  return expected.columns.every((name) => have.has(normalizeColumnName(name)));
-}
-
 function reportShapeMismatch(
   expected: QueryExecResult,
   student: QueryExecResult,
 ): Omit<ValidationResult, 'studentRun' | 'highlight'> {
+  const faltou = student.columns.length < expected.columns.length;
   return {
     status: 'quase_la',
-    title: '🔍 Quase lá! Dados e lógica analítica corretos',
-    message:
-      'Identificou e filtrou os registos solicitados com precisão. Contudo, o relatório de auditoria/compliance exige uma estrutura de colunas específica para conformidade.',
+    title: '🔍 Quase lá! Ajuste a quantidade de colunas',
+    message: faltou
+      ? `O gabarito exige ${expected.columns.length} colunas e a consulta retornou ${student.columns.length}. Inclua as colunas essenciais que faltaram.`
+      : `A consulta retornou ${student.columns.length} colunas, mas o relatório pede ${expected.columns.length}. Remova as colunas extras não solicitadas.`,
     details: [
       `Colunas enviadas: ${formatColumnList(student.columns)}`,
       `Colunas requeridas: ${formatColumnList(expected.columns)}`,
-      'Basta ajustar o SELECT para incluir exatamente essas colunas e revalidar.',
     ],
     entities: [],
   };
@@ -207,28 +198,19 @@ function compareResults(
     };
   }
 
-  const orderedMap = mapColumns(expected, student);
-  const contentMap = mapColumnsByContent(expected, student);
-  const mapping = contentMap.every((k) => k != null) ? contentMap : orderedMap;
-  const unmatched = expected.columns.filter((_, j) => mapping[j] === null);
-  const bagMatch = rowsMatchIgnoringOrder(expected, student);
-  const entitiesOk = diff.keyFound && diff.missing.length === 0 && diff.extra.length === 0;
-  const expectedMapped = unmatched.length === 0;
-  const analyticsOk = expectedMapped || bagMatch || entitiesOk;
-
-  if (analyticsOk && !columnsMatchReport(expected, student)) {
-    if (expectedMapped || bagMatch || (entitiesOk && !namesPresent(expected, student))) {
-      return reportShapeMismatch(expected, student);
-    }
+  if (student.columns.length !== expected.columns.length) {
+    return reportShapeMismatch(expected, student);
   }
 
-  if (unmatched.length > 0) {
-    if (bagMatch) {
-      const prio = describePrioritizationMismatch(scenario.ordenacao);
-      return successWithNotes(scenario, expected, student, contentMap, [
-        `${prio.message} A esteira aceitou o conjunto de evidências.`,
-      ]);
-    }
+  const orderedMap = mapColumns(expected, student);
+  const contentMap = mapColumnsByContent(expected, student);
+  const mapped = contentMap.every((k) => k != null);
+  const positional = rowsMatchPositionally(expected, student);
+  const bagMatch = rowsMatchIgnoringOrder(expected, student);
+  const dataOk = mapped || positional || bagMatch;
+
+  if (!dataOk) {
+    const unmatched = expected.columns.filter((_, j) => contentMap[j] === null && orderedMap[j] === null);
     if (!diff.keyFound || diff.missing.length || diff.extra.length) {
       return {
         status: 'error',
@@ -243,16 +225,19 @@ function compareResults(
     return {
       status: 'error',
       title: 'Registos fora do critério de negócio',
-      message: `A identificação de ${plural} está correta, mas os valores de \`${unmatched.join('`, `')}\` não conferem com o gabarito (tolerância numérica de 0,01).`,
+      message: unmatched.length
+        ? `A identificação de ${plural} está correta, mas os valores de \`${unmatched.join('`, `')}\` não conferem com o gabarito (tolerância numérica de 0,01).`
+        : `A identificação de ${plural} está correta, mas os valores calculados não conferem com o gabarito (tolerância numérica de 0,01).`,
       details: [hints.valores],
       entities: [],
     };
   }
 
-  if (!columnsMatchReport(expected, student)) {
-    return reportShapeMismatch(expected, student);
-  }
-
+  const mapping = mapped
+    ? contentMap
+    : orderedMap.every((k) => k != null)
+      ? orderedMap
+      : expected.columns.map((_, j) => j);
   const orderNotes: string[] = [];
   if (orderedMap.some((k) => k === null)) {
     const prio = describePrioritizationMismatch(scenario.ordenacao);
