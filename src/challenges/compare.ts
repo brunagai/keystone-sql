@@ -171,6 +171,79 @@ export function recordsAlignInReturnedOrder(expected: QueryExecResult, student: 
   );
 }
 
+interface ChaveDeOrdenacao {
+  name: string;
+  descending: boolean;
+}
+
+function parseOrdenacao(ordenacao: string): ChaveDeOrdenacao[] {
+  return ordenacao
+    .split(',')
+    .map((part) => {
+      const trimmed = part.trim();
+      if (!trimmed) return null;
+      const descending = /\bDESC\b/i.test(trimmed);
+      const name = trimmed.replace(/\s+(ASC|DESC)\s*$/i, '').trim();
+      const simples = name.includes('.') ? (name.split('.').pop() ?? name) : name;
+      if (!simples) return null;
+      return { name: simples, descending };
+    })
+    .filter((key): key is ChaveDeOrdenacao => key != null);
+}
+
+function indicePorNomeOuAlias(columns: readonly string[], name: string): number {
+  const exato = columns.findIndex((c) => namesMatchContract(c, name));
+  if (exato >= 0) return exato;
+  return columns.findIndex((c) => aliasesEquivalent(c, name));
+}
+
+function compareSortValues(a: SqlValue, b: SqlValue): number {
+  if (cellsEqual(a, b)) return 0;
+  const na = toNumber(a);
+  const nb = toNumber(b);
+  if (na !== null && nb !== null) return na < nb ? -1 : na > nb ? 1 : 0;
+  return String(a ?? '').localeCompare(String(b ?? ''), 'pt-BR', { numeric: true, sensitivity: 'base' });
+}
+
+/**
+ * True se as linhas do aluno já respeitam o `ORDER BY` do contrato (aliases e ordem física irrelevantes).
+ * Se a chave não puder ser resolvida, devolve true para não acusar falso positivo.
+ */
+export function rowsFollowOrdenacao(
+  student: QueryExecResult,
+  ordenacao: string,
+  expectedColumns: readonly string[],
+  columnMap: readonly (number | null)[],
+): boolean {
+  const keys = parseOrdenacao(ordenacao);
+  if (!keys.length || student.values.length <= 1) return true;
+
+  const indices = keys.map((key) => {
+    const noAluno = indicePorNomeOuAlias(student.columns, key.name);
+    if (noAluno >= 0) return noAluno;
+    const noGabarito = indicePorNomeOuAlias(expectedColumns, key.name);
+    const mapeado = noGabarito >= 0 ? columnMap[noGabarito] : null;
+    return mapeado ?? -1;
+  });
+  if (indices.some((idx) => idx < 0)) return true;
+
+  for (let i = 0; i < student.values.length - 1; i += 1) {
+    const esquerda = student.values[i];
+    const direita = student.values[i + 1];
+    if (!esquerda || !direita) return false;
+    for (let k = 0; k < keys.length; k += 1) {
+      const col = indices[k];
+      const chave = keys[k];
+      if (col == null || col < 0 || !chave) continue;
+      const cmp = compareSortValues(esquerda[col] ?? null, direita[col] ?? null);
+      if (cmp === 0) continue;
+      if (chave.descending ? cmp < 0 : cmp > 0) return false;
+      break;
+    }
+  }
+  return true;
+}
+
 /** Verdadeiro se cada linha do gabarito tem uma linha correspondente no aluno, ignorando ordem de linhas e colunas. */
 export function rowsMatchIgnoringOrder(expected: QueryExecResult, student: QueryExecResult): boolean {
   if (expected.values.length !== student.values.length) return false;

@@ -11,6 +11,7 @@ import {
   mapColumnsByContent,
   namesMatchContract,
   recordsAlignInReturnedOrder,
+  rowsFollowOrdenacao,
   rowsMatchIgnoringOrder,
   rowsMatchMapped,
   rowsMatchPositionally,
@@ -241,11 +242,10 @@ function compareResults(
       ? orderedMap
       : expected.columns.map((_, j) => j);
   const orderNotes: string[] = [];
-  const mesmaSequencia =
-    positional ||
-    rowsMatchMapped(expected, student, mapping) ||
-    recordsAlignInReturnedOrder(expected, student);
-  if (bagMatch && !mesmaSequencia) {
+  const alinhadoLinhaALinha =
+    positional || rowsMatchMapped(expected, student, mapping) || recordsAlignInReturnedOrder(expected, student);
+  const atendePriorizacao = rowsFollowOrdenacao(student, scenario.ordenacao, expected.columns, mapping);
+  if (bagMatch && !alinhadoLinhaALinha && !atendePriorizacao) {
     const prio = describePrioritizationMismatch(scenario.ordenacao);
     orderNotes.push(`💡 Fila de priorização: ${prio.message}`);
   }
