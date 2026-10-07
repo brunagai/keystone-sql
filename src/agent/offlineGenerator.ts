@@ -35,8 +35,7 @@ export const OFFLINE_TEMPLATES: readonly OfflineTemplate[] = [
         'A mesa de monitoramento identificou liquidações relevantes fora do horário comercial, muitas iniciadas por API. ' +
         'Operações noturnas recorrentes, sem relação com o perfil do cliente, podem indicar automação para dispersar recursos.',
       objetivo:
-        `Liste as transações realizadas entre ${inicio}:00 e ${fim}:59 (virando a noite) com \`valor >= ${valorMin}\`. ` +
-        'Retorne `id_transacao`, `conta_origem`, `conta_destino`, `canal`, `valor` e `data_hora`, ordenando por `data_hora, id_transacao`.',
+        `A mesa quer liquidações relevantes fora do horário comercial. Me traga os PIX entre ${inicio}h e ${fim}h59 (virando a madrugada) com valor de ${brl(valorMin)} ou mais — canal, remetente, favorecido e o momento da operação.`,
       dicaSql: `SELECT ...
 FROM transacoes_pix
 WHERE (strftime('%H', data_hora) >= '..' OR strftime('%H', data_hora) < '..')
@@ -75,9 +74,7 @@ ORDER BY t.data_hora, t.id_transacao;                    -- cronológico, com de
         'Contas abertas recentemente passaram a receber recursos de várias pessoas diferentes em poucos dias. ' +
         'O padrão de concentração (fan-in) sem histórico é típico de contas usadas para agregar valores de terceiros.',
       objetivo:
-        `Para contas com \`data_abertura >= '${dataCorte}'\`, calcule por conta recebedora: \`conta_destino\`, \`titular\`, ` +
-        `\`data_abertura\`, \`origens_distintas\`, \`total_recebimentos\` e \`valor_recebido\`. Mantenha apenas as que tiveram ` +
-        `pelo menos ${minOrigens} origens distintas, ordenando por \`valor_recebido DESC\`.`,
+        `Contas recém-abertas (a partir de ${dataCorte}) concentrando crédito de muita gente merecem fila. Me traga as recebedoras com pelo menos ${minOrigens} origens distintas, o titular, a abertura, quantos créditos chegaram e o volume recebido.`,
       dicaSql: `SELECT t.id_conta_destino AS conta_destino, ...,
        COUNT(DISTINCT t.id_conta_origem) AS origens_distintas
 FROM transacoes_pix t
@@ -119,9 +116,7 @@ ORDER BY valor_recebido DESC, conta_destino;`,
         'O COAF solicitou mapeamento de contas que funcionam como "corredor" de recursos: recebem valores expressivos e ' +
         'repassam quase tudo em seguida, mantendo saldo residual. O padrão sugere interposição de pessoas (laranjas).',
       objetivo:
-        `Calcule, por conta, o total recebido e o total enviado no período. Retorne \`id_conta\`, \`titular\`, \`renda_mensal\`, ` +
-        `\`total_recebido\`, \`total_enviado\` e \`taxa_repasse\` (enviado/recebido, 2 casas) para contas com recebimentos ` +
-        `\`>= ${minRecebido}\` e taxa entre ${pMin} e ${pMax}. Ordene por \`total_recebido DESC\`.`,
+        `Quero o corredor de recursos: contas que receberam ${brl(minRecebido)} ou mais e repassaram entre ${Math.round(pMin * 100)}% e ${Math.round(pMax * 100)}% do que entrou. Traga titular, renda declarada, totais de entrada e saída e a taxa de repasse.`,
       dicaSql: `WITH entradas AS (
   SELECT id_conta_destino AS id_conta, SUM(valor) AS total_recebido
   FROM transacoes_pix GROUP BY 1
@@ -176,8 +171,7 @@ ORDER BY total_recebido DESC, c.id_conta;`,
         'Transferências comerciais legítimas costumam ter centavos e valores "quebrados". Repasses vultosos em valores ' +
         'exatos e redondos, recorrentes entre as mesmas partes, merecem análise de propósito econômico.',
       objetivo:
-        `Agrupe por conta de origem os PIX com \`valor >= ${min}\` que sejam múltiplos exatos de ${mult}. Retorne ` +
-        '`conta_origem`, `qtd_redondas` e `valor_total`, ordenando por `valor_total DESC`.',
+        `Repasses vultosos em valores redondos pedem propósito econômico. Consolide, por remetente, os PIX de ${brl(min)} ou mais que sejam múltiplos exatos de ${brl(mult)}, com a quantidade dessas operações e o volume.`,
       dicaSql: `SELECT id_conta_origem AS conta_origem, COUNT(*) AS ..., SUM(valor) AS ...
 FROM transacoes_pix
 WHERE valor >= ...
@@ -216,9 +210,7 @@ ORDER BY valor_total DESC, conta_origem;`,
         'Em vez de olhar os remetentes, a área de PLD quer saber quais contas RECEBEM operações logo abaixo do limiar de ' +
         'R$ 10.000,00. Uma recebedora com muitas operações nessa faixa, de remetentes distintos, é forte indício de smurfing.',
       objetivo:
-        `Considere PIX com \`valor >= ${piso}\` e \`valor < 10000\`. Por conta recebedora, retorne \`conta_destino\`, ` +
-        `\`qtd_operacoes\`, \`remetentes\` (distintos) e \`valor_total\`, mantendo as com pelo menos ${minQtd} operação(ões). ` +
-        'Ordene por `valor_total DESC`.',
+        `Em vez do remetente, quero quem RECEBE PIX logo abaixo de R$ 10 mil. Levante favorecidos com pelo menos ${minQtd} crédito(s) entre ${brl(piso)} e R$ 9.999,99, quantos remetentes distintos alimentaram a conta e o volume concentrado.`,
       dicaSql: `SELECT id_conta_destino AS conta_destino,
        COUNT(*) AS ..., COUNT(DISTINCT ...) AS ..., SUM(valor) AS ...
 FROM transacoes_pix
@@ -254,8 +246,7 @@ ORDER BY valor_total DESC, conta_destino;`,
         'Um parceiro reportou picos de liquidação concentrados em janelas de uma hora. A equipe quer um primeiro corte ' +
         'simples, por hora cheia, antes de aplicar análises finas com funções de janela.',
       objetivo:
-        `Agrupe por conta de origem e hora cheia (\`strftime('%Y-%m-%d %H:00', data_hora)\`). Retorne \`conta_origem\`, ` +
-        `\`janela_hora\`, \`qtd_pix\` e \`valor_total\` para janelas com pelo menos ${min} PIX, ordenando por \`qtd_pix DESC\`.`,
+        `Antes da análise fina de janela, quero um corte simples por hora cheia. Me traga remetentes com pelo menos ${min} PIX na mesma hora, a janela, a quantidade de disparos e o volume daquela hora.`,
       dicaSql: `SELECT id_conta_origem AS conta_origem,
        strftime('%Y-%m-%d %H:00', data_hora) AS janela_hora,
        COUNT(*) AS ..., SUM(valor) AS ...
@@ -289,9 +280,7 @@ ORDER BY qtd_pix DESC, valor_total DESC, conta_origem, janela_hora;`,
         'A revisão periódica de KYC precisa comparar o volume recebido no mês com a renda declarada pelas pessoas físicas. ' +
         'Volumes muito superiores à renda, sem justificativa, exigem atualização cadastral e análise de origem dos recursos.',
       objetivo:
-        `Para contas PF com renda > 0, some os valores RECEBIDOS no período e retorne \`id_conta\`, \`titular\`, \`ocupacao\`, ` +
-        `\`renda_mensal\`, \`total_recebido_mes\` e \`multiplo_renda\` (1 casa) quando o total for \`>= ${mult}x\` a renda. ` +
-        'Ordene por `multiplo_renda DESC`.',
+        `A revisão de KYC precisa cruzar crédito recebido com a renda da pessoa física. Me traga PF cuja soma recebida no período seja pelo menos ${mult} vezes a renda declarada, com ocupação, volume e o múltiplo encontrado.`,
       dicaSql: `SELECT c.id_conta, ..., SUM(t.valor) AS total_recebido_mes
 FROM transacoes_pix t
 JOIN contas c ON c.id_conta = t.id_conta_destino
@@ -330,9 +319,7 @@ ORDER BY multiplo_renda DESC, c.id_conta;`,
         'Empresas com faturamento modesto realizaram transferências únicas muito superiores ao que declaram faturar por mês. ' +
         'A análise deve isolar o MAIOR envio de cada PJ e compará-lo com o faturamento.',
       objetivo:
-        'Usando `ROW_NUMBER() OVER (PARTITION BY id_conta_origem ORDER BY valor DESC)`, pegue o maior PIX enviado por cada ' +
-        `PJ e retorne \`conta_origem\`, \`titular\`, \`faturamento_mensal\`, \`maior_pix\` e \`proporcao\` (2 casas) quando ` +
-        `\`maior_pix >= ${p}x\` o faturamento. Ordene por \`proporcao DESC\`.`,
+        `Empresas com faturamento modesto disparando um PIX muito acima do que declaram. Isole o maior envio de cada pessoa jurídica e traga as que esse pico chega a ${p} vezes o faturamento mensal, com a proporção encontrada.`,
       dicaSql: `WITH ranking AS (
   SELECT t.*,
          ROW_NUMBER() OVER (PARTITION BY ... ORDER BY ...) AS rn

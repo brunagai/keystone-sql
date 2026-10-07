@@ -36,7 +36,7 @@ export function toScenario({ challenge: ch, source, model }: StoredChallenge): I
     objetivo: ensureRelatorioColunas(ch.objetivo, colunas),
     colunasEsperadas: colunas,
     ordenacao,
-    dicaTexto: `Tipologia: ${ch.tipologiaBacen}. Colunas esperadas: ${colunas.join(', ')}.`,
+    dicaTexto: `Tipologia: ${ch.tipologiaBacen}. Contrato de entrega (aliases da query final): ${colunas.join(', ')}.`,
     dicaSql: ch.dicaSql,
     gabaritoSql: ch.solutionQuery,
     colunaChave: colunas[0] ?? '',

@@ -133,8 +133,8 @@ ${compilerSection(difficulty)}
 ## Regras de conteúdo
 - Português do Brasil, tom profissional de área de compliance.
 - "contexto": dossiê/denúncia fictícia (2 a 4 frases), coerente com o dataset.
-- "objetivo": o que a query deve retornar, a ordenação, a técnica do nível (${kit.resumo}) e, ao final, a frase exata:
-  "Para o relatório regulatório, apresente as seguintes colunas: col1, col2, …" com os aliases do SELECT final.
+- "objetivo": briefing executivo de um gestor de PLD/compliance (2 a 4 frases). Descreva a dor de negócio e o recorte investigativo em linguagem corporativa. Proibido citar nomes literais de tabelas, colunas, aliases, SELECT, JOIN, GROUP BY ou SQL. Não inclua a frase "Para o relatório regulatório, apresente as seguintes colunas".
+- "criteriosValidacao.colunasEsperadas": lista EXATA dos aliases do SELECT final, na mesma ordem — este é o único lugar do JSON em que os nomes técnicos da entrega aparecem.
 - "dicaSql": esqueleto parcial da técnica, SEM entregar a resposta completa.
 - "badgeEnquadramento": cite a norma (ex.: "Carta Circular 4.001/2020 · Conta de passagem" ou "Res. BCB 142/2021 · Limite noturno PIX"). Não invente números de
   artigos ou incisos dos quais não tenha certeza.

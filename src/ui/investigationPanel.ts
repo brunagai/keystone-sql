@@ -66,10 +66,8 @@ function renderTwoPhase(s: InvestigationScenario): string {
 }
 
 function missionLine(s: InvestigationScenario): string {
-  const columns = expectedColumns(s);
-  const text = (s.objetivo ?? '').replace(/`/g, '').replace(/\s+/g, ' ').trim();
-  if (!text && columns.length === 0) return 'Produza as evidências pedidas neste caso.';
-  return ensureRelatorioColunas(text || 'Produza as evidências pedidas neste caso.', columns);
+  const text = ensureRelatorioColunas((s.objetivo ?? '').replace(/`/g, ''));
+  return text || 'Produza as evidências pedidas neste caso.';
 }
 
 function expectedColumns(s: InvestigationScenario): readonly string[] {
@@ -77,101 +75,117 @@ function expectedColumns(s: InvestigationScenario): readonly string[] {
   return s.colunasEsperadas.filter((name): name is string => typeof name === 'string' && name.length > 0);
 }
 
-const COLUMN_ROLES: Readonly<Record<string, string>> = {
-  acumulado_movel_3: 'o volume acumulado nas últimas originações da mesma conta',
-  acumulado_movel_pep: 'o volume acumulado nas originações recentes do titular monitorado',
-  cnpj_empresa: 'o CNPJ da empresa investigada',
-  cpf_socio: 'o CPF do sócio no quadro societário',
-  device_id: 'o identificador do dispositivo usado no acesso',
-  forma_liquidacao: 'a forma como o aporte foi liquidado',
-  geolocalizacao_cidade: 'a cidade inferida do login',
-  nome_socio: 'o nome de quem figura no quadro societário',
-  percentual_participacao: 'a fatia do capital detida pelo sócio',
-  tipo_produto: 'o tipo de produto financeiro aportado',
-  valor_aporte: 'o montante aportado no produto',
-  valor_transacao: 'o valor da saída PIX correlacionada ao acesso',
-  cargo_pep: 'o cargo público associado ao titular',
-  canal: 'o canal por onde a operação foi disparada',
-  conta_destino: 'identificador de quem recebeu o valor',
-  conta_origem: 'identificador de quem enviou o valor',
-  data_abertura: 'a data de abertura da conta',
-  data_hora: 'a data e a hora da operação',
-  fator_incompatibilidade: 'o quanto o valor destoa da renda declarada',
-  faturamento_mensal: 'o faturamento mensal declarado',
-  hora_transacao: 'a hora em que a operação ocorreu',
-  id_conta: 'identificador da conta analisada',
-  id_transacao: 'identificador da transação',
-  intervalo_horas: 'o intervalo entre operações consecutivas',
-  intervalo_segundos: 'o intervalo entre operações consecutivas',
-  janela_hora: 'a janela horária em que as operações se concentraram',
-  maior_pix: 'o maior valor movimentado no recorte',
-  media_historica: 'a média histórica de valores daquela origem',
-  multiplo_renda: 'quantas vezes o volume supera a renda declarada',
-  ocupacao: 'a ocupação declarada no cadastro',
-  tipo_pessoa: 'se o cliente é pessoa física ou jurídica',
-  renda_mensal_declarada: 'a renda ou o faturamento mensal declarado no KYC',
-  origens_distintas: 'quantos remetentes distintos alimentaram a conta',
-  proporcao: 'a proporção entre o valor e o perfil declarado',
-  qtd_historico: 'quantas operações anteriores entram na comparação',
-  qtd_no_dia: 'a quantidade de envios no mesmo dia',
-  qtd_operacoes: 'a quantidade de operações suspeitas',
-  qtd_pix: 'a quantidade de PIX no recorte',
-  qtd_redondas: 'a quantidade de valores redondos',
-  remetentes: 'quantos remetentes distintos participaram',
-  renda_mensal: 'a renda mensal declarada',
-  salto: 'o salto do valor em relação ao histórico',
-  taxa_repasse: 'a proporção entre saídas e entradas',
-  titular: 'quem figura como titular da conta',
-  total_enviado: 'o montante financeiro enviado',
-  total_no_dia: 'o montante financeiro acumulado no dia',
-  total_operacoes: 'a quantidade de envios suspeitos',
-  total_recebido: 'o montante financeiro recebido',
-  total_recebido_mes: 'o montante financeiro recebido no mês',
-  total_recebimentos: 'a quantidade de recebimentos',
-  valor: 'o valor da operação',
-  valor_recebido: 'o montante financeiro recebido',
-  valor_total: 'o montante financeiro total acumulado',
+const ALIAS_LABELS: Readonly<Record<string, string>> = {
+  acumulado_movel_3: 'Acúmulo móvel das últimas originações',
+  acumulado_movel_pep: 'Acúmulo móvel nas originações do titular monitorado',
+  canal: 'Canal da originação',
+  data_abertura: 'Data de abertura da conta',
+  faturamento_mensal: 'Faturamento mensal declarado',
+  janela_hora: 'Janela horária da concentração',
+  multiplo_renda: 'Quantas vezes o volume supera a renda',
+  origens_distintas: 'Quantidade de remetentes distintos',
+  proporcao: 'Proporção entre o valor e o perfil declarado',
+  qtd_operacoes: 'Quantidade de operações no recorte',
+  qtd_pix: 'Quantidade de PIX no recorte',
+  qtd_redondas: 'Quantidade de valores redondos',
+  remetentes: 'Quantidade de remetentes distintos',
+  taxa_repasse: 'Proporção entre saídas e entradas',
+  total_recebido_mes: 'Montante recebido no período',
+  total_recebimentos: 'Quantidade de recebimentos',
+  valor_recebido: 'Montante financeiro recebido',
+  cidade_destino: 'Cidade do acesso mais recente',
+  cidade_origem: 'Cidade do acesso anterior',
+  cnpj_empresa: 'CNPJ da empresa investigada',
+  conta_destino: 'Identificador de quem recebeu',
+  conta_intermediaria: 'Identificador da conta intermediária',
+  conta_origem: 'Identificador de quem enviou',
+  conta_passagem: 'Identificador da conta de passagem',
+  cpf_socio: 'CPF do sócio no quadro',
+  data_hora: 'Data e hora da operação',
+  data_hora_anterior: 'Data e hora da operação anterior',
+  data_operacao: 'Data civil da operação',
+  device_id: 'Identificador do dispositivo',
+  fator_incompatibilidade: 'Grau de desproporção em relação à renda',
+  forma_liquidacao: 'Forma de liquidação do aporte',
+  geolocalizacao_cidade: 'Cidade inferida do login',
+  hora_transacao: 'Hora da liquidação',
+  id_conta: 'Identificador da conta',
+  id_conta_destino: 'Identificador da conta favorecida',
+  id_conta_origem: 'Identificador da conta remetente',
+  id_transacao: 'Identificador da transação',
+  intervalo_horas: 'Intervalo entre disparos consecutivos (horas)',
+  intervalo_segundos: 'Intervalo entre eventos consecutivos (segundos)',
+  maior_pix: 'Maior valor movimentado no recorte',
+  media_historica: 'Média histórica de valores da origem',
+  montante_acumulado: 'Montante acumulado até o instante',
+  nome_administrador: 'Nome de quem administra a empresa',
+  nome_socio: 'Nome de quem figura no quadro societário',
+  ocupacao: 'Ocupação declarada no cadastro',
+  percentual_participacao: 'Participação societária detida',
+  qtd_no_dia: 'Quantidade de envios no mesmo dia',
+  razao_social: 'Razão social da empresa',
+  renda_mensal: 'Renda mensal declarada',
+  renda_mensal_declarada: 'Renda ou faturamento mensal declarado',
+  salto: 'Salto do valor em relação ao histórico',
+  sequencial_operacao: 'Numeração cronológica do envio',
+  status_dispositivo: 'Classificação do dispositivo no acesso',
+  ticket_medio: 'Ticket médio por transferência',
+  tipo_pessoa: 'Tipo de pessoa (física ou jurídica)',
+  tipo_produto: 'Tipo de produto financeiro',
+  titular: 'Titular da conta',
+  titular_destinatario: 'Titular de quem recebeu',
+  titular_pep: 'Titular classificado como PEP',
+  titular_remetente: 'Titular de quem enviou',
+  total_destinatarios_distintos: 'Quantidade de favorecidos distintos',
+  total_enviado: 'Montante financeiro enviado',
+  total_movimentado: 'Montante financeiro movimentado',
+  total_no_dia: 'Montante acumulado no dia',
+  total_operacoes: 'Volume de operações',
+  total_operacoes_fracionadas: 'Quantidade de PIX na faixa fracionada',
+  total_recebido: 'Montante financeiro recebido',
+  transacao_entrada: 'Identificador do crédito de entrada',
+  transacao_saida: 'Identificador da saída subsequente',
+  valor: 'Valor da operação',
+  valor_anterior: 'Valor da operação anterior',
+  valor_aporte: 'Montante aportado no produto',
+  valor_atual: 'Valor da operação corrente',
+  valor_entrada: 'Valor do crédito recebido',
+  valor_medio_operacao: 'Ticket médio do crédito',
+  valor_remessa_a: 'Valor da primeira perna da cadeia',
+  valor_remessa_b: 'Valor da segunda perna da cadeia',
+  valor_saida: 'Valor da saída subsequente',
+  valor_total: 'Montante acumulado',
+  valor_total_dia: 'Montante acumulado no dia',
+  valor_total_enviado: 'Montante enviado pelo titular',
+  valor_total_fracionado: 'Montante na faixa fracionada',
+  valor_transacao: 'Valor da saída correlacionada ao acesso',
+  variacao_absoluta: 'Diferença em relação ao envio anterior',
 };
 
-function joinPt(parts: readonly string[]): string {
-  if (parts.length === 0) return 'as evidências necessárias à esteira';
-  if (parts.length === 1) return parts[0] ?? '';
-  const last = parts[parts.length - 1] ?? '';
-  return `${parts.slice(0, -1).join(', ')} e ${last}`;
-}
-
-function describeOutputGoal(columns: readonly string[]): string {
-  const known: string[] = [];
-  let unknown = 0;
-  for (const column of columns) {
-    const role = COLUMN_ROLES[column.toLowerCase()] ?? '';
-    if (role) known.push(role);
-    else unknown += 1;
-  }
-  if (unknown === 1) known.push('um atributo adicional da evidência (descubra o nome técnico no dicionário)');
-  if (unknown > 1) known.push('os demais atributos da evidência (descubra os nomes técnicos no dicionário)');
-  return `A sua consulta deve devolver evidências com: ${joinPt(known)}.`;
+function aliasContractLabel(column: string): string {
+  return ALIAS_LABELS[column] ?? ALIAS_LABELS[column.toLowerCase()] ?? 'Campo do relatório';
 }
 
 function renderExpectedOutput(s: InvestigationScenario): string {
   const columns = expectedColumns(s);
-  const aliases = columns.map((c) => `\`${c}\``).join(', ') || '`—`';
-  const ordenacao = s.ordenacao?.trim() || 'as colunas da evidência';
+  const itens =
+    columns.length > 0
+      ? columns
+          .map(
+            (column) =>
+              `<li>${escapeHtml(aliasContractLabel(column))}: ${formatInline(`\`${column}\``)}</li>`,
+          )
+          .join('')
+      : '<li>Consulte o dicionário de tabelas para montar a evidência.</li>';
+  const ordenacao = s.ordenacao?.trim();
+  const ordem = ordenacao
+    ? `<p class="mt-2 text-[12px] leading-relaxed text-slate-500">Priorização da fila (a esteira aceita o conjunto mesmo fora desta ordem): ${formatInline(`\`ORDER BY ${ordenacao}\``)}.</p>`
+    : '';
   return `
-    <p class="text-[11px] font-semibold uppercase tracking-wider text-sky-400">Objetivo de negócio da saída</p>
-    <p class="mt-1.5">${escapeHtml(describeOutputGoal(columns))}</p>
-    <p class="text-[12px] leading-relaxed text-slate-500">
-      Use o dicionário de tabelas para escolher as colunas reais. Os nomes técnicos abaixo só são necessários na hora de validar.
-    </p>
-    <details class="rounded-xl border border-slate-800 bg-slate-950/50">
-      <summary class="cursor-pointer select-none px-3 py-2.5 text-[12px] font-medium text-slate-200 hover:text-sky-200">
-        👁️ Revelar Nomes Técnicos e Aliases Esperados
-      </summary>
-      <div class="space-y-2 border-t border-slate-800 px-3 py-2.5 text-[12px] text-slate-400">
-        <p>A esteira compara o resultado nesta ordem: ${formatInline(aliases)}.</p>
-        <p>Ordene com ${formatInline(`\`ORDER BY ${ordenacao}\``)}.</p>
-      </div>
-    </details>`;
+    <p class="text-[11px] font-semibold uppercase tracking-wider text-sky-400">Contrato de Entrega do Relatório</p>
+    <p class="mt-1.5 text-[13px] leading-relaxed text-slate-300">Aliases esperados na query final:</p>
+    <ul class="mt-2 list-disc space-y-1 pl-5 text-[13px] text-slate-300">${itens}</ul>
+    ${ordem}`;
 }
 
 const tabButton = (id: string, label: string, selected: boolean): string => `
