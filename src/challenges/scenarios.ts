@@ -136,7 +136,7 @@ const CATALOG: readonly InvestigationScenario[] = [
       'se a conta é de pessoa física ou jurídica e qual renda ou faturamento foi declarado. Este primeiro recorte monta a ' +
       'ficha-mãe dos clientes no laboratório.',
     objetivo:
-      'Preciso da ficha-mãe da nossa base antes de qualquer alerta. Me traga todos os clientes cadastrados, quem é o titular, se a conta é de pessoa física ou jurídica e qual renda ou faturamento foi declarado.',
+      'Preciso da ficha-mãe da nossa base antes de qualquer alerta. Identifique cada conta, o titular, se é pessoa física ou jurídica e a renda ou o faturamento declarado.',
     colunasEsperadas: ['id_conta', 'titular', 'tipo_pessoa', 'renda_mensal_declarada'],
     ordenacao: 'id_conta',
     dicaTexto:
@@ -178,7 +178,7 @@ FROM contas;`,
       'Titulares com cargo público relevante exigem monitoramento mais rigoroso. O cadastro já traz o sinalizador de ' +
       'Pessoa Exposta Politicamente; a triagem inicial é listar essas contas para a mesa de PLD.',
     objetivo:
-      'Antes de olhar transação, quero o recorte de escrutínio reforçado: quem o cadastro marca como Pessoa Exposta Politicamente, com o titular e a ocupação declarada.',
+      'Antes de olhar transação, quero o recorte de escrutínio reforçado: identifique a conta, o titular e a ocupação declarada de quem o cadastro marca como Pessoa Exposta Politicamente.',
     colunasEsperadas: ['id_conta', 'titular', 'ocupacao'],
     ordenacao: 'id_conta',
     dicaTexto:
@@ -243,7 +243,7 @@ WHERE eh_pep = 1;`,
       'Valores individuais elevados concentram risco de comunicação e de revisão manual. A mesa pediu o mapa de PIX cujo ' +
       'montante unitário alcança ou supera R$ 50.000,00, priorizando os maiores valores.',
     objetivo:
-      'A mesa precisa das liquidações de alto valor para comunicação e revisão manual. Levante todo PIX de R$ 50.000,00 ou mais e coloque os maiores montantes no topo da fila.',
+      'A mesa precisa das liquidações de alto valor para comunicação e revisão manual. Levante todo PIX de R$ 50.000,00 ou mais, identificando a transação, a conta remetente, a conta favorecida, o valor e o momento da liquidação, com os maiores montantes no topo da fila.',
     colunasEsperadas: ['id_transacao', 'id_conta_origem', 'id_conta_destino', 'valor', 'data_hora'],
     ordenacao: 'valor DESC',
     dicaTexto:
@@ -290,7 +290,7 @@ ORDER BY valor DESC;`,
       'A mesa de PLD recortou a base PF de baixa renda para cruzar, depois, movimentação incompatível. O primeiro passo é ' +
       'isolar quem se declara pessoa física com renda mensal estritamente abaixo de R$ 3.000,00.',
     objetivo:
-      'Recorte a base de pessoa física com renda declarada estritamente abaixo de R$ 3.000,00. Quero titular, ocupação e a renda informada — esse perfil alimenta o cruzamento de incompatibilidade mais adiante.',
+      'A mesa de compliance precisa monitorar o perfil de clientes pessoa física de baixa renda para cruzar com movimentações suspeitas. Me traga um levantamento dos clientes que declararam renda estritamente abaixo de R$ 3.000,00, identificando a conta, o titular, a ocupação cadastrada e o valor da renda declarada.',
     colunasEsperadas: ['id_conta', 'titular', 'ocupacao', 'renda_mensal_declarada'],
     ordenacao: 'renda_mensal_declarada ASC',
     dicaTexto:
@@ -336,7 +336,7 @@ WHERE tipo_pessoa = 'PF'
       'Depois de ver operações isoladas, a esteira consolida o comportamento de cada pagador: quantas remessas partem da ' +
       'conta e qual o volume financeiro acumulado. Essa visão alimenta o ranking de exposição antes dos cortes de fracionamento.',
     objetivo:
-      'Preciso de uma visão consolidada por remetente para a nossa esteira de monitoramento. Me traga um levantamento mostrando cada conta que enviou recursos, quantas transferências ela realizou no período e a soma total transacionada.',
+      'Preciso de uma visão consolidada por remetente para a nossa esteira de monitoramento. Identifique cada conta que enviou recursos, quantas transferências realizou no período e a soma total transacionada.',
     colunasEsperadas: ['conta_origem', 'total_operacoes', 'valor_total'],
     ordenacao: 'total_operacoes DESC',
     dicaTexto:
@@ -384,7 +384,7 @@ GROUP BY id_conta_origem;`,
       'Além do volume financeiro, a esteira observa a amplitude da rede de cada pagador: para quantas contas favorecidas ' +
       'distintas cada remetente enviou recursos. Essa capilaridade ajuda a separar relações habituais de pulverização.',
     objetivo:
-      'Além do volume, quero a amplitude da rede. Para cada remetente, quantas contas favorecidas distintas receberam recursos — isso separa relação habitual de pulverização.',
+      'Além do volume, quero a amplitude da rede. Identifique cada remetente e quantas contas favorecidas distintas receberam recursos — isso separa relação habitual de pulverização.',
     colunasEsperadas: ['conta_origem', 'total_destinatarios_distintos'],
     ordenacao: 'total_destinatarios_distintos DESC',
     dicaTexto:
@@ -430,7 +430,7 @@ GROUP BY id_conta_origem;`,
       'com faturamento declarado de R$ 18 mil. Em poucos dias ela recebeu dezenas de milhares de reais de pessoas físicas ' +
       'recém-cadastradas, sempre em valores logo abaixo do limiar de comunicação de R$ 10.000,00.',
     objetivo:
-      'A Aurora (C025) está concentrando PIX logo abaixo de R$ 10 mil. Quero os remetentes que mandaram pelo menos duas operações entre R$ 9.700,00 e R$ 9.999,00 para essa conta, com o volume consolidado e os maiores montantes na frente da fila.',
+      'A Aurora (C025) está concentrando PIX logo abaixo de R$ 10 mil. Identifique os remetentes que mandaram pelo menos duas operações entre R$ 9.700,00 e R$ 9.999,00 para essa conta, com a quantidade de disparos e o volume consolidado, priorizando os maiores montantes.',
     colunasEsperadas: ['conta_origem', 'total_operacoes', 'valor_total'],
     ordenacao: 'valor_total DESC',
     dicaTexto: 'Filtre destino e faixa de valor no WHERE, agrupe por remetente e aplique a recorrência no HAVING.',
@@ -521,7 +521,7 @@ ORDER BY valor_total DESC;               -- maior exposição primeiro`,
       'quem pulverizou envios no período, independentemente do valor unitário ou do favorecido, para priorizar contas ' +
       'com comportamento repetitivo.',
     objetivo:
-      'A esteira precisa priorizar quem pulveriza envios. Me traga as contas que realizaram dez ou mais transferências no período, com a quantidade de disparos e o volume acumulado — independentemente do valor unitário ou do favorecido.',
+      'A esteira precisa priorizar quem pulveriza envios. Identifique as contas que realizaram dez ou mais transferências no período, com a quantidade de disparos e o volume acumulado — independentemente do valor unitário ou do favorecido.',
     colunasEsperadas: ['conta_origem', 'total_operacoes', 'valor_total'],
     ordenacao: 'total_operacoes DESC',
     dicaTexto:
@@ -575,7 +575,7 @@ HAVING COUNT(*) >= 10;`,
       'contas favorecidas cujo crédito acumulado ultrapassa R$ 100.000,00, com o ticket médio de cada crédito para ' +
       'distinguir poucos aportes grandes de muitos recebimentos menores.',
     objetivo:
-      'Inverta o olhar para o favorecido. Quero as contas que concentraram mais de R$ 100.000,00 em créditos no período, com o montante recebido e o ticket médio de cada entrada.',
+      'Inverta o olhar para o favorecido. Identifique as contas que concentraram mais de R$ 100.000,00 em créditos no período, com o montante recebido e o ticket médio de cada entrada.',
     colunasEsperadas: ['conta_destino', 'total_recebido', 'valor_medio_operacao'],
     ordenacao: 'total_recebido DESC',
     dicaTexto:
@@ -628,7 +628,7 @@ HAVING SUM(valor) > 100000;`,
       'Diferente do Caso 1.1, aqui não há uma receptora única: o padrão é o próprio pagador reiterar valores logo abaixo ' +
       'de R$ 10.000,00 para quaisquer favorecidos. O recorte pede quem sustentou essa prática no período.',
     objetivo:
-      'Preciso do padrão de fracionamento sistêmico, não do evento isolado. Levante remetentes que emitiram três ou mais PIX entre R$ 8.000,00 e R$ 9.999,00, para qualquer favorecido, com a contagem e o volume dessa faixa.',
+      'Preciso do padrão de fracionamento sistêmico, não do evento isolado. Identifique remetentes que emitiram três ou mais PIX entre R$ 8.000,00 e R$ 9.999,00, para qualquer favorecido, com a quantidade de operações nessa faixa e o volume correspondente.',
     colunasEsperadas: ['conta_origem', 'total_operacoes_fracionadas', 'valor_total_fracionado'],
     ordenacao: 'total_operacoes_fracionadas DESC',
     dicaTexto:
@@ -683,7 +683,7 @@ HAVING COUNT(*) >= 3;`,
       'Alertas isolados de frequência ou de montante geram ruído. A matriz pede quem acumula os dois sinais ao mesmo ' +
       'tempo: rotina mínima de envios e relevância financeira, para a fila de revisão priorizar exposição combinada.',
     objetivo:
-      'Monte a matriz de criticidade: frequência e volume ao mesmo tempo. Quero quem fez pelo menos cinco envios e acumulou R$ 40.000,00 ou mais — quem só tem um dos dois critérios sai da fila.',
+      'Monte a matriz de criticidade: frequência e volume ao mesmo tempo. Identifique quem fez pelo menos cinco envios e acumulou R$ 40.000,00 ou mais, trazendo a conta remetente, a quantidade de operações e o montante — quem só tem um dos dois critérios sai da fila.',
     colunasEsperadas: ['conta_origem', 'total_operacoes', 'valor_total'],
     ordenacao: 'valor_total DESC',
     dicaTexto:
@@ -738,7 +738,7 @@ HAVING COUNT(*) >= 5
       'A Resolução BCB 142/2021 trata o horário noturno como faixa de maior risco de coação, furto de dispositivo e ' +
       'limites reduzidos. A mesa pediu originações de valor relevante liquidadas entre o fim da noite e o início da manhã.',
     objetivo:
-      'O recorte noturno é prioridade de segurança. Me traga os PIX de R$ 1.000,00 ou mais liquidados entre 20h e 6h — faixa sujeita a limite regulatório e a risco de coação.',
+      'O recorte noturno é prioridade de segurança. Identifique cada PIX de R$ 1.000,00 ou mais liquidado entre 20h e 6h, com a transação, a conta remetente, a conta favorecida, o valor e o momento da liquidação.',
     colunasEsperadas: ['id_transacao', 'id_conta_origem', 'id_conta_destino', 'valor', 'data_hora'],
     ordenacao: 'data_hora DESC',
     dicaTexto:
@@ -788,7 +788,7 @@ WHERE valor >= 1000
       'Pessoas jurídicas raramente liquidam valores elevados no sábado ou no domingo fora de plantão operacional. ' +
       'Envios relevantes nesses dias fogem do ciclo comercial habitual e pedem diligência de atipicidade.',
     objetivo:
-      'Quero atividade empresarial fora do ciclo comercial. Levante saídas de R$ 15.000,00 ou mais feitas por pessoa jurídica no sábado ou no domingo, com a razão social, o valor e o momento da liquidação.',
+      'Quero atividade empresarial fora do ciclo comercial. Identifique cada saída de R$ 15.000,00 ou mais feita por pessoa jurídica no sábado ou no domingo, com o identificador da transação, a razão social, o valor e o momento da liquidação.',
     colunasEsperadas: ['id_transacao', 'razao_social', 'valor', 'data_hora'],
     ordenacao: 'data_hora ASC',
     dicaTexto:
@@ -841,7 +841,7 @@ WHERE c.tipo_pessoa = 'PJ'
       'Diferente do alerta de um único PIX desproporcional, aqui a mesa soma tudo o que a pessoa física enviou no período ' +
       'e compara com a renda mensal declarada. O recorte captura quem pulveriza valores menores que, juntos, estouram o perfil.',
     objetivo:
-      'Diferente do PIX isolado, aqui somamos tudo o que a pessoa física enviou. Me traga quem acumulou envios iguais ou superiores a três vezes a renda mensal declarada — o perfil cadastral não sustenta essa movimentação.',
+      'Diferente do PIX isolado, aqui somamos tudo o que a pessoa física enviou. Identifique a conta e o titular que acumularam envios iguais ou superiores a três vezes a renda mensal declarada, mostrando a renda informada e o total enviado.',
     colunasEsperadas: ['id_conta', 'titular', 'renda_mensal_declarada', 'total_enviado'],
     ordenacao: 'total_enviado DESC',
     dicaTexto:
@@ -897,7 +897,7 @@ HAVING SUM(t.valor) >= 3 * c.renda_mensal_declarada;`,
       'Rajadas no mesmo dia civil sugerem automação, lote de laranjas ou tentativa de esgotar limites. A esteira pede ' +
       'quem originou quatro ou mais liquidações na mesma data, com a contagem e o volume daquele dia.',
     objetivo:
-      'Estamos vendo rajada no mesmo dia civil. Detecte contas que dispararam quatro ou mais transferências numa única data, com a contagem e o volume daquele dia.',
+      'Estamos vendo rajada no mesmo dia civil. Identifique a conta remetente, a data civil, a quantidade de disparos e o volume daquele dia quando houver quatro ou mais transferências na mesma data.',
     colunasEsperadas: ['conta_origem', 'data_operacao', 'total_operacoes', 'valor_total_dia'],
     ordenacao: 'total_operacoes DESC, valor_total_dia DESC',
     dicaTexto:
@@ -949,7 +949,7 @@ HAVING COUNT(*) >= 4;`,
       'Account takeover costuma preceder o saque: sessão marcada como não confiável ou suspeita e, em seguida, a ' +
       'originação. A mesa pede o cruzamento em janela curta (até quinze minutos) para não misturar logins antigos com o PIX.',
     objetivo:
-      'Account takeover costuma preceder o saque. Cruze a originação com o acesso digital: quero saídas feitas em até quinze minutos após um login classificado como não confiável ou suspeito, com a cidade, o status do dispositivo e o valor movimentado.',
+      'Account takeover costuma preceder o saque. Cruze a originação com o acesso digital: identifique a conta, a cidade do login, o status do dispositivo, o valor da saída e o momento da liquidação quando o envio ocorrer em até quinze minutos após um acesso classificado como não confiável ou suspeito.',
     colunasEsperadas: ['id_conta', 'geolocalizacao_cidade', 'status_dispositivo', 'valor', 'data_hora'],
     ordenacao: 'data_hora DESC',
     dicaTexto:
@@ -1006,7 +1006,7 @@ WHERE a.status_dispositivo != 'CONFIÁVEL';`,
       'pagamentos e pessoas físicas no Rio de Janeiro. O padrão sugere automação para pulverizar recursos em cadeia ' +
       '(layering) sem propósito comercial aparente.',
     objetivo:
-      'Isolar rajada incompatível com uso humano. Me traga as liquidações em que o intervalo até o envio imediatamente anterior da mesma conta foi de no máximo 60 segundos.',
+      'Isolar rajada incompatível com uso humano. Identifique a transação, a conta remetente, a conta favorecida, o valor, o momento da liquidação e o intervalo em segundos até o envio imediatamente anterior da mesma conta, quando esse intervalo for de no máximo 60 segundos.',
     colunasEsperadas: ['id_transacao', 'conta_origem', 'conta_destino', 'valor', 'data_hora', 'intervalo_segundos'],
     ordenacao: 'conta_origem ASC, data_hora ASC',
     dicaTexto:
@@ -1096,7 +1096,7 @@ WHERE intervalo_segundos <= 60;      -- janela de alta frequência (inclusiva)`,
       'por rotina comercial. A área de PLD quer a esteira listando originações de valor relevante nesse fuso, inclusive ' +
       'a advogada C005 (perfil estritamente diurno) que passou a enviar PIX elevados a uma intermediadora (C032) após 23h30.',
     objetivo:
-      'A Resolução do PIX noturno existe por causa de coação e sequestro relâmpago. Levante originações de R$ 5.000,00 ou mais entre 20h e 5h59, priorizando os maiores valores e, em empate, a ordem cronológica.',
+      'A Resolução do PIX noturno existe por causa de coação e sequestro relâmpago. Identifique a transação, a conta remetente, a conta favorecida, o valor, o momento da liquidação e a hora civil de originações de R$ 5.000,00 ou mais entre 20h e 5h59, priorizando os maiores valores e, em empate, a ordem cronológica.',
     colunasEsperadas: ['id_transacao', 'conta_origem', 'conta_destino', 'valor', 'data_hora', 'hora_transacao'],
     ordenacao: 'valor DESC, data_hora ASC',
     dicaTexto:
@@ -1184,7 +1184,7 @@ ORDER BY valor DESC, data_hora ASC;`,
       'Comunicação interna aponta que clientes de baixa renda declarada (estudante, aposentada e MEI) passaram a ' +
       'movimentar centenas de milhares de reais em agosto/2026, em operações com uma holding recém-constituída.',
     objetivo:
-      'Quero desproporção grave em um único disparo. Levante envios em que o valor da transferência equivale a 30 vezes ou mais a renda mensal declarada de quem originou — e mostre o grau dessa distorção.',
+      'Quero desproporção grave em um único disparo. Identifique a transação, a conta remetente, o titular, a renda mensal declarada, o valor enviado e o grau de distorção quando o disparo equivaler a 30 vezes ou mais a renda de quem originou.',
     colunasEsperadas: ['id_transacao', 'conta_origem', 'titular', 'renda_mensal', 'valor', 'fator_incompatibilidade'],
     ordenacao: 'fator_incompatibilidade DESC',
     dicaTexto: 'Faça JOIN da transação com a conta pela ORIGEM e compare o valor com um múltiplo da renda declarada.',
@@ -1239,7 +1239,7 @@ WHERE c.renda_mensal_declarada > 0             -- protege contra divisão por ze
       'A mesa precisa ver, na mesma ficha, o PIX de montante elevado e o perfil de quem envia. Sem o titular e a renda ' +
       'ou faturamento declarados, o valor isolado não sustenta a avaliação de incompatibilidade inicial.',
     objetivo:
-      'O valor isolado não fecha o dossiê. Me traga os PIX de R$ 30.000,00 ou mais já enriquecidos com o nome de quem envia e a renda ou o faturamento declarado no cadastro.',
+      'O valor isolado não fecha o dossiê. Identifique cada PIX de R$ 30.000,00 ou mais com o identificador da transação, o nome de quem envia, a renda ou o faturamento declarado e o momento da liquidação.',
     colunasEsperadas: ['id_transacao', 'titular_remetente', 'renda_mensal_declarada', 'valor', 'data_hora'],
     ordenacao: 'valor DESC',
     dicaTexto:
@@ -1294,7 +1294,7 @@ WHERE t.valor >= 30000;`,
       'Para escrutínio de pessoa jurídica, a esteira precisa saber quem assina pela empresa. O recorte pede sócios com ' +
       'poderes de administração formalmente designados no quadro societário, com razão social e participação detida.',
     objetivo:
-      'Para escrutínio de pessoa jurídica, preciso saber quem assina pela empresa. Liste as PJ com sócio formalmente designado como administrador: razão social, nome de quem administra e a fatia do capital detida.',
+      'Para escrutínio de pessoa jurídica, preciso saber quem assina pela empresa. Liste as PJ com sócio formalmente designado como administrador, trazendo a razão social, o nome de quem administra e a fatia do capital detida.',
     colunasEsperadas: ['razao_social', 'nome_administrador', 'percentual_participacao'],
     ordenacao: 'razao_social ASC',
     dicaTexto:
@@ -1346,7 +1346,7 @@ WHERE c.tipo_pessoa = 'PJ'
       'Contas abertas sem nenhum envio no período merecem revisão de uso e de risco de dormência. O recorte pede o ' +
       'cadastro completo de quem não originou transferência, ainda que possa ter recebido créditos.',
     objetivo:
-      'Conta aberta sem nenhum envio no período merece revisão de dormência. Me traga quem não originou transferência — ainda que possa ter recebido crédito — com titular e tipo de pessoa.',
+      'Conta aberta sem nenhum envio no período merece revisão de dormência. Identifique a conta, o titular e o tipo de pessoa de quem não originou transferência — ainda que possa ter recebido crédito.',
     colunasEsperadas: ['id_conta', 'titular', 'tipo_pessoa'],
     ordenacao: 'id_conta ASC',
     dicaTexto:
@@ -1393,7 +1393,7 @@ WHERE t.id_transacao IS NULL;`,
       'A triagem cadastral de PEP (Nível 0) lista quem está marcado no cadastro. Aqui a mesa pede o comportamento ' +
       'financeiro desses titulares: quantos envios e qual o montante acumulado, com a ocupação declarada.',
     objetivo:
-      'A triagem cadastral de PEP já existe; agora quero o comportamento financeiro. Consolide, por titular classificado como Pessoa Exposta Politicamente, quantos envios fez, quanto movimentou e qual ocupação declara.',
+      'A triagem cadastral de PEP já existe; agora quero o comportamento financeiro. Consolide, por titular classificado como Pessoa Exposta Politicamente, a ocupação declarada, quantos envios fez e o montante enviado.',
     colunasEsperadas: ['titular_pep', 'ocupacao', 'total_operacoes', 'valor_total_enviado'],
     ordenacao: 'valor_total_enviado DESC',
     dicaTexto:
@@ -1448,7 +1448,7 @@ GROUP BY c.titular, c.ocupacao;`,
       'Cada PIX do laboratório liquida entre contas da própria base. A mesa quer a ficha nominal dos dois polos — quem ' +
       'envia e quem recebe — para seguir o dinheiro sem ficar só nos identificadores de conta.',
     objetivo:
-      'Cada liquidação deste laboratório fecha entre correntistas nossos. Quero a ficha nominal dos dois polos: quem envia, quem recebe e quanto foi transferido — sem ficar só no código da conta.',
+      'Cada liquidação deste laboratório fecha entre correntistas nossos. Identifique a transação, o nome de quem envia, o nome de quem recebe e o valor transferido — sem ficar só no código da conta.',
     colunasEsperadas: ['id_transacao', 'titular_remetente', 'titular_destinatario', 'valor'],
     ordenacao: 'valor DESC',
     dicaTexto:
@@ -1502,7 +1502,7 @@ JOIN contas des ON t.id_conta_destino = des.id_conta;`,
       'mesmas contas. Para priorizar a fila, a gestão de PLD pediu uma visão desduplicada: uma única linha por conta de ' +
       'origem, mostrando o maior PIX enviado no dia e o volume total que a conta movimentou.',
     objetivo:
-      'No dia 18/08/2026 a fila explodiu com alertas repetidos. Preciso de uma visão desduplicada: uma linha por conta, com o maior PIX daquele dia (em empate de valor, vale o mais antigo), quantos envios ela fez e o volume total do dia.',
+      'No dia 18/08/2026 a fila explodiu com alertas repetidos. Preciso de uma visão desduplicada: identifique a conta remetente, a transação do maior PIX daquele dia (em empate de valor, vale o mais antigo), o valor de pico, o momento da liquidação, quantos envios a conta fez e o volume total do dia.',
     colunasEsperadas: ['conta_origem', 'id_transacao', 'maior_pix', 'data_hora', 'qtd_no_dia', 'total_no_dia'],
     ordenacao: 'maior_pix DESC, conta_origem',
     dicaTexto:
@@ -1584,7 +1584,7 @@ WHERE posicao = 1;                      -- desduplicação: só o pico de cada c
       'A mesa precisa reconstruir a ordem dos envios de cada titular: qual foi o primeiro PIX, o segundo, o terceiro. ' +
       'Essa numeração cronológica é a base para cadência, salto de valor e acúmulo patrimonial nos recortes seguintes.',
     objetivo:
-      'A mesa precisa reconstruir a linha do tempo de cada titular. Numere os envios na ordem em que aconteceram, começando em 1 na primeira operação histórica de cada conta.',
+      'A mesa precisa reconstruir a linha do tempo de cada titular. Identifique a transação, a conta remetente, o momento, o valor e o número de ordem de cada envio, começando em 1 na primeira operação histórica de cada conta.',
     colunasEsperadas: ['id_transacao', 'id_conta_origem', 'data_hora', 'valor', 'sequencial_operacao'],
     ordenacao: 'id_conta_origem ASC, sequencial_operacao ASC',
     dicaTexto:
@@ -1639,7 +1639,7 @@ ORDER BY id_conta_origem ASC, sequencial_operacao ASC;`,
       'Para fila de revisão e contato com o titular, a esteira precisa da última originação de cada conta — não do maior ' +
       'valor, e sim do envio mais recente no relógio. Empates de horário exigem desempate estável pelo identificador.',
     objetivo:
-      'Para a fila de revisão, quero só a última movimentação ativa de cada pagador — o envio mais recente no relógio, não o de maior valor.',
+      'Para a fila de revisão, quero só a última movimentação ativa de cada pagador — o envio mais recente no relógio, não o de maior valor. Identifique a transação, a conta remetente, a conta favorecida, o valor e o momento da liquidação.',
     colunasEsperadas: ['id_transacao', 'id_conta_origem', 'id_conta_destino', 'valor', 'data_hora'],
     ordenacao: 'data_hora DESC',
     dicaTexto:
@@ -1709,7 +1709,7 @@ WHERE ranking_recente = 1;`,
       'A cadência entre envios sucessivos distingue uso humano de automação. A mesa pede, ao lado de cada PIX, o horário ' +
       'do disparo anterior da mesma conta e quantos segundos separam os dois — o primeiro envio de cada titular fica sem antecessor.',
     objetivo:
-      'A cadência entre disparos distingue uso humano de automação. Ao lado de cada envio, mostre o horário do disparo anterior da mesma conta e quantos segundos separam os dois — o primeiro de cada titular fica sem antecessor.',
+      'A cadência entre disparos distingue uso humano de automação. Identifique a transação, a conta remetente, o momento atual, o horário do disparo anterior da mesma conta e quantos segundos separam os dois — o primeiro de cada titular fica sem antecessor.',
     colunasEsperadas: ['id_transacao', 'id_conta_origem', 'data_hora', 'data_hora_anterior', 'intervalo_segundos'],
     ordenacao: 'id_conta_origem ASC, data_hora ASC',
     dicaTexto:
@@ -1770,7 +1770,7 @@ FROM transacoes_pix;`,
       'O volume acumulado até cada PIX mostra quando a conta sai do perfil e entra em exposição relevante. A esteira ' +
       'pede a curva crescente por titular: cada linha traz o valor da operação e o total enviado até aquele momento.',
     objetivo:
-      'Quero a curva de exposição de cada cliente. Para cada envio, mostre quanto aquela conta já tinha movimentado até aquele instante — incluindo a operação corrente.',
+      'Quero a curva de exposição de cada cliente. Identifique a transação, a conta remetente, o momento, o valor do envio e quanto aquela conta já tinha movimentado até aquele instante — incluindo a operação corrente.',
     colunasEsperadas: ['id_transacao', 'id_conta_origem', 'data_hora', 'valor', 'montante_acumulado'],
     ordenacao: 'id_conta_origem ASC, data_hora ASC',
     dicaTexto:
@@ -1825,7 +1825,7 @@ FROM transacoes_pix;`,
       'Saltos de valor entre PIX consecutivos da mesma conta indicam aquecimento, teste de canal ou mudança de propósito. ' +
       'A mesa pede a diferença entre o envio atual e o anterior, descartando a primeira operação — que não tem base de comparação.',
     objetivo:
-      'Saltos de valor entre PIX consecutivos indicam aquecimento de canal. Compare cada envio com o anterior da mesma conta, traga a diferença (pode ser negativa) e descarte a primeira operação — ela não tem base de comparação.',
+      'Saltos de valor entre PIX consecutivos indicam aquecimento de canal. Identifique a transação e a conta remetente, compare o valor atual com o valor anterior da mesma conta, traga a diferença absoluta (pode ser negativa) e descarte a primeira operação — ela não tem base de comparação.',
     colunasEsperadas: ['id_transacao', 'id_conta_origem', 'valor_anterior', 'valor_atual', 'variacao_absoluta'],
     ordenacao: 'variacao_absoluta DESC',
     dicaTexto:
@@ -1895,7 +1895,7 @@ WHERE valor_anterior IS NOT NULL;`,
       'mercado) para simular uso normal e, poucos dias depois, passa a movimentar valores dezenas de vezes maiores. A área de ' +
       'PLD quer uma regra que combine histórico curto, salto em relação ao próprio histórico e proximidade temporal.',
     objetivo:
-      'Redes de laranja aquecem a conta com um ou dois PIX irrisórios e, em seguida, saltam o valor. Encontre originações com histórico curto (um a três envios anteriores), valor atual pelo menos dez vezes a média desse histórico e também de R$ 5.000,00 ou mais, ocorridas em até dez dias depois do disparo anterior.',
+      'Redes de laranja aquecem a conta com um ou dois PIX irrisórios e, em seguida, saltam o valor. Identifique a transação, a conta remetente, o titular, o valor, o momento, o intervalo em horas até o disparo anterior, a média histórica e o salto, nas originações com histórico curto (um a três envios anteriores), valor atual pelo menos dez vezes essa média e também de R$ 5.000,00 ou mais, em até dez dias depois do disparo anterior.',
     colunasEsperadas: [
       'id_transacao',
       'conta_origem',
@@ -2013,7 +2013,7 @@ WHERE qtd_historico BETWEEN 1 AND 3        -- histórico curto: conta recém-"aq
       'rajadas de três PIX consecutivos da mesma origem. Cada transferência isolada pode parecer rotineira; a soma móvel ' +
       'das últimas três originações revela o acúmulo. A esteira deve carimbar essa métrica linha a linha e só então aplicar o corte.',
     objetivo:
-      'Cada PIX isolado pode parecer rotina; a soma das últimas três originações da mesma conta revela estruturação. Me traga os pontos em que esse acúmulo móvel chega a R$ 25.000,00 ou mais, priorizando os maiores volumes.',
+      'Cada PIX isolado pode parecer rotina; a soma das últimas três originações da mesma conta revela estruturação. Identifique a transação, a conta remetente, o titular, o valor unitário, o momento e o acúmulo móvel quando essa soma chegar a R$ 25.000,00 ou mais, priorizando os maiores volumes.',
     colunasEsperadas: ['id_transacao', 'conta_origem', 'titular', 'valor', 'data_hora', 'acumulado_movel_3'],
     ordenacao: 'acumulado_movel_3 DESC, id_transacao',
     dicaTexto:
@@ -2112,7 +2112,7 @@ ORDER BY acumulado_movel_3 DESC;`,
       'deputado estadual (C013), cada PIX isolado abaixo de R$ 10 mil. A esteira deve cruzar `eh_pep` com a soma móvel das ' +
       'últimas três operações e só então aplicar o corte de escrutínio.',
     objetivo:
-      'Titular com cargo público justifica alerta mais cedo. No escrutínio reforçado de PEP, quero originações em que a soma móvel das últimas três operações da mesma conta supere R$ 20.000,00, priorizando os maiores acúmulos.',
+      'Titular com cargo público justifica alerta mais cedo. Identifique a transação, a conta remetente, o titular, o cargo público, o valor, o momento e o acúmulo móvel das últimas três originações quando essa soma superar R$ 20.000,00, priorizando os maiores acúmulos.',
     colunasEsperadas: [
       'id_transacao',
       'conta_origem',
@@ -2223,7 +2223,7 @@ ORDER BY acumulado_movel_pep DESC;`,
       'A mesa pediu operações em que a receptora é PJ, o sócio detém fatia relevante do capital e esse sócio está ' +
       'classificado no cadastro como Pessoa Exposta Politicamente.',
     objetivo:
-      'Crédito de grande porte em pessoa jurídica só fecha o dossiê com o beneficiário efetivo. Localize entradas de R$ 50.000,00 ou mais em PJ cujo quadro tenha sócio com fatia de 25% ou mais e classificação de Pessoa Exposta Politicamente no cadastro.',
+      'Crédito de grande porte em pessoa jurídica só fecha o dossiê com o beneficiário efetivo. Identifique a transação, a razão social da receptora, o nome do sócio, a fatia do capital e o valor do crédito nas entradas de R$ 50.000,00 ou mais em PJ cujo quadro tenha sócio com 25% ou mais e classificação de Pessoa Exposta Politicamente no cadastro.',
     colunasEsperadas: ['id_transacao', 'razao_social', 'nome_socio', 'percentual_participacao', 'valor'],
     ordenacao: 'valor DESC',
     dicaTexto:
@@ -2285,7 +2285,7 @@ WHERE c_emp.tipo_pessoa = 'PJ'
       'Contas de passagem recebem um crédito relevante e esvaziam o saldo em minutos, no mesmo ciclo operacional. O ' +
       'dwell time crítico da esteira é de até dez minutos entre a entrada e a saída pela mesma conta intermediária.',
     objetivo:
-      'Conta de passagem recebe e esvazia no mesmo ciclo. Mapeie quem recebeu R$ 20.000,00 ou mais e, em até dez minutos, no mesmo dia, originou uma saída — o trânsito rápido que a esteira trata como layering.',
+      'Conta de passagem recebe e esvazia no mesmo ciclo. Identifique a conta intermediária, a transação de entrada, a transação de saída, o valor recebido, o valor reenviado e o intervalo em segundos quando o crédito for de R$ 20.000,00 ou mais e a saída ocorrer em até dez minutos, no mesmo dia.',
     colunasEsperadas: [
       'conta_passagem',
       'transacao_entrada',
@@ -2353,7 +2353,7 @@ WHERE t_in.valor >= 20000;`,
       'Dois logins em cidades diferentes em menos de uma hora não se explicam por deslocamento físico habitual. A esteira ' +
       'compara sessões consecutivas da mesma conta e isola a troca de cidade nesse intervalo.',
     objetivo:
-      'Dois logins em cidades diferentes em menos de uma hora não se explicam por deslocamento físico. Detecte sessões consecutivas da mesma conta com troca de cidade nesse intervalo — incompatibilidade clássica de telemetria.',
+      'Dois logins em cidades diferentes em menos de uma hora não se explicam por deslocamento físico. Identifique a conta, a cidade da sessão anterior, a cidade da sessão atual e o intervalo em segundos nas sessões consecutivas com troca de cidade nesse recorte.',
     colunasEsperadas: ['id_conta', 'cidade_origem', 'cidade_destino', 'intervalo_segundos'],
     ordenacao: 'intervalo_segundos ASC',
     dicaTexto:
@@ -2429,7 +2429,7 @@ WHERE cidade_anterior IS NOT NULL
       'Triangulação societária: A envia a B e B repassa a C um valor próximo, enquanto o mesmo CPF figura no quadro de A e ' +
       'no de C. A margem de 10% absorve tarifas e arredondamentos sem perder o vínculo econômico.',
     objetivo:
-      'Quero triangulação com vínculo societário: A envia a B, B repassa a C um valor próximo (aceite variação de até 10%) e o mesmo documento figura no quadro de A e no de C. Sem loop de A para A.',
+      'Quero triangulação com vínculo societário: identifique a conta de origem, a intermediária, a destinatária, o valor da primeira perna e o valor da segunda quando A envia a B, B repassa a C um montante próximo (variação de até 10%) e o mesmo documento figura no quadro de A e no de C, sem loop de A para A.',
     colunasEsperadas: ['conta_origem', 'conta_intermediaria', 'conta_destino', 'valor_remessa_a', 'valor_remessa_b'],
     ordenacao: 't_ab.data_hora ASC',
     dicaTexto:
@@ -2493,7 +2493,7 @@ WHERE s_a.cpf_socio = s_c.cpf_socio
       'O relatório executivo da comunicação reúne PJ com volume enviado acima do piso interno e com administrador ' +
       'identificado no quadro. A ficha traz razão social, faturamento declarado, montante, ticket médio e quantidade de envios.',
     objetivo:
-      'Preciso do relatório executivo para comunicação. Filtre empresas que enviaram mais de R$ 150.000,00 no período e já têm administrador formal no quadro: razão social, faturamento declarado, montante enviado, ticket médio e quantidade de operações.',
+      'Preciso do relatório executivo para comunicação. Filtre empresas que enviaram mais de R$ 150.000,00 no período e já têm administrador formal no quadro, trazendo a razão social, o faturamento declarado, o montante movimentado, o ticket médio e a quantidade de operações.',
     colunasEsperadas: ['razao_social', 'renda_mensal_declarada', 'total_movimentado', 'ticket_medio', 'total_operacoes'],
     ordenacao: 'total_movimentado DESC',
     dicaTexto:
@@ -2581,7 +2581,7 @@ WHERE c.tipo_pessoa = 'PJ';`,
       'o controlador. Cruze o QSA (`socios_empresas`) da conta investigada e isole quem de fato manda na empresa: participação ' +
       'relevante e poderes de administrador.',
     objetivo:
-      'A Aurora (C025) é a receptora sob alerta. Quero o beneficiário final: sócios com 25% ou mais do capital e poderes de administração, priorizando as maiores fatias — os laranjas residuais ficam de fora deste recorte.',
+      'A Aurora (C025) é a receptora sob alerta. Identifique o nome do sócio, o documento, a fatia do capital e o CNPJ da empresa para o beneficiário final: participação de 25% ou mais e poderes de administração, priorizando as maiores fatias — os laranjas residuais ficam de fora deste recorte.',
     colunasEsperadas: ['nome_socio', 'cpf_socio', 'percentual_participacao', 'cnpj_empresa'],
     ordenacao: 'percentual_participacao DESC, nome_socio',
     dicaTexto:
@@ -2641,7 +2641,7 @@ ORDER BY s.percentual_participacao DESC;`,
       'pede monitoramento de transações e de meios de acesso; a Carta Circular 4.001 cita uso atípico de canais e de dispositivos ' +
       'como indício de fraude / account takeover.',
     objetivo:
-      'Há relato de sessão autenticada em cidade incompatível com o cadastro minutos antes de um saque alto. Identifique logins bem-sucedidos nessa divergência geográfica, imediatamente antes (até quinze minutos) de uma saída de R$ 10.000,00 ou mais, priorizando os maiores valores.',
+      'Há relato de sessão autenticada em cidade incompatível com o cadastro minutos antes de um saque alto. Identifique a conta, o dispositivo, a cidade do login e o valor da saída nos acessos bem-sucedidos nessa divergência geográfica, imediatamente antes (até quinze minutos) de uma originação de R$ 10.000,00 ou mais, priorizando os maiores valores.',
     colunasEsperadas: ['id_conta', 'device_id', 'geolocalizacao_cidade', 'valor_transacao'],
     ordenacao: 'valor_transacao DESC, id_conta',
     dicaTexto:
@@ -2709,7 +2709,7 @@ ORDER BY t.valor DESC;`,
       'integralizações incompatíveis com o perfil. A esteira deve achar lances de consórcio liquidados em `ESPECIE` para obtenção ' +
       'de bem contemplado (`status_contemplacao = 1`).',
     objetivo:
-      'Consórcio contemplado liquidado em espécie é veículo clássico de conversão de numerário. Localize esses lances e priorize os maiores aportes.',
+      'Consórcio contemplado liquidado em espécie é veículo clássico de conversão de numerário. Identifique a conta, o tipo de produto, o valor do aporte e a forma de liquidação desses lances, priorizando os maiores montantes.',
     colunasEsperadas: ['id_conta', 'tipo_produto', 'valor_aporte', 'forma_liquidacao'],
     ordenacao: 'valor_aporte DESC, id_conta',
     dicaTexto:

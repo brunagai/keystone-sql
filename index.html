@@ -19,47 +19,34 @@
   </head>
   <body class="h-screen max-w-full overflow-x-hidden overflow-hidden bg-slate-950 text-[14px] text-slate-200 antialiased max-md:h-auto max-md:min-h-full max-md:overflow-y-auto">
     <div id="app" class="flex h-screen max-w-full flex-col overflow-x-hidden overflow-hidden max-md:block max-md:h-auto max-md:min-h-full max-md:overflow-x-hidden max-md:overflow-y-visible">
-      <header id="app-header" class="flex h-auto w-full max-w-full shrink-0 flex-wrap items-center justify-between gap-2 overflow-x-hidden border-b border-slate-800/80 bg-zinc-950/95 px-3 py-2 sm:px-4">
-        <div class="flex shrink-0 items-center gap-2.5">
+      <header id="app-header" class="flex h-14 w-full max-w-full shrink-0 items-center justify-between gap-3 overflow-x-hidden border-b border-slate-800 bg-slate-950 px-4">
+        <div id="navbar-brand" class="flex min-w-0 shrink-0 items-center gap-2.5">
           <span class="rounded-md bg-emerald-500/15 px-1.5 py-0.5 font-mono text-[11px] font-bold tracking-wide text-emerald-400">AML</span>
-          <h1 class="text-[15px] font-semibold text-slate-50">AML SQL Lab</h1>
+          <h1 class="hidden text-[15px] font-semibold text-slate-50 sm:block">AML SQL Lab</h1>
           <div id="wasm-status" role="status" aria-live="polite" class="flex items-center gap-1.5"></div>
         </div>
 
-        <div id="case-picker" class="flex w-full min-w-0 max-w-full flex-1 flex-col gap-1.5 rounded-xl border border-slate-800 bg-slate-900/80 p-1.5 sm:max-w-[320px] lg:max-w-[380px]">
-          <div id="trail-bands" role="tablist" aria-label="Faixa da trilha" class="flex min-w-0 max-w-full flex-wrap items-center gap-1">
-            <button type="button" data-trail-band="todos" class="rounded-full px-2 py-1 text-xs font-medium text-white bg-sky-600 max-xl:px-2 xl:px-3">Todos</button>
-            <button type="button" data-trail-band="iniciante" class="rounded-full px-2 py-1 text-xs font-medium text-slate-400 hover:bg-slate-800 hover:text-slate-100 xl:px-3">Iniciante</button>
-            <button type="button" data-trail-band="intermediario" class="rounded-full px-2 py-1 text-xs font-medium text-slate-400 hover:bg-slate-800 hover:text-slate-100 xl:px-3">Intermediário</button>
-            <button type="button" data-trail-band="avancado" class="rounded-full px-2 py-1 text-xs font-medium text-slate-400 hover:bg-slate-800 hover:text-slate-100 xl:px-3">Avançado</button>
-          </div>
-          <div id="scenario-nav" class="flex w-full min-w-0 max-w-full items-center gap-1.5">
-            <button type="button" id="btn-prev-scenario" title="Desafio anterior" aria-label="Desafio anterior"
-              class="shrink-0 rounded-lg bg-slate-800 p-2 text-xs font-medium text-slate-300 hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-30">
-              ←
-            </button>
-            <div class="min-w-0 flex-1">
-              <label for="scenario-select" class="mb-0.5 block px-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                Nível &amp; Caso
-              </label>
-              <select id="scenario-select"
-                class="min-w-0 w-full max-w-full truncate rounded-lg border border-slate-800 bg-slate-950 px-2 py-1.5 text-xs text-slate-200 outline-none focus:border-indigo-500"></select>
-            </div>
-            <button type="button" id="btn-next-scenario" title="Próximo desafio" aria-label="Próximo desafio"
-              class="shrink-0 rounded-lg bg-slate-800 p-2 text-xs font-medium text-slate-300 hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-30">
-              →
-            </button>
-          </div>
+        <div id="scenario-nav" class="flex min-w-0 w-[380px] max-w-full flex-1 items-center justify-center sm:w-[460px]">
+          <button type="button" id="btn-prev-scenario" title="Desafio anterior" aria-label="Desafio anterior"
+            class="shrink-0 rounded-l-lg rounded-r-none border border-slate-800 bg-slate-800 px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-30">
+            ←
+          </button>
+          <label for="scenario-select" class="sr-only">Desafio da trilha</label>
+          <select id="scenario-select"
+            class="min-w-0 w-full flex-1 truncate border-y border-slate-800 bg-slate-950 px-2 py-1.5 text-xs text-slate-200 outline-none focus:border-indigo-500"></select>
+          <button type="button" id="btn-next-scenario" title="Próximo desafio" aria-label="Próximo desafio"
+            class="shrink-0 rounded-r-lg rounded-l-none border border-slate-800 bg-slate-800 px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-30">
+            →
+          </button>
         </div>
 
-        <nav class="flex min-w-0 max-w-full flex-wrap items-center justify-end gap-1.5" aria-label="Navegação do laboratório">
+        <nav class="flex shrink-0 items-center gap-2" aria-label="Navegação do laboratório">
           <button id="btn-agent" type="button" aria-haspopup="dialog" aria-controls="agent-drawer"
-            class="rounded-lg px-2 py-1 text-xs font-medium text-slate-200 hover:bg-violet-950/50 hover:text-violet-100 xl:px-3 xl:py-2">
+            class="rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-200 hover:bg-violet-950/50 hover:text-violet-100">
             🤖 Agente IA
           </button>
-
           <button id="btn-lab-help" type="button" aria-haspopup="dialog" aria-controls="lab-help-dialog"
-            class="rounded-lg border border-sky-700/50 bg-sky-950/40 px-2 py-1 text-xs font-medium text-sky-100 hover:border-sky-500 hover:bg-sky-950/70 xl:px-3 xl:py-2">
+            class="rounded-lg border border-sky-700/50 bg-sky-950/40 px-2.5 py-1.5 text-xs font-medium text-sky-100 hover:border-sky-500 hover:bg-sky-950/70">
             ❓ Entenda o Laboratório
           </button>
         </nav>
@@ -76,8 +63,8 @@
                 ✕ Voltar ao código
               </button>
             </div>
-            <div id="investigation-scroll" class="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 pb-6">
-              <article id="scenario-card" class="space-y-4"></article>
+            <div id="investigation-scroll" class="min-h-0 flex-1 overflow-y-auto px-5 pb-6">
+              <article id="scenario-card"></article>
               <section id="solution-panel" aria-label="Gabarito comentado"></section>
             </div>
           </div>

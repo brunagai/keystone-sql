@@ -35,8 +35,6 @@ export interface InvestigationPanelHandlers {
 
 const levelLabel = (nivel: TrailLevel): string => trailOptgroupLabel(nivel);
 
-const BAND_BUTTON_ON = 'rounded-full bg-sky-600 px-2 py-1 text-xs font-medium text-white xl:px-3';
-const BAND_BUTTON_OFF = 'rounded-full px-2 py-1 text-xs font-medium text-slate-400 hover:bg-slate-800 hover:text-slate-100 xl:px-3';
 
 function renderOriginBadge(s: InvestigationScenario): string {
   if (s.origem === 'base') return '';
@@ -59,7 +57,7 @@ function renderTwoPhase(s: InvestigationScenario): string {
       <p class="text-[13px] leading-relaxed text-slate-300">${formatInline(phase.texto)}</p>
     </div>`;
   return `
-    <div class="mt-4 space-y-2">
+    <div class="space-y-2">
       ${step('1', phases.fase1)}
       ${step('2', phases.fase2)}
       <p class="text-[12px] leading-relaxed text-slate-500">
@@ -79,195 +77,94 @@ function expectedColumns(s: InvestigationScenario): readonly string[] {
   return s.colunasEsperadas.filter((name): name is string => typeof name === 'string' && name.length > 0);
 }
 
-const ALIAS_LABELS: Readonly<Record<string, string>> = {
-  acumulado_movel_3: 'Acúmulo móvel das últimas originações',
-  acumulado_movel_pep: 'Acúmulo móvel nas originações do titular monitorado',
-  canal: 'Canal da originação',
-  data_abertura: 'Data de abertura da conta',
-  faturamento_mensal: 'Faturamento mensal declarado',
-  janela_hora: 'Janela horária da concentração',
-  multiplo_renda: 'Quantas vezes o volume supera a renda',
-  origens_distintas: 'Quantidade de remetentes distintos',
-  proporcao: 'Proporção entre o valor e o perfil declarado',
-  qtd_operacoes: 'Quantidade de operações no recorte',
-  qtd_pix: 'Quantidade de PIX no recorte',
-  qtd_redondas: 'Quantidade de valores redondos',
-  remetentes: 'Quantidade de remetentes distintos',
-  taxa_repasse: 'Proporção entre saídas e entradas',
-  total_recebido_mes: 'Montante recebido no período',
-  total_recebimentos: 'Quantidade de recebimentos',
-  valor_recebido: 'Montante financeiro recebido',
-  cidade_destino: 'Cidade do acesso mais recente',
-  cidade_origem: 'Cidade do acesso anterior',
-  cnpj_empresa: 'CNPJ da empresa investigada',
-  conta_destino: 'Identificador de quem recebeu',
-  conta_intermediaria: 'Identificador da conta intermediária',
-  conta_origem: 'Identificador de quem enviou',
-  conta_passagem: 'Identificador da conta de passagem',
-  cpf_socio: 'CPF do sócio no quadro',
-  data_hora: 'Data e hora da operação',
-  data_hora_anterior: 'Data e hora da operação anterior',
-  data_operacao: 'Data civil da operação',
-  device_id: 'Identificador do dispositivo',
-  fator_incompatibilidade: 'Grau de desproporção em relação à renda',
-  forma_liquidacao: 'Forma de liquidação do aporte',
-  geolocalizacao_cidade: 'Cidade inferida do login',
-  hora_transacao: 'Hora da liquidação',
-  id_conta: 'Identificador da conta',
-  id_conta_destino: 'Identificador da conta favorecida',
-  id_conta_origem: 'Identificador da conta remetente',
-  id_transacao: 'Identificador da transação',
-  intervalo_horas: 'Intervalo entre disparos consecutivos (horas)',
-  intervalo_segundos: 'Intervalo entre eventos consecutivos (segundos)',
-  maior_pix: 'Maior valor movimentado no recorte',
-  media_historica: 'Média histórica de valores da origem',
-  montante_acumulado: 'Montante acumulado até o instante',
-  nome_administrador: 'Nome de quem administra a empresa',
-  nome_socio: 'Nome de quem figura no quadro societário',
-  ocupacao: 'Ocupação declarada no cadastro',
-  percentual_participacao: 'Participação societária detida',
-  qtd_no_dia: 'Quantidade de envios no mesmo dia',
-  razao_social: 'Razão social da empresa',
-  renda_mensal: 'Renda mensal declarada',
-  renda_mensal_declarada: 'Renda ou faturamento mensal declarado',
-  salto: 'Salto do valor em relação ao histórico',
-  sequencial_operacao: 'Numeração cronológica do envio',
-  status_dispositivo: 'Classificação do dispositivo no acesso',
-  ticket_medio: 'Ticket médio por transferência',
-  tipo_pessoa: 'Tipo de pessoa (física ou jurídica)',
-  tipo_produto: 'Tipo de produto financeiro',
-  titular: 'Titular da conta',
-  titular_destinatario: 'Titular de quem recebeu',
-  titular_pep: 'Titular classificado como PEP',
-  titular_remetente: 'Titular de quem enviou',
-  total_destinatarios_distintos: 'Quantidade de favorecidos distintos',
-  total_enviado: 'Montante financeiro enviado',
-  total_movimentado: 'Montante financeiro movimentado',
-  total_no_dia: 'Montante acumulado no dia',
-  total_operacoes: 'Volume de operações',
-  total_operacoes_fracionadas: 'Quantidade de PIX na faixa fracionada',
-  total_recebido: 'Montante financeiro recebido',
-  transacao_entrada: 'Identificador do crédito de entrada',
-  transacao_saida: 'Identificador da saída subsequente',
-  valor: 'Valor da operação',
-  valor_anterior: 'Valor da operação anterior',
-  valor_aporte: 'Montante aportado no produto',
-  valor_atual: 'Valor da operação corrente',
-  valor_entrada: 'Valor do crédito recebido',
-  valor_medio_operacao: 'Ticket médio do crédito',
-  valor_remessa_a: 'Valor da primeira perna da cadeia',
-  valor_remessa_b: 'Valor da segunda perna da cadeia',
-  valor_saida: 'Valor da saída subsequente',
-  valor_total: 'Montante acumulado',
-  valor_total_dia: 'Montante acumulado no dia',
-  valor_total_enviado: 'Montante enviado pelo titular',
-  valor_total_fracionado: 'Montante na faixa fracionada',
-  valor_transacao: 'Valor da saída correlacionada ao acesso',
-  variacao_absoluta: 'Diferença em relação ao envio anterior',
-};
-
-function aliasContractLabel(column: string): string {
-  return ALIAS_LABELS[column] ?? ALIAS_LABELS[column.toLowerCase()] ?? 'Campo do relatório';
+function renderSuggestedColumnsBody(s: InvestigationScenario): string {
+  const columns = expectedColumns(s);
+  if (!columns.length) {
+    return `<p class="leading-relaxed text-slate-400">Consulte o dicionário de tabelas para montar a evidência.</p>`;
+  }
+  const itens = columns.map((column) => `<li><code class="font-mono text-sky-300">${escapeHtml(column)}</code></li>`).join('');
+  return `<ul class="list-disc space-y-1 pl-5 leading-relaxed">${itens}</ul>`;
 }
 
-function renderExpectedOutput(s: InvestigationScenario): string {
-  const columns = expectedColumns(s);
-  const itens =
-    columns.length > 0
-      ? columns
-          .map(
-            (column) =>
-              `<li>${escapeHtml(aliasContractLabel(column))}: ${formatInline(`\`${column}\``)}</li>`,
-          )
-          .join('')
-      : '<li>Consulte o dicionário de tabelas para montar a evidência.</li>';
-  const ordenacao = s.ordenacao?.trim();
-  const ordem = ordenacao
-    ? `<p class="mt-2 text-[12px] leading-relaxed text-slate-500">Priorização da fila (a esteira aceita o conjunto mesmo fora desta ordem): ${formatInline(`\`ORDER BY ${ordenacao}\``)}.</p>`
-    : '';
+const ACCORDION_CLASS =
+  'group rounded-xl border border-slate-800 bg-slate-900/50 p-3 text-xs text-slate-300 transition-colors hover:bg-slate-900/80';
+
+const ACCORDION_SUMMARY_CLASS =
+  'flex cursor-pointer list-none select-none items-center gap-2 text-xs font-medium text-slate-400 hover:text-slate-200 [&::-webkit-details-marker]:hidden';
+
+function renderAccordion(titulo: string, corpo: string, extraSummary = ''): string {
   return `
-    <p class="text-[11px] font-semibold uppercase tracking-wider text-sky-400">Contrato de Entrega do Relatório</p>
-    <p class="mt-1.5 text-[13px] leading-relaxed text-slate-300">Aliases esperados na query final:</p>
-    <ul class="mt-2 list-disc space-y-1 pl-5 text-[13px] text-slate-300">${itens}</ul>
-    ${ordem}`;
+    <details class="${ACCORDION_CLASS}">
+      <summary class="${ACCORDION_SUMMARY_CLASS}">
+        <span class="text-[10px] text-slate-500 transition group-open:rotate-90" aria-hidden="true">▸</span>
+        <span class="min-w-0 flex-1">${titulo}</span>
+        ${extraSummary}
+      </summary>
+      <div class="mt-3 space-y-2 border-t border-slate-800/80 pt-3">${corpo}</div>
+    </details>`;
 }
 
 const SCHEMA_BUTTON_CLASS =
-  'w-full py-2 px-3 rounded-lg border border-slate-700 bg-slate-900 hover:bg-slate-800 text-slate-200 text-xs font-medium flex items-center justify-center gap-2 my-3';
+  'flex w-full items-center justify-center gap-2 rounded-xl border border-slate-800 bg-slate-900/50 px-3 py-2.5 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-900/80';
 
 function renderSchemaButton(): string {
   return `<button type="button" data-open-schema class="${SCHEMA_BUTTON_CLASS}">📊 Consultar Tabelas Disponíveis</button>`;
 }
 
-function renderSqlHintAccordion(s: InvestigationScenario): string {
-  const twoPhase = renderTwoPhase(s);
+function renderSqlHintBody(s: InvestigationScenario): string {
   return `
-    <details class="rounded-xl border border-slate-800 bg-slate-900/40">
-      <summary class="cursor-pointer select-none px-3 py-2.5 text-xs font-medium text-sky-300 hover:text-sky-200">
-        💡 Revelar Dica de SQL
-      </summary>
-      <div class="space-y-2 border-t border-slate-800 px-3 py-3">
-        <p class="text-[13px] leading-relaxed text-slate-300">${escapeHtml(s.dicaTexto ?? '')}</p>
-        <pre class="overflow-x-auto rounded-xl bg-slate-950 p-3 font-mono text-[12px] leading-6 text-emerald-200">${escapeHtml(s.dicaSql ?? '')}</pre>
-        ${twoPhase}
-      </div>
-    </details>`;
+    <p class="text-[13px] leading-relaxed text-slate-300">${escapeHtml(s.dicaTexto ?? '')}</p>
+    <pre class="overflow-x-auto rounded-xl bg-slate-950 p-3 font-mono text-[12px] leading-6 text-emerald-200">${escapeHtml(s.dicaSql ?? '')}</pre>
+    ${renderTwoPhase(s)}`;
 }
 
-function renderDossierContext(s: InvestigationScenario): string {
+function renderDossierBody(s: InvestigationScenario): string {
   return `
-    <section class="space-y-2">
-      <p class="text-[11px] font-semibold uppercase tracking-wider text-amber-200/90">${escapeHtml(s.enquadramento ?? '')}</p>
-      <p class="text-[13px] leading-relaxed text-slate-400">${escapeHtml(s.dossie ?? '')}</p>
-    </section>`;
+    <p class="text-[11px] font-semibold uppercase tracking-wider text-amber-200/80">${escapeHtml(s.enquadramento ?? '')}</p>
+    <p class="text-[13px] leading-relaxed text-slate-400">${escapeHtml(s.dossie ?? '')}</p>`;
+}
+
+function renderSupportStack(s: InvestigationScenario, tentativas = 0): string {
+  return `
+    <div class="mt-3 flex flex-col gap-2.5">
+      ${renderSchemaButton()}
+      ${renderAccordion('🏛️ Contexto Regulatório (Bacen/COAF)', renderDossierBody(s))}
+      ${renderAccordion('💡 Colunas Sugeridas', renderSuggestedColumnsBody(s))}
+      ${renderAccordion('🔍 Dica de SQL', renderSqlHintBody(s))}
+      ${renderGabaritoAccordion(s, tentativas)}
+    </div>`;
 }
 
 function renderGabaritoAccordion(s: InvestigationScenario, tentativas: number): string {
   if (tentativas <= 0) return '';
-  return `
-    <details class="rounded-xl border border-slate-800 bg-slate-900/40">
-      <summary class="flex cursor-pointer select-none items-center gap-2 px-3 py-2.5 text-xs font-medium text-sky-300 hover:text-sky-200">
-        Ver gabarito comentado
-        <span class="ml-auto text-[11px] font-normal text-slate-500">${tentativas} tentativa${tentativas > 1 ? 's' : ''}</span>
-      </summary>
-      <div class="space-y-2 border-t border-slate-800 p-3">
-        ${renderDidacticGabarito(s)}
+  const extra = `<span class="text-[11px] font-normal text-slate-500">${tentativas} tentativa${tentativas > 1 ? 's' : ''}</span>`;
+  return renderAccordion(
+    '📖 Gabarito Comentado',
+    `${renderDidacticGabarito(s)}
         <button type="button" data-load-solution
           class="w-full rounded-lg border border-slate-700 px-3 py-2 text-[12px] text-slate-300 hover:border-sky-600 hover:text-sky-200">
           Abrir gabarito no editor
-        </button>
-      </div>
-    </details>`;
+        </button>`,
+    extra,
+  );
 }
 
-function renderScenario(s: InvestigationScenario): string {
+function renderScenario(s: InvestigationScenario, tentativas = 0): string {
   const nivelMeta = TRAIL_LEVELS[s.nivel];
   const nivelTitulo = nivelMeta?.titulo ?? 'Trilha';
   return `
     ${renderOriginBadge(s)}
-    <p class="text-[11px] font-medium uppercase tracking-wider text-slate-500">Nível ${escapeHtml(String(s.nivel))} · ${escapeHtml(nivelTitulo)}</p>
-    <section id="mission-card" class="rounded-2xl bg-slate-900/40 p-5">
-      <h3 class="text-lg font-semibold leading-snug text-slate-50">${escapeHtml(s.titulo ?? 'Caso investigativo')}</h3>
+    <section id="mission-card" class="rounded-2xl border border-slate-800/80 bg-slate-900/40 p-5">
+      <p class="text-[11px] font-medium uppercase tracking-wider text-slate-500">Nível ${escapeHtml(String(s.nivel))} · ${escapeHtml(nivelTitulo)}</p>
+      <h3 class="mt-1.5 text-lg font-semibold leading-snug text-slate-50">${escapeHtml(s.titulo ?? 'Caso investigativo')}</h3>
       <p class="mt-4 text-[11px] font-semibold uppercase tracking-wider text-sky-400">Sua Missão</p>
       <p class="mt-2 text-[15px] leading-relaxed text-slate-100">${escapeHtml(missionLine(s))}</p>
     </section>
-    ${renderDossierContext(s)}
-    ${renderSchemaButton()}
-    <section class="rounded-xl border border-slate-800 bg-slate-900/40 p-3 text-[13px] leading-relaxed text-slate-300">
-      ${renderExpectedOutput(s)}
-    </section>
-    ${renderSqlHintAccordion(s)}`;
+    ${renderSupportStack(s, tentativas)}`;
 }
 
 function renderMobileDossier(s: InvestigationScenario, tentativas = 0): string {
-  return `
-    ${renderDossierContext(s)}
-    ${renderSchemaButton()}
-    <section class="rounded-xl border border-slate-800 bg-slate-900/40 p-3">
-      ${renderExpectedOutput(s)}
-    </section>
-    ${renderSqlHintAccordion(s)}
-    ${renderGabaritoAccordion(s, tentativas)}`;
+  return renderSupportStack(s, tentativas);
 }
 
 function paintMobileBriefing(s: InvestigationScenario, tentativas = 0): void {
@@ -347,8 +244,6 @@ export function initInvestigationPanel({
   const select = el<HTMLSelectElement>('scenario-select');
   const card = el('scenario-card');
   const solution = el('solution-panel');
-  const trailBands = el('trail-bands');
-  let trailBand: TrailBand = 'todos';
 
   const firstScenario = findScenario(DEFAULT_SCENARIO_ID) ?? baseScenarios()[0];
   if (!firstScenario) throw new Error('Nenhum cenário investigativo cadastrado.');
@@ -367,27 +262,10 @@ export function initInvestigationPanel({
     if (nextButton) nextButton.disabled = index < 0 || index >= all.length - 1;
   };
 
-  const firstInBand = (band: TrailBand): InvestigationScenario | undefined => {
-    const levels = TRAIL_BAND_LEVELS[band];
-    return catalog().find((s) => levels.includes(s.nivel));
-  };
-
-  const scenarioInBand = (scenario: InvestigationScenario, band: TrailBand): boolean =>
-    TRAIL_BAND_LEVELS[band].includes(scenario.nivel);
-
-  const paintTrailBand = (): void => {
-    if (!trailBands) return;
-    for (const button of trailBands.querySelectorAll<HTMLElement>('[data-trail-band]')) {
-      const on = button.dataset['trailBand'] === trailBand;
-      button.className = on ? BAND_BUTTON_ON : BAND_BUTTON_OFF;
-      button.setAttribute('aria-selected', String(on));
-    }
-  };
-
   const renderOptions = (): void => {
     if (!select) return;
     const all = catalog();
-    select.innerHTML = TRAIL_BAND_LEVELS[trailBand]
+    select.innerHTML = TRAIL_BAND_LEVELS.todos
       .map((nivel) => {
         const items = all.filter((s) => s.nivel === nivel);
         const options = items.length
@@ -407,13 +285,7 @@ export function initInvestigationPanel({
   };
 
   const renderSolutionToggle = (): void => {
-    if (!solution) return;
-    const count = attempts.get(selected.id) ?? 0;
-    if (count === 0) {
-      solution.innerHTML = '';
-      return;
-    }
-    solution.innerHTML = renderGabaritoAccordion(selected, count);
+    if (solution) solution.innerHTML = '';
   };
 
   if (solution) {
@@ -430,7 +302,7 @@ export function initInvestigationPanel({
     if (select) select.value = scenario.id;
     if (card) {
       try {
-        card.innerHTML = renderScenario(scenario);
+        card.innerHTML = renderScenario(scenario, attempts.get(scenario.id) ?? 0);
       } catch (error) {
         card.innerHTML = `<p class="text-sm text-rose-300">${escapeHtml(error instanceof Error ? error.message : String(error))}</p>`;
       }
@@ -446,34 +318,10 @@ export function initInvestigationPanel({
     const index = all.findIndex((s) => s.id === selected.id);
     const next = index >= 0 ? all[index + delta] : undefined;
     if (!next) return false;
-    trailBand = trailBandOf(next.nivel);
-    paintTrailBand();
     renderOptions();
     show(next);
     return true;
   };
-
-  const applyTrailBand = (band: TrailBand): void => {
-    trailBand = band;
-    paintTrailBand();
-    if (scenarioInBand(selected, trailBand)) {
-      renderOptions();
-      return;
-    }
-    const next = firstInBand(trailBand);
-    renderOptions();
-    if (next) show(next);
-  };
-
-  if (trailBands) {
-    trailBands.addEventListener('click', (event) => {
-      const target = event.target;
-      if (!(target instanceof Element)) return;
-      const band = target.closest<HTMLElement>('[data-trail-band]')?.dataset['trailBand'];
-      if (band !== 'todos' && band !== 'iniciante' && band !== 'intermediario' && band !== 'avancado') return;
-      applyTrailBand(band);
-    });
-  }
 
   if (select) {
     select.addEventListener('change', () => {
@@ -528,6 +376,10 @@ export function initInvestigationPanel({
         onOpenSchema?.();
         return;
       }
+      if (target.closest('[data-load-solution]')) {
+        onLoadSolution(selected.gabaritoSql);
+        return;
+      }
       const id = target.closest<HTMLElement>('[data-remove-scenario]')?.dataset['removeScenario'];
       if (id && confirm('Remover este desafio gerado?')) removeGenerated(id);
     });
@@ -543,19 +395,14 @@ export function initInvestigationPanel({
   window.addEventListener(PROGRESS_UPDATED_EVENT, () => renderOptions());
 
   renderOptions();
-  paintTrailBand();
   show(firstScenario, false);
 
   return {
     getSelectedScenario: () => selected,
-    getTrailBand: () => trailBand,
-    selectScenario(id, options) {
+    getTrailBand: () => trailBandOf(selected.nivel),
+    selectScenario(id) {
       const scenario = findScenario(id);
       if (!scenario) return;
-      if (options?.syncBand || (trailBand !== 'todos' && !scenarioInBand(scenario, trailBand))) {
-        trailBand = trailBandOf(scenario.nivel);
-        paintTrailBand();
-      }
       renderOptions();
       show(scenario);
     },
@@ -568,8 +415,7 @@ export function initInvestigationPanel({
     showValidation(approved = false) {
       attempts.set(selected.id, (attempts.get(selected.id) ?? 0) + 1);
       if (approved) markChallengeCompleted(selected.id);
-      renderSolutionToggle();
-      paintMobileBriefing(selected, attempts.get(selected.id) ?? 0);
+      show(selected, false);
     },
   };
 }

@@ -25,10 +25,8 @@ body {
   overflow-x: hidden;
 }
 
-#case-picker,
 #scenario-nav,
-#navbar-primary,
-#navbar-cases {
+#navbar-brand {
   min-width: 0;
   max-width: 100%;
 }
@@ -40,8 +38,7 @@ body {
 }
 
 @media (max-width: 1279px) {
-  #app-header nav button,
-  #trail-bands button {
+  #app-header nav button {
     padding-left: 0.5rem;
     padding-right: 0.5rem;
     padding-top: 0.25rem;
