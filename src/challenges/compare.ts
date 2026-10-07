@@ -100,7 +100,7 @@ function columnMatches(expected: QueryExecResult, student: QueryExecResult, j: n
 export function mapColumns(expected: QueryExecResult, student: QueryExecResult): (number | null)[] {
   const used = new Set<number>();
   return expected.columns.map((name, j) => {
-    const byName = student.columns.findIndex((c) => normalizeColumnName(c) === normalizeColumnName(name));
+    const byName = student.columns.findIndex((c) => aliasesEquivalent(name, c));
     const candidates = [j, byName, ...student.columns.keys()];
     for (const k of candidates) {
       if (k < 0 || k >= student.columns.length || used.has(k)) continue;
@@ -127,7 +127,7 @@ export function mapColumnsByContent(expected: QueryExecResult, student: QueryExe
   const used = new Set<number>();
   return expected.columns.map((name, j) => {
     const wanted = columnBag(expected, j);
-    const byName = student.columns.findIndex((c) => normalizeColumnName(c) === normalizeColumnName(name));
+    const byName = student.columns.findIndex((c) => aliasesEquivalent(name, c));
     const candidates = [j, byName, ...student.columns.keys()];
     for (const k of candidates) {
       if (k < 0 || k >= student.columns.length || used.has(k)) continue;
@@ -138,6 +138,37 @@ export function mapColumnsByContent(expected: QueryExecResult, student: QueryExe
     }
     return null;
   });
+}
+
+/**
+ * True se a linha i do aluno é o mesmo registro da linha i do gabarito
+ * (multiconjunto de células), ignorando alias e ordem física das colunas.
+ */
+export function rowsMatchMapped(
+  expected: QueryExecResult,
+  student: QueryExecResult,
+  columnMap: readonly (number | null)[],
+): boolean {
+  if (expected.values.length !== student.values.length) return false;
+  if (columnMap.length !== expected.columns.length) return false;
+  return expected.values.every((row, i) =>
+    expected.columns.every((_, j) => {
+      const k = columnMap[j];
+      return k != null && cellsEqual(row[j] ?? null, student.values[i]?.[k] ?? null);
+    }),
+  );
+}
+
+function assinaturaDaLinha(row: readonly SqlValue[]): string {
+  return row.map(cellToken).sort().join('\u001f');
+}
+
+/** Mesmos registros na mesma sequência de linhas, independentemente de nomes ou permutação de colunas. */
+export function recordsAlignInReturnedOrder(expected: QueryExecResult, student: QueryExecResult): boolean {
+  if (expected.values.length !== student.values.length) return false;
+  return expected.values.every(
+    (row, i) => assinaturaDaLinha(row) === assinaturaDaLinha(student.values[i] ?? []),
+  );
 }
 
 /** Verdadeiro se cada linha do gabarito tem uma linha correspondente no aluno, ignorando ordem de linhas e colunas. */

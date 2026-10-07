@@ -10,7 +10,9 @@ import {
   mapColumns,
   mapColumnsByContent,
   namesMatchContract,
+  recordsAlignInReturnedOrder,
   rowsMatchIgnoringOrder,
+  rowsMatchMapped,
   rowsMatchPositionally,
   type ComplianceMetrics,
 } from './compare.ts';
@@ -239,7 +241,11 @@ function compareResults(
       ? orderedMap
       : expected.columns.map((_, j) => j);
   const orderNotes: string[] = [];
-  if (orderedMap.some((k) => k === null)) {
+  const mesmaSequencia =
+    positional ||
+    rowsMatchMapped(expected, student, mapping) ||
+    recordsAlignInReturnedOrder(expected, student);
+  if (bagMatch && !mesmaSequencia) {
     const prio = describePrioritizationMismatch(scenario.ordenacao);
     orderNotes.push(`💡 Fila de priorização: ${prio.message}`);
   }
