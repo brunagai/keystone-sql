@@ -87,7 +87,7 @@ function createProgressMeter(): HTMLElement {
  * trilha 0–5 em <optgroup>; Iniciante = 0–1, Intermediário = 2–3, Avançado = 4–5.
  * No mobile: linha 1 (marca + ações) e linha 2 (categorias + dropdown do caso).
  */
-export function initNavbar(): HTMLSelectElement | null {
+export function initNavbar(): void {
   hideFloatingMenus();
 
   const header = document.getElementById('app-header');
@@ -147,7 +147,4 @@ export function initNavbar(): HTMLSelectElement | null {
       button.classList.add('shrink-0', 'min-h-[38px]');
     }
   }
-
-  const selectEl = document.getElementById('scenario-select');
-  return selectEl instanceof HTMLSelectElement ? selectEl : null;
 }

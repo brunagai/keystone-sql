@@ -187,7 +187,7 @@ function insertOperacoes(db: Database, operacoes: readonly OperacaoProduto[]): v
   }
 }
 
-export function seedDatabase(db: Database, data: Dataset = dataset): void {
+function seedDatabase(db: Database, data: Dataset = dataset): void {
   db.exec('BEGIN TRANSACTION;');
   try {
     insertContas(db, data.contas);
@@ -203,7 +203,7 @@ export function seedDatabase(db: Database, data: Dataset = dataset): void {
 }
 
 /** Cria um banco em memória novo, com schema e seed aplicados. */
-export async function createDatabase(): Promise<Database> {
+async function createDatabase(): Promise<Database> {
   const SQL = await loadSqlJs();
   const db = new SQL.Database();
   db.exec('PRAGMA foreign_keys = ON;');
@@ -221,18 +221,6 @@ export function getDatabase(): Promise<Database> {
   return databasePromise;
 }
 
-/** Descarta o banco atual e recria a partir do dataset (útil após comandos DML/DDL do usuário). */
-export async function resetDatabase(): Promise<Database> {
-  const current = databasePromise;
-  databasePromise = null;
-  if (current) (await current.catch(() => null))?.close();
-  return getDatabase();
-}
-
-export function runQuery(db: Database, sql: string): QueryExecResult[] {
-  return db.exec(sql);
-}
-
 export interface TimedQueryResult {
   results: QueryExecResult[];
   elapsedMs: number;
@@ -243,5 +231,3 @@ export function executeTimedQuery(db: Database, sql: string): TimedQueryResult {
   const results = db.exec(sql);
   return { results, elapsedMs: performance.now() - start };
 }
-
-export const datasetMetadata = dataset.metadata;

@@ -12,7 +12,7 @@ import { initAiSettingsModal } from './ui/aiSettingsModal.ts';
 import { initDossierExport } from './ui/dossierExport.ts';
 import { initEditor } from './ui/editor.ts';
 import { createEditorSession } from './ui/editorSession.ts';
-import { initHeader, type DatasetCounts } from './ui/header.ts';
+import { initHeader } from './ui/header.ts';
 import { initInvestigationPanel } from './ui/investigationPanel.ts';
 import { initWorkspaceSplit, showMobilePane } from './ui/layout.ts';
 import { hideFloatingMenus, initNavbar } from './ui/navbar.ts';
@@ -22,11 +22,6 @@ import { initQueryHistory, type HistoryOrigin } from './ui/queryHistory.ts';
 import { initSchemaPanel } from './ui/schemaPanel.ts';
 
 const errorMessage = (error: unknown): string => (error instanceof Error ? error.message : String(error));
-
-function countRows(db: Database): DatasetCounts {
-  const count = (table: string): number => Number(db.exec(`SELECT COUNT(*) FROM ${table}`)[0]?.values[0]?.[0] ?? 0);
-  return { contas: count('contas'), transacoes: count('transacoes_pix') };
-}
 
 let db: Database | null = null;
 
@@ -151,7 +146,6 @@ function runCurrentQuery(): boolean {
   try {
     const { results, elapsedMs } = executeTimedQuery(db, sql);
     output.showResults(results, elapsedMs);
-    header.setDatasetCounts(countRows(db));
     dossier.setData({ scenario: investigation.getSelectedScenario(), sql, results, executedAt, elapsedMs });
     recordExecution('execucao', sql, executedAt, elapsedMs, totalRows(results));
     output.showExploreBanner(totalRows(results));
@@ -213,7 +207,6 @@ async function validateCurrentQuery(): Promise<void> {
 function applyDatabase(next: Database): void {
   db = next;
   schema.render(next);
-  header.setDatasetCounts(countRows(next));
   header.setConnectionState('ready');
   editor.setActionsEnabled(true);
   agent.setEnabled(true);

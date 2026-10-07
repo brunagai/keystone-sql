@@ -119,10 +119,3 @@ export const DATA_DICTIONARY: Record<string, TableDictionary> = {
     },
   },
 };
-
-export const CATEGORY_ORDER: readonly DictionaryCategory[] = [
-  'Cadastral & Societário',
-  'Transacional',
-  'Segurança & Telemetria',
-  'Investimentos & Produtos',
-];

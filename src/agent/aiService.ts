@@ -209,8 +209,14 @@ export async function generateChallenge(db: Database, req: GenerationRequest, op
       }
       lastProblem = verification.reason;
     } catch (error) {
-      if (!(error instanceof ChallengeFormatError)) throw error;
-      lastProblem = `Formato inválido: ${error.message}`;
+      if (error instanceof AiServiceError && error.kind === 'aborted') throw error;
+      lastProblem =
+        error instanceof ChallengeFormatError
+          ? `Formato inválido: ${error.message}`
+          : error instanceof Error
+            ? error.message
+            : String(error);
+      console.error('[IA] sanity check do gabarito', error);
     }
 
     messages.push(

@@ -26,7 +26,7 @@ export const TRAIL_LEVELS: Record<TrailLevel, TrailLevelInfo> = {
   5: { titulo: 'Investigações Avançadas e Casos Complexos Bacen', tecnica: 'QSA/PEP, dwell time, telemetria, triangulação e dossiê COAF' },
 };
 
-export const TRAIL_ORDER: readonly TrailLevel[] = [0, 1, 2, 3, 4, 5];
+const TRAIL_ORDER: readonly TrailLevel[] = [0, 1, 2, 3, 4, 5];
 
 /** Filtros da navbar: Iniciante = 0–1, Intermediário = 2–3, Avançado = 4–5. */
 export type TrailBand = 'todos' | 'iniciante' | 'intermediario' | 'avancado';

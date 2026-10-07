@@ -6,7 +6,7 @@ export interface ErrorHighlight {
   token: string;
 }
 
-export interface FriendlySqlError {
+interface FriendlySqlError {
   title: string;
   explanation: string;
   raw: string;
@@ -45,7 +45,7 @@ function extractFilterClauses(masked: string): string[] {
 }
 
 /** True se WHERE/HAVING contém OVER / LAG / LEAD / ROW_NUMBER etc. */
-export function sqlFiltersOnWindowFunction(sql: string): boolean {
+function sqlFiltersOnWindowFunction(sql: string): boolean {
   return extractFilterClauses(maskSql(sql)).some((clause) => WINDOW_CALL.test(clause));
 }
 

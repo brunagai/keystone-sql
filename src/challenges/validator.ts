@@ -283,7 +283,7 @@ export async function validateChallenge(db: Database, scenario: InvestigationSce
       status: 'error',
       title: 'Apenas consultas de leitura',
       message: `Os desafios aceitam somente \`SELECT\`/\`WITH\`. O comando \`${forbidden}\` não é permitido na validação.`,
-      details: ['Para experimentar comandos de escrita, use "Executar Query" e depois "Resetar Banco".'],
+      details: ['A esteira de validação aceita somente leitura. Use "Rodar Teste" para explorar o resultado da consulta.'],
       entities: [],
       highlight: null,
       studentRun: null,
@@ -291,7 +291,21 @@ export async function validateChallenge(db: Database, scenario: InvestigationSce
   }
 
   return runIsolated(db, () => {
-    const expected = getExpected(db, scenario);
+    let expected: QueryExecResult;
+    try {
+      expected = getExpected(db, scenario);
+    } catch (error) {
+      const friendly = describeSqlError(error, scenario.gabaritoSql);
+      return {
+        status: 'error',
+        title: 'Falha ao carregar o gabarito',
+        message: friendly.explanation,
+        details: [`Mensagem do SQLite: \`${friendly.raw}\``],
+        entities: [],
+        highlight: friendly.highlight,
+        studentRun: null,
+      };
+    }
     const start = performance.now();
     let results: QueryExecResult[];
     try {

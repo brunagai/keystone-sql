@@ -95,8 +95,3 @@ export function clearAiSettings(): void {
   localStorage.removeItem(STORAGE_KEY);
   localStorage.removeItem(MODEL_STORAGE_KEY);
 }
-
-/** Exibe apenas prefixo e sufixo da chave (ex.: `gsk_…9f2c`). */
-export function maskApiKey(key: string): string {
-  return key.length <= 10 ? '••••' : `${key.slice(0, 4)}…${key.slice(-4)}`;
-}

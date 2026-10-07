@@ -1,6 +1,6 @@
 import type { Database, QueryExecResult, SqlValue } from 'sql.js';
 
-export interface ForeignKeyRef {
+interface ForeignKeyRef {
   table: string;
   column: string;
 }
@@ -33,13 +33,13 @@ function selectRows(db: Database, sql: string): Record<string, SqlValue>[] {
   return rows;
 }
 
-export function listTables(db: Database): string[] {
+function listTables(db: Database): string[] {
   return selectRows(db, "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY rowid").map(
     (r) => String(r['name']),
   );
 }
 
-export function getTableSchema(db: Database, table: string): TableSchema {
+function getTableSchema(db: Database, table: string): TableSchema {
   const ident = quoteIdent(table);
   const foreignKeys = new Map<string, ForeignKeyRef>(
     selectRows(db, `PRAGMA foreign_key_list(${ident})`).map((fk) => [

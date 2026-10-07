@@ -100,10 +100,6 @@ body {
     max-width: 100% !important;
   }
 
-  #mobile-view-switcher {
-    display: none !important;
-  }
-
   #investigation-panel {
     display: none !important;
   }

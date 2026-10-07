@@ -8,14 +8,8 @@ const STATUS_VIEW: Record<ConnectionState, { dot: string; ping: boolean; label: 
   error: { dot: 'bg-rose-500', ping: false, label: 'Offline', text: 'text-rose-300' },
 };
 
-export interface DatasetCounts {
-  contas: number;
-  transacoes: number;
-}
-
 export interface HeaderController {
   setConnectionState(state: ConnectionState): void;
-  setDatasetCounts(counts: DatasetCounts | null): void;
 }
 
 export function initHeader(): HeaderController {
@@ -30,9 +24,6 @@ export function initHeader(): HeaderController {
           <span class="relative inline-flex size-2 rounded-full ${view.dot}"></span>
         </span>
         <span class="text-[11px] font-medium ${view.text}">${view.label}</span>`;
-    },
-    setDatasetCounts() {
-      /* Contagens de linhas ficam no Dicionário de Tabelas. */
     },
   };
 }

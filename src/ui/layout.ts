@@ -42,7 +42,7 @@ function clampWidth(workspace: HTMLElement, width: number): number {
   return Math.min(maxWidth(workspace), Math.max(MIN_WIDTH_PX, width));
 }
 
-export function isMobileWorkspace(): boolean {
+function isMobileWorkspace(): boolean {
   return window.matchMedia(MOBILE_MEDIA).matches;
 }
 
@@ -108,34 +108,6 @@ export function showMobilePane(pane: MobileWorkspacePane): void {
   syncWorkspace?.();
 }
 
-function tabClass(active: boolean): string {
-  return active
-    ? 'flex min-h-10 flex-1 items-center justify-center rounded-lg bg-slate-800 px-2 text-[12px] font-medium text-slate-50'
-    : 'flex min-h-10 flex-1 items-center justify-center rounded-lg px-2 text-[12px] font-medium text-slate-400';
-}
-
-function mountMobileSwitcher(workspace: HTMLElement): HTMLElement {
-  const existing = document.getElementById('mobile-view-switcher');
-  if (existing) {
-    existing.className = 'hidden md:flex';
-    existing.hidden = true;
-    return existing;
-  }
-
-  const bar = document.createElement('div');
-  bar.id = 'mobile-view-switcher';
-  bar.setAttribute('role', 'tablist');
-  bar.setAttribute('aria-label', 'Seção do laboratório');
-  bar.hidden = true;
-  bar.className = 'hidden md:flex';
-  bar.innerHTML = `
-    <button type="button" role="tab" data-mobile-pane="mission" class="${tabClass(true)}">📋 Missão</button>
-    <button type="button" role="tab" data-mobile-pane="editor" class="${tabClass(false)}">💻 Editor SQL</button>
-    <button type="button" role="tab" data-mobile-pane="results" class="${tabClass(false)}">📊 Resultados</button>`;
-  workspace.insertBefore(bar, workspace.firstChild);
-  return bar;
-}
-
 /** Splitter vertical entre “O que fazer” e o editor. Abaixo de 768px o editor fica em tela cheia. */
 export function initWorkspaceSplit(): void {
   const workspace = byId('workspace');
@@ -144,7 +116,6 @@ export function initWorkspaceSplit(): void {
   const queryPanel = byId('query-panel');
   const editorContainer = byId('editor-container');
   const outputPane = byId('output-pane');
-  const switcher = mountMobileSwitcher(workspace);
   const backdrop = document.getElementById('results-backdrop');
   const closeSheet = document.getElementById('btn-close-results-sheet');
   const closeOverlay = document.getElementById('btn-close-mission-overlay');
@@ -216,7 +187,6 @@ export function initWorkspaceSplit(): void {
   const sync = (): void => {
     const mobile = media.matches;
     workspace.dataset['mobilePane'] = mobile ? mobilePane : 'desktop';
-    switcher.hidden = true;
     gutter.hidden = mobile;
     if (mobile) applyMobilePanes();
     else restoreDesktop();
