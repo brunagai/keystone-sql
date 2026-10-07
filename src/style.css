@@ -83,6 +83,23 @@ body {
     touch-action: pan-y !important;
   }
 
+  #workspace-gutter {
+    display: none !important;
+    width: 0 !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    pointer-events: none;
+  }
+
+  #query-panel,
+  #editor-container,
+  #sql-editor {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
   #mobile-view-switcher {
     display: none !important;
   }

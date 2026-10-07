@@ -150,8 +150,11 @@ export function initWorkspaceSplit(): void {
   const closeOverlay = document.getElementById('btn-close-mission-overlay');
   const media = window.matchMedia(MOBILE_MEDIA);
 
-  workspace.classList.add('max-md:flex-col');
-  gutter.classList.add('max-md:hidden');
+  workspace.classList.add('max-md:block', 'max-md:w-full');
+  gutter.classList.add('hidden', 'md:block');
+  gutter.classList.remove('max-md:hidden');
+  queryPanel.classList.add('max-md:w-full');
+  editorContainer.classList.add('max-md:w-full');
   byId('btn-run').classList.add('max-md:min-h-10');
   byId('btn-validate').classList.add('max-md:min-h-10');
   const editorToolbar = editorContainer.querySelector<HTMLElement>(':scope > div.flex.h-12');
