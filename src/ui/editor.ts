@@ -57,7 +57,19 @@ export function initEditor({ onRun, onValidate, onChange, onRestoreTemplate }: E
   runButton.addEventListener('click', onRun);
   validateButton.addEventListener('click', onValidate);
   restoreButton.addEventListener('click', onRestoreTemplate);
-  textarea.addEventListener('input', onChange);
+
+  const stats = document.getElementById('sql-editor-stats');
+  const paintStats = (): void => {
+    if (!stats) return;
+    const texto = textarea.value;
+    const linhas = texto === '' ? 0 : texto.split('\n').length;
+    stats.textContent = `${linhas} ${linhas === 1 ? 'linha' : 'linhas'}`;
+  };
+  textarea.addEventListener('input', () => {
+    paintStats();
+    onChange();
+  });
+  paintStats();
 
   textarea.addEventListener('keydown', (event) => {
     if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
@@ -108,6 +120,7 @@ export function initEditor({ onRun, onValidate, onChange, onRestoreTemplate }: E
       textarea.value = sql;
       textarea.setSelectionRange(sql.length, sql.length);
       textarea.scrollTop = 0;
+      paintStats();
     },
     replaceSql(sql) {
       textarea.focus();
@@ -117,6 +130,7 @@ export function initEditor({ onRun, onValidate, onChange, onRestoreTemplate }: E
         onChange();
       }
       textarea.scrollTop = 0;
+      paintStats();
     },
     insertAtCursor,
     setActionsEnabled(enabled) {

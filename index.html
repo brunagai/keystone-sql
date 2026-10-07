@@ -95,7 +95,7 @@
           aria-label="Redimensionar a coluna O que fazer" tabindex="0"
           class="hidden w-1.5 shrink-0 cursor-col-resize bg-slate-800 hover:bg-indigo-500/50 focus:bg-indigo-500/60 focus:outline-none md:block"></div>
 
-        <section id="query-panel" aria-label="Editor SQL e resultados" class="flex min-h-0 min-w-0 flex-1 flex-col bg-slate-950 max-md:block max-md:h-auto max-md:min-h-0 max-md:w-full max-md:overflow-visible max-md:pb-40">
+        <section id="query-panel" aria-label="Editor SQL e resultados" class="flex min-h-0 min-w-0 flex-1 flex-col gap-4 bg-slate-950 max-md:block max-md:h-auto max-md:min-h-0 max-md:w-full max-md:overflow-visible max-md:pb-8">
           <div id="editor-container" class="flex min-h-0 flex-[1.15] flex-col max-md:block max-md:h-auto max-md:min-h-0 max-md:w-full max-md:overflow-visible">
             <div id="mobile-briefing" class="flex flex-col items-start gap-1 border-b border-slate-800 bg-zinc-950/90 px-4 py-2.5 mb-2 md:hidden">
               <div id="mobile-briefing-level" class="inline-flex items-center rounded border border-slate-700/60 bg-slate-800 px-2 py-0.5 text-[11px] font-medium text-slate-300">Nível</div>
@@ -140,18 +140,26 @@
             </div>
             <div id="editor-banner" hidden aria-live="assertive"
               class="flex w-full min-w-0 shrink-0 flex-col items-start justify-between gap-3 border-y border-amber-700/50 bg-amber-950/40 px-4 py-3 text-xs sm:flex-row sm:items-center sm:px-5"></div>
-            <label for="sql-editor" class="sr-only">Editor SQL</label>
-            <textarea id="sql-editor" spellcheck="false" autocomplete="off" autocapitalize="off"
-              class="min-h-[220px] flex-1 resize-none overflow-y-auto bg-slate-950 px-6 py-5 font-mono text-[14px] leading-7 text-emerald-200 caret-emerald-400 outline-none placeholder:text-slate-600 max-md:h-[260px] max-md:min-h-[200px] max-md:max-h-[260px] max-md:flex-none"
-              placeholder="-- Escreva sua consulta SQL aqui"></textarea>
-            <p id="editor-hint" hidden role="status" aria-live="polite"
-              class="shrink-0 border-t border-slate-800/60 px-5 py-1.5 text-[12px] text-slate-400"></p>
+            <div id="sql-editor-shell" class="mx-4 my-4 flex min-h-0 flex-1 flex-col max-md:mx-4 max-md:mb-0 max-md:mt-3 max-md:flex-none">
+              <div id="sql-editor-frame" class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-800 bg-slate-950/90 p-3 pb-6 shadow-inner max-md:flex-none">
+                <label for="sql-editor" class="sr-only">Editor SQL</label>
+                <textarea id="sql-editor" spellcheck="false" autocomplete="off" autocapitalize="off"
+                  class="min-h-[220px] flex-1 resize-none overflow-y-auto rounded-lg bg-slate-950 px-3 py-3 pb-5 font-mono text-[14px] leading-7 text-emerald-200 caret-emerald-400 outline-none placeholder:text-slate-600 max-md:h-[260px] max-md:min-h-[200px] max-md:max-h-[260px] max-md:flex-none"
+                  placeholder="-- Escreva sua consulta SQL aqui"></textarea>
+                <p id="editor-hint" hidden role="status" aria-live="polite"
+                  class="shrink-0 px-1 py-1.5 text-[12px] text-slate-400"></p>
+                <div id="sql-editor-footer" class="mt-1 flex shrink-0 items-center justify-between gap-2 border-t border-slate-800/80 px-1 pt-2 font-mono text-[10px] leading-none text-slate-500">
+                  <span>Ctrl+Enter · Rodar Teste</span>
+                  <span id="sql-editor-stats">0 linhas</span>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div id="results-backdrop" hidden class="fixed inset-0 z-40 bg-slate-950/70 md:hidden"></div>
           <div id="output-pane"
-            class="flex min-h-0 flex-1 flex-col border-t border-slate-800/80 bg-slate-950 max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:z-50 max-md:h-[75vh] max-md:max-h-[80vh] max-md:transform max-md:rounded-t-2xl max-md:border-slate-700 max-md:shadow-2xl max-md:transition-transform max-md:duration-300 max-md:ease-in-out">
-            <div class="hidden shrink-0 max-md:block" aria-hidden="true">
+            class="flex min-h-0 flex-1 flex-col border-t border-slate-800/80 bg-slate-950 max-md:relative max-md:z-10 max-md:mx-4 max-md:my-4 max-md:h-auto max-md:max-h-none max-md:rounded-xl max-md:border max-md:border-slate-800 max-md:shadow-none">
+            <div class="results-sheet-handle hidden shrink-0 max-md:block" aria-hidden="true">
               <span class="mx-auto my-2 block h-1.5 w-12 rounded-full bg-slate-700"></span>
             </div>
             <div class="flex h-11 shrink-0 items-center gap-3 px-5 max-md:h-auto max-md:min-h-11 max-md:flex-wrap max-md:py-2">
@@ -183,6 +191,15 @@
               </div>
             </div>
             <div id="output-scroll" class="scrollbar-thin scrollbar-thumb-slate-700 min-h-0 flex-1 overflow-x-auto overflow-y-auto">
+              <div id="results-empty-state" class="mt-4 rounded-xl border border-dashed border-slate-800/80 bg-slate-900/40 p-5 text-center text-slate-400 max-md:mx-1 max-md:mt-2 max-md:mb-2">
+                <div class="mb-2 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-slate-800/60 text-slate-400">
+                  📊
+                </div>
+                <h4 class="text-xs font-semibold text-slate-300">Área de Resultados &amp; Conformidade</h4>
+                <p class="mx-auto mt-1 max-w-xs text-[11px] text-slate-400">
+                  Clique em <strong>Rodar Teste</strong> para visualizar a prévia dos dados ou em <strong>Validar Resposta</strong> para auditar o caso.
+                </p>
+              </div>
               <div id="validation-banner" hidden aria-live="polite" class="px-5 py-3"></div>
               <div id="output-body" hidden class="min-h-0"></div>
             </div>

@@ -113,16 +113,43 @@ body {
     max-width: none !important;
   }
 
+  /* Reservado no fluxo da página até o usuário executar; vira gaveta só com data-sheet=open. */
   #output-pane {
-    transform: translateY(100%);
-    pointer-events: none;
-    visibility: hidden;
+    position: static !important;
+    transform: none;
+    pointer-events: auto;
+    visibility: visible;
+    height: auto !important;
+    max-height: none !important;
+    margin-top: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  #output-pane:not([data-sheet='open']) .results-sheet-handle,
+  #output-pane:not([data-sheet='open']) #btn-close-results-sheet {
+    display: none !important;
+  }
+
+  #output-pane:not([data-sheet='open']) #output-scroll {
+    overflow: visible;
+    flex: none;
+    min-height: 0;
   }
 
   #output-pane[data-sheet='open'] {
+    position: fixed !important;
+    inset-inline: 0;
+    bottom: 0;
+    top: auto;
+    z-index: 50;
+    height: 75vh !important;
+    max-height: 80vh !important;
+    margin: 0;
     transform: translateY(0);
     pointer-events: auto;
     visibility: visible;
+    border-radius: 1rem 1rem 0 0;
+    box-shadow: 0 -12px 40px rgb(0 0 0 / 0.45);
   }
 
   #sql-editor {

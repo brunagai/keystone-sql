@@ -140,19 +140,27 @@ export function initOutputPanel(): OutputPanelController {
   const meta = byId('output-meta');
   const body = byId('output-body');
   const banner = byId('validation-banner');
+  const emptyState = document.getElementById('results-empty-state');
   const sheetTitle = document.getElementById('results-sheet-title');
 
   const placeholder = (message: string): string =>
     `<div class="flex items-center justify-center p-6 text-center text-xs text-slate-500">${escapeHtml(message)}</div>`;
 
+  const syncEmptyState = (): void => {
+    if (!emptyState) return;
+    emptyState.hidden = Boolean(banner.innerHTML) || Boolean(body.innerHTML);
+  };
+
   const setBanner = (html: string): void => {
     banner.innerHTML = html;
     banner.hidden = !html;
+    syncEmptyState();
   };
 
   const setBody = (html: string): void => {
     body.innerHTML = html;
     body.hidden = !html;
+    syncEmptyState();
   };
 
   const paintMeta = (elapsedMs: number | undefined, rows: number | null, erro = false): void => {
