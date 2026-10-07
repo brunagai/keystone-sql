@@ -8,6 +8,7 @@ import {
 import { DEFAULT_SCENARIO_ID, TRAIL_BAND_LEVELS, TRAIL_LEVELS, ensureRelatorioColunas, trailBandOf, trailOptgroupLabel, type InvestigationScenario, type ScenarioId, type TrailBand, type TrailLevel, type TwoPhaseReasoning } from '../challenges/scenarios.ts';
 import { resolveTwoPhase } from '../challenges/twoPhase.ts';
 import { isChallengeCompleted, markChallengeCompleted, PROGRESS_UPDATED_EVENT } from '../services/progressService.ts';
+import { showMissionOverlay } from './layout.ts';
 import { escapeHtml, formatInline } from './format.ts';
 
 function el<T extends HTMLElement>(id: string): T | null {
@@ -232,6 +233,46 @@ function renderScenario(s: InvestigationScenario): string {
     </div>`;
 }
 
+function renderMobileDossier(s: InvestigationScenario): string {
+  return `
+    <section class="space-y-2">
+      <p class="text-[11px] font-semibold uppercase tracking-wider text-amber-200/90">${escapeHtml(s.enquadramento ?? '')}</p>
+      <p class="text-[13px] leading-relaxed text-slate-300">${escapeHtml(s.dossie ?? '')}</p>
+    </section>
+    <section class="rounded-xl border border-slate-800 bg-slate-900/40 p-3">
+      ${renderExpectedOutput(s)}
+    </section>
+    <section class="space-y-2">
+      <p class="text-[11px] font-semibold uppercase tracking-wider text-sky-400">Dica de SQL</p>
+      <p class="text-[13px] leading-relaxed text-slate-300">${escapeHtml(s.dicaTexto ?? '')}</p>
+      <pre class="overflow-x-auto rounded-xl bg-slate-950 p-3 font-mono text-[12px] leading-6 text-emerald-200">${escapeHtml(s.dicaSql ?? '')}</pre>
+    </section>
+    <button type="button" data-open-schema
+      class="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-900/50 px-3 py-2.5 text-[13px] font-medium text-slate-200">
+      📊 Consultar Tabelas Disponíveis
+    </button>`;
+}
+
+function paintMobileBriefing(s: InvestigationScenario): void {
+  const level = document.getElementById('mobile-briefing-level');
+  const title = document.getElementById('mobile-briefing-title');
+  const text = document.getElementById('mobile-briefing-text');
+  const dossier = document.getElementById('mobile-dossier-body');
+  const nivelMeta = TRAIL_LEVELS[s.nivel];
+  if (level) level.textContent = `Nível ${s.nivel}${nivelMeta ? ` · ${nivelMeta.titulo}` : ''}`;
+  if (title) {
+    title.textContent = s.titulo ?? 'Caso investigativo';
+    title.title = s.titulo ?? '';
+  }
+  if (text) {
+    text.textContent = missionLine(s);
+    text.classList.add('line-clamp-2');
+  }
+  const toggle = document.getElementById('mobile-briefing-toggle');
+  if (toggle) toggle.setAttribute('aria-expanded', 'false');
+  if (dossier) dossier.innerHTML = renderMobileDossier(s);
+}
+
 function splitSqlComment(line: string): [code: string, comment: string] {
   let inString = false;
   for (let i = 0; i < line.length - 1; i++) {
@@ -390,6 +431,7 @@ export function initInvestigationPanel({
       }
     }
     renderSolutionToggle();
+    paintMobileBriefing(scenario);
     if (notify && changed) onScenarioChange(scenario);
   };
 
@@ -421,6 +463,41 @@ export function initInvestigationPanel({
       if (scenario) show(scenario);
     });
   }
+
+  const dossierDialog = el<HTMLDialogElement>('mobile-dossier-dialog');
+  const briefingToggle = el('mobile-briefing-toggle');
+  const briefingText = el('mobile-briefing-text');
+  const dossierButton = el('btn-mobile-dossier');
+
+  const closeDossier = (): void => {
+    if (dossierDialog?.open) dossierDialog.close();
+  };
+
+  briefingToggle?.addEventListener('click', () => {
+    if (!briefingText || !briefingToggle) return;
+    const expanded = briefingToggle.getAttribute('aria-expanded') === 'true';
+    briefingToggle.setAttribute('aria-expanded', String(!expanded));
+    briefingText.classList.toggle('line-clamp-2', expanded);
+  });
+
+  dossierButton?.addEventListener('click', () => {
+    paintMobileBriefing(selected);
+    dossierDialog?.showModal();
+  });
+
+  dossierDialog?.addEventListener('click', (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    if (target === dossierDialog || target.closest('[data-close-dialog]')) {
+      closeDossier();
+      return;
+    }
+    if (target.closest('[data-open-schema]')) {
+      closeDossier();
+      showMissionOverlay();
+      onOpenSchema?.();
+    }
+  });
 
   if (card) {
     card.addEventListener('click', (event) => {

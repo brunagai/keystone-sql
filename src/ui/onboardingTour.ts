@@ -14,14 +14,23 @@ interface TourStep {
   placement: TourPlacement;
   title: string;
   body: string;
+  when?: 'mobile' | 'desktop';
 }
 
 const STEPS: readonly TourStep[] = [
+  {
+    targetId: 'mobile-briefing',
+    placement: 'below',
+    title: 'A Missão',
+    body: 'No celular, o briefing fica compacto acima do editor. Toque no texto para expandir ou abra o dossiê e o contrato de colunas.',
+    when: 'mobile',
+  },
   {
     targetId: 'mission-card',
     placement: 'right',
     title: 'A Missão',
     body: 'Aqui está o que você precisa descobrir, em uma frase. As abas abaixo abrem a dica de SQL, o dossiê e as colunas da resposta.',
+    when: 'desktop',
   },
   {
     targetId: 'editor-container',
@@ -94,14 +103,12 @@ function placeHole(hole: HTMLElement, target: HTMLElement): void {
   hole.style.height = `${rect.height + pad * 2}px`;
 }
 
-function renderCard(index: number): string {
-  const step = STEPS[index];
-  if (!step) return '';
-  const isLast = index === STEPS.length - 1;
+function renderCard(step: TourStep, index: number, total: number): string {
+  const isLast = index === total - 1;
   const isFirst = index === 0;
   return `
     <div class="flex items-start gap-2">
-      <p class="text-[11px] font-semibold uppercase tracking-wider text-emerald-400">Passo ${index + 1} de ${STEPS.length}</p>
+      <p class="text-[11px] font-semibold uppercase tracking-wider text-emerald-400">Passo ${index + 1} de ${total}</p>
       <button type="button" data-tour="skip" aria-label="Pular tour"
         class="ml-auto rounded-md px-1.5 text-slate-500 hover:bg-slate-800 hover:text-slate-200">✕</button>
     </div>
@@ -124,6 +131,10 @@ function renderCard(index: number): string {
 
 export function startOnboardingTour(options?: { force?: boolean }): void {
   if (!options?.force && alreadySeen()) return;
+  const mobile = window.matchMedia('(max-width: 767px)').matches;
+  const steps = STEPS.filter((step) => !step.when || (step.when === 'mobile') === mobile);
+  if (steps.length === 0) return;
+
   teardownActive?.();
 
   const backdrop = document.createElement('div');
@@ -173,7 +184,7 @@ export function startOnboardingTour(options?: { force?: boolean }): void {
   };
 
   const schedulePlace = (): void => {
-    const step = STEPS[index];
+    const step = steps[index];
     if (!step) return;
     const target = document.getElementById(step.targetId);
     if (!target) return;
@@ -182,10 +193,10 @@ export function startOnboardingTour(options?: { force?: boolean }): void {
   };
 
   const paint = (): void => {
-    const step = STEPS[index];
+    const step = steps[index];
     if (!step) return;
     clearHighlight();
-    card.innerHTML = renderCard(index);
+    card.innerHTML = renderCard(step, index, steps.length);
     const target = document.getElementById(step.targetId);
     if (!target) {
       finish();
@@ -208,7 +219,7 @@ export function startOnboardingTour(options?: { force?: boolean }): void {
 
   card.addEventListener('click', (event) => {
     const action = (event.target as HTMLElement).closest<HTMLElement>('[data-tour]')?.dataset['tour'];
-    if (action === 'skip' || (action === 'next' && index >= STEPS.length - 1)) {
+    if (action === 'skip' || (action === 'next' && index >= steps.length - 1)) {
       finish();
       return;
     }

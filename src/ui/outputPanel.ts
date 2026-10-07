@@ -2,6 +2,7 @@ import type { QueryExecResult } from 'sql.js';
 import type { ErrorHighlight } from '../challenges/sqlErrors.ts';
 import type { ValidationResult } from '../challenges/validator.ts';
 import { byId } from './dom.ts';
+import { showResultsSheet } from './layout.ts';
 import { escapeHtml, formatInline, formatInteiro, formatMs } from './format.ts';
 import { renderResultTable } from './resultTable.ts';
 
@@ -131,6 +132,7 @@ export function initOutputPanel(): OutputPanelController {
   const meta = byId('output-meta');
   const body = byId('output-body');
   const banner = byId('validation-banner');
+  const sheetTitle = document.getElementById('results-sheet-title');
 
   const placeholder = (message: string): string =>
     `<div class="flex items-center justify-center p-6 text-center text-xs text-slate-500">${escapeHtml(message)}</div>`;
@@ -153,7 +155,12 @@ export function initOutputPanel(): OutputPanelController {
     ].join('');
   };
 
+  const setSheetTitle = (label: string): void => {
+    if (sheetTitle) sheetTitle.textContent = label;
+  };
+
   const focusResults = (): void => {
+    showResultsSheet();
     scroll.scrollTop = 0;
     pane.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   };
@@ -161,6 +168,7 @@ export function initOutputPanel(): OutputPanelController {
   return {
     showResults(results, elapsedMs, keepBanner = false) {
       if (!keepBanner) setBanner('');
+      setSheetTitle('Resultados da consulta');
       const rows = results.reduce((acc, r) => acc + r.values.length, 0);
       paintMeta(elapsedMs, rows);
       if (rows === 0) {
@@ -179,6 +187,7 @@ export function initOutputPanel(): OutputPanelController {
     },
     showError(message, elapsedMs) {
       paintMeta(elapsedMs, null, true);
+      setSheetTitle('Erro na execução');
       setBanner('');
       setBody(`
         <div class="px-5 py-3">
@@ -188,6 +197,7 @@ export function initOutputPanel(): OutputPanelController {
     },
     showMessage(message) {
       meta.innerHTML = '';
+      setSheetTitle('Resultados');
       setBanner('');
       setBody(placeholder(message));
     },
@@ -200,6 +210,7 @@ export function initOutputPanel(): OutputPanelController {
         </div>`);
     },
     showValidationPending() {
+      setSheetTitle('Validando resposta');
       setBody('');
       setBanner(`
         <div class="flex items-center gap-2 rounded-xl border border-slate-800 bg-zinc-950 px-4 py-3 text-sm text-slate-400">
@@ -211,6 +222,7 @@ export function initOutputPanel(): OutputPanelController {
     showValidation(result, expectedColumns) {
       const run = result.studentRun;
       if (result.status === 'success') {
+        setSheetTitle('Missão cumprida');
         setBanner(renderSuccess(result));
         if (run?.ok) {
           const rows = run.results.reduce((acc, r) => acc + r.values.length, 0);
@@ -222,6 +234,7 @@ export function initOutputPanel(): OutputPanelController {
         return;
       }
       if (result.status === 'quase_la') {
+        setSheetTitle('Quase lá');
         setBanner(renderReportAdjustment(result));
         if (run?.ok) {
           const rows = run.results.reduce((acc, r) => acc + r.values.length, 0);
@@ -231,6 +244,7 @@ export function initOutputPanel(): OutputPanelController {
         return;
       }
 
+      setSheetTitle('Validação');
       setBanner(renderFailure(result, expectedColumns));
       const hasRows = Boolean(run?.ok && run.results.some((table) => table.values.length > 0));
       if (!hasRows) setBody('');

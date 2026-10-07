@@ -10,8 +10,10 @@ const MOBILE_MEDIA = '(max-width: 767px)';
 
 export type MobileWorkspacePane = 'mission' | 'editor' | 'results';
 
-let mobilePane: MobileWorkspacePane = 'mission';
+let mobilePane: MobileWorkspacePane = 'editor';
 let syncWorkspace: (() => void) | null = null;
+let resultsSheetOpen = false;
+let missionOverlayOpen = false;
 
 function readStoredWidth(): number | null {
   try {
@@ -44,9 +46,65 @@ export function isMobileWorkspace(): boolean {
   return window.matchMedia(MOBILE_MEDIA).matches;
 }
 
-/** No mobile, troca a seção visível; no desktop não altera o layout. */
+function paintResultsSheet(): void {
+  const pane = document.getElementById('output-pane');
+  const backdrop = document.getElementById('results-backdrop');
+  if (!pane) return;
+  const open = isMobileWorkspace() && resultsSheetOpen;
+  pane.dataset['sheet'] = open ? 'open' : 'closed';
+  if (backdrop) {
+    backdrop.hidden = !open;
+    backdrop.classList.toggle('pointer-events-none', !open);
+  }
+}
+
+function paintMissionOverlay(): void {
+  const sidebar = document.getElementById('investigation-panel');
+  if (!sidebar) return;
+  const open = isMobileWorkspace() && missionOverlayOpen;
+  sidebar.dataset['overlay'] = open ? 'open' : 'closed';
+}
+
+/** Abre a gaveta de resultados no mobile; no desktop não altera o layout. */
+export function showResultsSheet(): void {
+  resultsSheetOpen = true;
+  mobilePane = 'results';
+  paintResultsSheet();
+}
+
+/** Recolhe a gaveta sem limpar os dados. */
+export function hideResultsSheet(): void {
+  resultsSheetOpen = false;
+  if (mobilePane === 'results') mobilePane = 'editor';
+  paintResultsSheet();
+}
+
+export function showMissionOverlay(): void {
+  missionOverlayOpen = true;
+  mobilePane = 'mission';
+  paintMissionOverlay();
+}
+
+export function hideMissionOverlay(): void {
+  missionOverlayOpen = false;
+  if (mobilePane === 'mission') mobilePane = 'editor';
+  paintMissionOverlay();
+}
+
+/** No mobile, results abre a gaveta e mission abre o overlay; no desktop não altera o layout. */
 export function showMobilePane(pane: MobileWorkspacePane): void {
   mobilePane = pane;
+  if (pane === 'results') {
+    resultsSheetOpen = true;
+    missionOverlayOpen = false;
+  } else if (pane === 'mission') {
+    missionOverlayOpen = true;
+  } else {
+    resultsSheetOpen = false;
+    missionOverlayOpen = false;
+  }
+  paintResultsSheet();
+  paintMissionOverlay();
   syncWorkspace?.();
 }
 
@@ -58,13 +116,18 @@ function tabClass(active: boolean): string {
 
 function mountMobileSwitcher(workspace: HTMLElement): HTMLElement {
   const existing = document.getElementById('mobile-view-switcher');
-  if (existing) return existing;
+  if (existing) {
+    existing.className = 'hidden md:flex';
+    existing.hidden = true;
+    return existing;
+  }
 
   const bar = document.createElement('div');
   bar.id = 'mobile-view-switcher';
   bar.setAttribute('role', 'tablist');
   bar.setAttribute('aria-label', 'Seção do laboratório');
-  bar.className = 'flex shrink-0 gap-1 border-b border-slate-800 bg-zinc-950 p-1.5 md:hidden';
+  bar.hidden = true;
+  bar.className = 'hidden md:flex';
   bar.innerHTML = `
     <button type="button" role="tab" data-mobile-pane="mission" class="${tabClass(true)}">📋 Missão</button>
     <button type="button" role="tab" data-mobile-pane="editor" class="${tabClass(false)}">💻 Editor SQL</button>
@@ -73,7 +136,7 @@ function mountMobileSwitcher(workspace: HTMLElement): HTMLElement {
   return bar;
 }
 
-/** Splitter vertical entre “O que fazer” e o editor. Abaixo de 768px vira abas em tela cheia. */
+/** Splitter vertical entre “O que fazer” e o editor. Abaixo de 768px o editor fica em tela cheia. */
 export function initWorkspaceSplit(): void {
   const workspace = byId('workspace');
   const sidebar = byId('investigation-panel');
@@ -82,13 +145,16 @@ export function initWorkspaceSplit(): void {
   const editorContainer = byId('editor-container');
   const outputPane = byId('output-pane');
   const switcher = mountMobileSwitcher(workspace);
+  const backdrop = document.getElementById('results-backdrop');
+  const closeSheet = document.getElementById('btn-close-results-sheet');
+  const closeOverlay = document.getElementById('btn-close-mission-overlay');
   const media = window.matchMedia(MOBILE_MEDIA);
 
   workspace.classList.add('max-md:flex-col');
   gutter.classList.add('max-md:hidden');
   byId('btn-run').classList.add('max-md:min-h-10');
   byId('btn-validate').classList.add('max-md:min-h-10');
-  const editorToolbar = editorContainer.querySelector<HTMLElement>(':scope > div');
+  const editorToolbar = editorContainer.querySelector<HTMLElement>(':scope > div.flex.h-12');
   editorToolbar?.classList.add('max-md:h-auto', 'max-md:min-h-10', 'max-md:overflow-x-auto', 'max-md:flex-nowrap');
 
   const apply = (width: number): number => {
@@ -99,16 +165,9 @@ export function initWorkspaceSplit(): void {
     return next;
   };
 
-  const paintSwitcher = (): void => {
-    for (const button of switcher.querySelectorAll<HTMLButtonElement>('[data-mobile-pane]')) {
-      const pane = button.dataset['mobilePane'];
-      const on = pane === mobilePane;
-      button.className = tabClass(on);
-      button.setAttribute('aria-selected', String(on));
-    }
-  };
-
   const restoreDesktop = (): void => {
+    resultsSheetOpen = false;
+    missionOverlayOpen = false;
     document.body.classList.add('h-screen', 'overflow-hidden');
     document.body.classList.remove('min-h-[100dvh]', 'overflow-y-auto');
     document.getElementById('app')?.classList.add('h-screen', 'overflow-hidden');
@@ -126,35 +185,35 @@ export function initWorkspaceSplit(): void {
     document.documentElement.style.removeProperty('--lab-vh');
     const stored = readStoredWidth();
     apply(stored ?? workspace.clientWidth * DEFAULT_RATIO);
+    paintResultsSheet();
+    paintMissionOverlay();
   };
 
   const applyMobilePanes = (): void => {
-    document.body.classList.remove('h-screen', 'overflow-hidden');
-    document.body.classList.add('min-h-[100dvh]', 'overflow-y-auto');
-    document.getElementById('app')?.classList.remove('h-screen', 'overflow-hidden');
-    document.getElementById('app')?.classList.add('min-h-[100dvh]', 'overflow-visible');
+    document.body.classList.add('h-[100dvh]', 'overflow-hidden');
+    document.body.classList.remove('min-h-[100dvh]', 'overflow-y-auto');
+    document.getElementById('app')?.classList.add('h-[100dvh]', 'overflow-hidden');
+    document.getElementById('app')?.classList.remove('min-h-[100dvh]', 'overflow-visible');
     sidebar.style.width = '100%';
     sidebar.style.maxWidth = '100%';
-    sidebar.style.flex = '1 1 auto';
+    sidebar.hidden = false;
+    queryPanel.hidden = false;
+    editorContainer.hidden = false;
+    outputPane.hidden = false;
     queryPanel.style.flex = '1 1 auto';
-    sidebar.hidden = mobilePane !== 'mission';
-    queryPanel.hidden = mobilePane === 'mission';
-    editorContainer.hidden = mobilePane !== 'editor';
-    outputPane.hidden = mobilePane !== 'results';
-    editorContainer.classList.toggle('flex-1', mobilePane === 'editor');
-    editorContainer.classList.toggle('flex-[1.15]', mobilePane !== 'editor');
-    outputPane.classList.toggle('min-h-[50dvh]', mobilePane === 'results');
-    outputPane.classList.add('overflow-y-auto');
+    editorContainer.classList.add('flex-1');
+    editorContainer.classList.remove('flex-[1.15]');
     const vh = window.visualViewport?.height ?? window.innerHeight;
     document.documentElement.style.setProperty('--lab-vh', `${Math.round(vh)}px`);
+    paintResultsSheet();
+    paintMissionOverlay();
   };
 
   const sync = (): void => {
     const mobile = media.matches;
     workspace.dataset['mobilePane'] = mobile ? mobilePane : 'desktop';
-    switcher.hidden = !mobile;
+    switcher.hidden = true;
     gutter.hidden = mobile;
-    paintSwitcher();
     if (mobile) applyMobilePanes();
     else restoreDesktop();
   };
@@ -163,14 +222,9 @@ export function initWorkspaceSplit(): void {
   gutter.setAttribute('aria-valuemin', String(MIN_WIDTH_PX));
   gutter.setAttribute('role', 'separator');
 
-  switcher.addEventListener('click', (event) => {
-    const target = event.target;
-    if (!(target instanceof Element)) return;
-    const pane = target.closest<HTMLElement>('[data-mobile-pane]')?.dataset['mobilePane'];
-    if (pane !== 'mission' && pane !== 'editor' && pane !== 'results') return;
-    mobilePane = pane;
-    sync();
-  });
+  backdrop?.addEventListener('click', () => hideResultsSheet());
+  closeSheet?.addEventListener('click', () => hideResultsSheet());
+  closeOverlay?.addEventListener('click', () => hideMissionOverlay());
 
   let dragging = false;
 
@@ -217,14 +271,12 @@ export function initWorkspaceSplit(): void {
     persistWidth(apply(current + delta));
   });
 
-  const onViewportChange = (): void => {
-    sync();
-  };
-
   window.visualViewport?.addEventListener('resize', () => {
     if (media.matches) sync();
   });
-  media.addEventListener('change', onViewportChange);
+  media.addEventListener('change', () => {
+    sync();
+  });
   window.addEventListener('resize', () => {
     if (!media.matches) persistWidth(apply(sidebar.getBoundingClientRect().width));
   });
