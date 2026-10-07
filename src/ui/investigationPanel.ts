@@ -189,13 +189,53 @@ function renderExpectedOutput(s: InvestigationScenario): string {
     ${ordem}`;
 }
 
-const tabButton = (id: string, label: string, selected: boolean): string => `
-  <button type="button" data-tab="${id}" aria-selected="${String(selected)}"
-    class="rounded-lg px-3 py-1.5 text-[12px] font-medium ${
-      selected ? 'bg-slate-800 text-slate-50' : 'text-slate-500 hover:text-slate-200'
-    }">
-    ${label}
-  </button>`;
+const SCHEMA_BUTTON_CLASS =
+  'w-full py-2 px-3 rounded-lg border border-slate-700 bg-slate-900 hover:bg-slate-800 text-slate-200 text-xs font-medium flex items-center justify-center gap-2 my-3';
+
+function renderSchemaButton(): string {
+  return `<button type="button" data-open-schema class="${SCHEMA_BUTTON_CLASS}">📊 Consultar Tabelas Disponíveis</button>`;
+}
+
+function renderSqlHintAccordion(s: InvestigationScenario): string {
+  const twoPhase = renderTwoPhase(s);
+  return `
+    <details class="rounded-xl border border-slate-800 bg-slate-900/40">
+      <summary class="cursor-pointer select-none px-3 py-2.5 text-xs font-medium text-sky-300 hover:text-sky-200">
+        💡 Revelar Dica de SQL
+      </summary>
+      <div class="space-y-2 border-t border-slate-800 px-3 py-3">
+        <p class="text-[13px] leading-relaxed text-slate-300">${escapeHtml(s.dicaTexto ?? '')}</p>
+        <pre class="overflow-x-auto rounded-xl bg-slate-950 p-3 font-mono text-[12px] leading-6 text-emerald-200">${escapeHtml(s.dicaSql ?? '')}</pre>
+        ${twoPhase}
+      </div>
+    </details>`;
+}
+
+function renderDossierContext(s: InvestigationScenario): string {
+  return `
+    <section class="space-y-2">
+      <p class="text-[11px] font-semibold uppercase tracking-wider text-amber-200/90">${escapeHtml(s.enquadramento ?? '')}</p>
+      <p class="text-[13px] leading-relaxed text-slate-400">${escapeHtml(s.dossie ?? '')}</p>
+    </section>`;
+}
+
+function renderGabaritoAccordion(s: InvestigationScenario, tentativas: number): string {
+  if (tentativas <= 0) return '';
+  return `
+    <details class="rounded-xl border border-slate-800 bg-slate-900/40">
+      <summary class="flex cursor-pointer select-none items-center gap-2 px-3 py-2.5 text-xs font-medium text-sky-300 hover:text-sky-200">
+        Ver gabarito comentado
+        <span class="ml-auto text-[11px] font-normal text-slate-500">${tentativas} tentativa${tentativas > 1 ? 's' : ''}</span>
+      </summary>
+      <div class="space-y-2 border-t border-slate-800 p-3">
+        ${renderDidacticGabarito(s)}
+        <button type="button" data-load-solution
+          class="w-full rounded-lg border border-slate-700 px-3 py-2 text-[12px] text-slate-300 hover:border-sky-600 hover:text-sky-200">
+          Abrir gabarito no editor
+        </button>
+      </div>
+    </details>`;
+}
 
 function renderScenario(s: InvestigationScenario): string {
   const nivelMeta = TRAIL_LEVELS[s.nivel];
@@ -208,52 +248,26 @@ function renderScenario(s: InvestigationScenario): string {
       <p class="mt-4 text-[11px] font-semibold uppercase tracking-wider text-sky-400">Sua Missão</p>
       <p class="mt-2 text-[15px] leading-relaxed text-slate-100">${escapeHtml(missionLine(s))}</p>
     </section>
-    <button type="button" data-open-schema
-      class="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-900/50 px-3 py-2.5 text-[13px] font-medium text-slate-200 hover:border-sky-600 hover:bg-slate-800 hover:text-sky-100">
-      📊 Consultar Tabelas Disponíveis
-    </button>
-    <div>
-      <div role="tablist" aria-label="Detalhes do desafio" class="flex flex-wrap gap-1">
-        ${tabButton('dica', '💡 Dica de SQL passo a passo', true)}
-        ${tabButton('dossie', '📋 Dossiê / Contexto Policial', false)}
-        ${tabButton('colunas', 'Colunas esperadas', false)}
-      </div>
-      <div data-tab-panel="dica" class="mt-3 space-y-3">
-        <p class="text-[13px] leading-relaxed text-slate-300">${escapeHtml(s.dicaTexto ?? '')}</p>
-        <pre class="overflow-x-auto rounded-xl bg-slate-950 p-3 font-mono text-[12px] leading-6 text-emerald-200">${escapeHtml(s.dicaSql ?? '')}</pre>
-        ${renderTwoPhase(s)}
-      </div>
-      <div data-tab-panel="dossie" hidden class="mt-3 space-y-3">
-        <p class="text-[12px] font-medium text-amber-200/90">${escapeHtml(s.enquadramento ?? '')}</p>
-        <p class="text-[13px] leading-relaxed text-slate-400">${escapeHtml(s.dossie ?? '')}</p>
-      </div>
-      <div data-tab-panel="colunas" hidden class="mt-3 space-y-3 text-[13px] leading-relaxed text-slate-300">
-        ${renderExpectedOutput(s)}
-      </div>
-    </div>`;
+    ${renderDossierContext(s)}
+    ${renderSchemaButton()}
+    <section class="rounded-xl border border-slate-800 bg-slate-900/40 p-3 text-[13px] leading-relaxed text-slate-300">
+      ${renderExpectedOutput(s)}
+    </section>
+    ${renderSqlHintAccordion(s)}`;
 }
 
-function renderMobileDossier(s: InvestigationScenario): string {
+function renderMobileDossier(s: InvestigationScenario, tentativas = 0): string {
   return `
-    <section class="space-y-2">
-      <p class="text-[11px] font-semibold uppercase tracking-wider text-amber-200/90">${escapeHtml(s.enquadramento ?? '')}</p>
-      <p class="text-[13px] leading-relaxed text-slate-300">${escapeHtml(s.dossie ?? '')}</p>
-    </section>
+    ${renderDossierContext(s)}
+    ${renderSchemaButton()}
     <section class="rounded-xl border border-slate-800 bg-slate-900/40 p-3">
       ${renderExpectedOutput(s)}
     </section>
-    <section class="space-y-2">
-      <p class="text-[11px] font-semibold uppercase tracking-wider text-sky-400">Dica de SQL</p>
-      <p class="text-[13px] leading-relaxed text-slate-300">${escapeHtml(s.dicaTexto ?? '')}</p>
-      <pre class="overflow-x-auto rounded-xl bg-slate-950 p-3 font-mono text-[12px] leading-6 text-emerald-200">${escapeHtml(s.dicaSql ?? '')}</pre>
-    </section>
-    <button type="button" data-open-schema
-      class="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-900/50 px-3 py-2.5 text-[13px] font-medium text-slate-200">
-      📊 Consultar Tabelas Disponíveis
-    </button>`;
+    ${renderSqlHintAccordion(s)}
+    ${renderGabaritoAccordion(s, tentativas)}`;
 }
 
-function paintMobileBriefing(s: InvestigationScenario): void {
+function paintMobileBriefing(s: InvestigationScenario, tentativas = 0): void {
   const level = document.getElementById('mobile-briefing-level');
   const title = document.getElementById('mobile-briefing-title');
   const text = document.getElementById('mobile-briefing-text');
@@ -270,7 +284,7 @@ function paintMobileBriefing(s: InvestigationScenario): void {
   }
   const toggle = document.getElementById('mobile-briefing-toggle');
   if (toggle) toggle.setAttribute('aria-expanded', 'false');
-  if (dossier) dossier.innerHTML = renderMobileDossier(s);
+  if (dossier) dossier.innerHTML = renderMobileDossier(s, tentativas);
 }
 
 function splitSqlComment(line: string): [code: string, comment: string] {
@@ -395,20 +409,7 @@ export function initInvestigationPanel({
       solution.innerHTML = '';
       return;
     }
-    solution.innerHTML = `
-      <details class="group rounded-xl bg-slate-900/40">
-        <summary class="flex cursor-pointer select-none items-center gap-2 px-4 py-2.5 text-sm font-medium text-sky-300 hover:bg-slate-800/40">
-          Ver gabarito comentado
-          <span class="ml-auto text-[12px] font-normal text-slate-500">${count} tentativa${count > 1 ? 's' : ''}</span>
-        </summary>
-        <div class="space-y-2 border-t border-slate-800 p-3">
-          ${renderDidacticGabarito(selected)}
-          <button type="button" data-load-solution
-            class="w-full rounded-lg border border-slate-700 px-3 py-2 text-[12px] text-slate-300 hover:border-sky-600 hover:text-sky-200">
-            Abrir gabarito no editor
-          </button>
-        </div>
-      </details>`;
+    solution.innerHTML = renderGabaritoAccordion(selected, count);
   };
 
   if (solution) {
@@ -431,7 +432,7 @@ export function initInvestigationPanel({
       }
     }
     renderSolutionToggle();
-    paintMobileBriefing(scenario);
+    paintMobileBriefing(scenario, attempts.get(scenario.id) ?? 0);
     if (notify && changed) onScenarioChange(scenario);
   };
 
@@ -481,7 +482,7 @@ export function initInvestigationPanel({
   });
 
   dossierButton?.addEventListener('click', () => {
-    paintMobileBriefing(selected);
+    paintMobileBriefing(selected, attempts.get(selected.id) ?? 0);
     dossierDialog?.showModal();
   });
 
@@ -496,6 +497,11 @@ export function initInvestigationPanel({
       closeDossier();
       showMissionOverlay();
       onOpenSchema?.();
+      return;
+    }
+    if (target.closest('[data-load-solution]')) {
+      closeDossier();
+      onLoadSolution(selected.gabaritoSql);
     }
   });
 
@@ -505,18 +511,6 @@ export function initInvestigationPanel({
       if (!(target instanceof Element)) return;
       if (target.closest('[data-open-schema]')) {
         onOpenSchema?.();
-        return;
-      }
-      const tab = target.closest<HTMLElement>('[data-tab]')?.dataset['tab'];
-      if (tab) {
-        for (const button of card.querySelectorAll<HTMLElement>('[data-tab]')) {
-          const on = button.dataset['tab'] === tab;
-          button.setAttribute('aria-selected', String(on));
-          button.className = `rounded-lg px-3 py-1.5 text-[12px] font-medium ${on ? 'bg-slate-800 text-slate-50' : 'text-slate-500 hover:text-slate-200'}`;
-        }
-        for (const panel of card.querySelectorAll<HTMLElement>('[data-tab-panel]')) {
-          panel.hidden = panel.dataset['tabPanel'] !== tab;
-        }
         return;
       }
       const id = target.closest<HTMLElement>('[data-remove-scenario]')?.dataset['removeScenario'];
@@ -553,6 +547,7 @@ export function initInvestigationPanel({
       attempts.set(selected.id, (attempts.get(selected.id) ?? 0) + 1);
       if (approved) markChallengeCompleted(selected.id);
       renderSolutionToggle();
+      paintMobileBriefing(selected, attempts.get(selected.id) ?? 0);
     },
   };
 }
