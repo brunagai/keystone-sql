@@ -36,54 +36,53 @@ npm run dev
 
 Depois abra **http://localhost:5173** no navegador (Chrome, Edge ou Firefox atualizados).
 
-Quando o canto superior esquerdo mostrar **● Online** em verde, o banco está pronto. As **cinco tabelas** e as contagens de linhas ficam no **Navegador de Esquema** (botão **📖 Dicionário de Tabelas** ou **📊 Consultar Tabelas Disponíveis**).
+Quando o canto superior esquerdo mostrar **● Online** em verde, o banco está pronto. As **cinco tabelas** e as contagens de linhas ficam no **Dicionário de Dados & Tabelas**, aberto por **📊 Consultar Tabelas Disponíveis**.
 
-Se você atualizou o gerador (QSA, telemetria, produtos, PEP, etc.), rode **`npm run generate:dataset`** e recarregue a página (ou **↻ Restaurar Dados Originais**) para o SQLite em memória refletir o JSON novo (`versao` **1.4.0**).
+Se você atualizou o gerador (QSA, telemetria, produtos, PEP, etc.), rode **`npm run generate:dataset`** e **recarregue a página**: o SQLite vive só na memória e volta ao JSON (`versao` **1.4.0**) a cada carga.
 
 ---
 
 ## 2. Conhecendo a tela
 
-A tela é um laboratório em **duas colunas**, com a missão à esquerda e o trabalho SQL à direita. O **Navegador de Esquema** é um painel flutuante (não cobre o editor). O agente de IA abre em **gaveta**.
+No **desktop**, a tela é um laboratório em **duas colunas**: missão à esquerda e editor + resultados à direita. No **celular**, a página rola em um único fluxo (briefing + editor); o dossiê abre em modal e os resultados em uma gaveta inferior. O agente de IA abre em **gaveta**.
 
 ### Cabeçalho
 
 - **● Online / Carregando / Offline** — estado do SQLite (WebAssembly) no navegador.
-- **Filtro da trilha** — **Todos**, **Iniciante** (níveis 1–2), **Intermediário** (nível 3) ou **Avançado** (níveis 4–5).
-- **Seletor de caso** — o desafio ativo (na primeira carga: **1.1 · Smurfing para a receptora Aurora**).
-- **🤖 Agente IA** — gera novos desafios (nível 5) e abre a configuração da chave.
-- **📖 Dicionário de Tabelas** — abre ou fecha o **Navegador de Esquema** (5 tabelas). A IA não adiciona tabelas.
+- **Progresso da trilha** — quantos desafios você já aprovou; **Zerar** limpa essa marca (não apaga rascunhos).
+- **Filtro da trilha** — **Todos**, **Iniciante** (níveis 0–1), **Intermediário** (2–3) ou **Avançado** (4–5).
+- **Seletor de caso** — o desafio ativo (na primeira carga: **Reconhecimento Cadastral: Listagem de Clientes**).
+- **🤖 Agente IA** — gera novos desafios e abre a configuração da chave.
 - **❓ Entenda o Laboratório** — reabre o tour guiado.
-- **↻ Restaurar Dados Originais** — recria o banco sintético. Use se você alterou ou apagou dados sem querer.
 
 ### Coluna esquerda — O que fazer
 
-Redimensionável (arraste a faixa entre as colunas). Contém:
+No desktop, redimensionável (arraste a faixa entre as colunas; no celular essa faixa **não aparece**). A ordem do painel é:
 
-- o card **Sua Missão** (o problema investigativo em linguagem de negócio, sem cláusulas SQL);
-- o atalho **📊 Consultar Tabelas Disponíveis** (abre ou fecha o Navegador de Esquema, o mesmo da navbar);
-- as abas de apoio:
-  - **💡 Dica de SQL passo a passo** — texto pedagógico e esqueleto SQL (sem o gabarito completo);
-  - **📋 Dossiê / Contexto Policial** — enquadramento regulatório e narrativa do caso;
-  - **Colunas esperadas** — primeiro o **objetivo de negócio da saída** (linguagem conceitual). Os nomes técnicos (`conta_origem`, `total_operacoes`, …) e o `ORDER BY` ficam atrás de **👁️ Revelar Nomes Técnicos e Aliases Esperados**, recolhido por padrão;
-- nos níveis 3, 4 e nos desafios gerados, a **decomposição em 2 fases** (envelope `WITH` e corte no `WHERE` externo);
-- depois da primeira validação, **Ver gabarito comentado**.
+- o card **Sua Missão** (regra de negócio, sem cláusulas SQL);
+- o **dossiê / contexto regulatório** (norma + narrativa do caso);
+- o atalho **📊 Consultar Tabelas Disponíveis** (primeira ação após o dossiê);
+- o **Contrato de Entrega do Relatório** (aliases esperados, sempre visíveis);
+- **💡 Revelar Dica de SQL** — acordeão **fechado** por padrão (evita spoiler de sintaxe);
+- nos níveis avançados, a **decomposição em 2 fases** fica dentro da dica;
+- depois da primeira validação, **Ver gabarito comentado** (também recolhido).
 
-### Coluna direita — Mão na massa
+No celular, o mesmo conteúdo abre em **📋 Ver Dossiê & Contrato de Colunas**. O título do caso fica **abaixo** da badge de nível, por extenso.
 
-- **Editor SQL**, com modelo inicial comentado (tabelas, filtros e `SELECT` a completar).
-- **▶ Rodar Teste** — executa a consulta em **modo exploratório** (mostra a tabela e um aviso: ainda não pontua).
+### Coluna direita — Editor e resultados
+
+- **Editor SQL**, com esqueleto comentado do nível (sem gabarito embutido).
+- **▶ Rodar Teste** — executa a consulta em **modo exploratório** (mostra a tabela e um aviso: ainda não pontua). No celular, os resultados sobem numa gaveta.
 - **✓ Validar Resposta** — submete o resultado à esteira AML (compara com o gabarito).
 - **↺ Restaurar Modelo Inicial** — recoloca o esqueleto SQL deste desafio.
-- **✂ Testar Trecho** — executa só o pedaço selecionado no editor (útil para o miolo de um `WITH`).
 - **🕘 Histórico** — últimas 10 execuções desta sessão (o menu começa fechado).
-- **Resultados** — banner de validação ou de exploração, tabela ou card de erro (um quadro só), com rolagem vertical. **Exportar** (Markdown/CSV) fica nesta barra.
+- **Resultados** — banner de validação ou de exploração, tabela ou card de erro (um quadro só). **Exportar** (Markdown/CSV) fica nesta barra.
 
 Valores em reais aparecem como **R$ 9.850,00** e datas como **dd/mm/aaaa hh:mm:ss**.
 
-### Navegador de Esquema (Dicionário de Tabelas)
+### Dicionário de Dados & Tabelas
 
-Painel flutuante à esquerda (~384px, sombra), **sem overlay escuro**. Você consulta o esquema e **continua digitando no editor**. Clicar fora **não** fecha. Fecha só no **✕** ou na tecla **Esc**. A navbar e **Consultar Tabelas Disponíveis** fazem *toggle*.
+Abre no lugar da coluna **O que fazer** (no celular, em overlay em tela cheia). **← Voltar para a Missão** ou **Esc** devolve o enunciado. Clique em tabela/coluna **insere o identificador** no editor e mostra **✓ inserido**; o dicionário permanece aberto.
 
 Há **cinco tabelas** (badges: Cadastral, Transacional, Telemetria, Investimentos):
 
@@ -99,34 +98,28 @@ Use o campo **Filtrar tabela ou coluna…**. A lista compacta mostra as tabelas 
 
 ## 3. Resolvendo seu primeiro desafio
 
-1. No seletor da navbar (ou deixe o caso padrão), escolha um cenário — por exemplo, **1.1 · Smurfing para a receptora Aurora (C025)**.
-2. Leia **Sua Missão** (regra de negócio). Use **📊 Consultar Tabelas Disponíveis** para o esquema — o editor continua editável.
-3. Na aba **Colunas esperadas**, leia o objetivo de negócio. Só abra **Revelar Nomes Técnicos** se precisar conferir os aliases da esteira.
-4. Complete o modelo no editor. **↺ Restaurar Modelo Inicial** recoloca o esqueleto se você se perder.
+1. No seletor da navbar (ou deixe o caso padrão), comece por **Reconhecimento Cadastral: Listagem de Clientes**.
+2. Leia **Sua Missão**. Use **📊 Consultar Tabelas Disponíveis** para o dicionário; **← Voltar para a Missão** devolve o enunciado.
+3. Leia o **Contrato de Entrega do Relatório** (aliases). A **dica de SQL** só aparece se você clicar para revelá-la.
+4. Complete o esqueleto no editor. **↺ Restaurar Modelo Inicial** recoloca o modelo se você se perder.
 5. Clique em **▶ Rodar Teste** (ou **Ctrl+Enter**) para explorar os dados. Isso **não** pontua o desafio.
-6. Quando achar que está certo, clique em **✓ Validar Resposta**. O feedback aparece no painel **Resultados**.
+6. Quando achar que está certo, clique em **✓ Validar Resposta**. O feedback aparece em **Resultados**.
 7. Se errar, ajuste e valide de novo — não há limite de tentativas. Depois de tentar, você pode abrir **Ver gabarito comentado**.
-
-> **Dica:** selecione um trecho e use **✂ Testar Trecho** para inspecionar só aquele bloco (por exemplo, o miolo de um `WITH`).
 
 ### A trilha de aprendizagem
 
-Os desafios estão organizados em **níveis progressivos**: cada nível introduz uma técnica de SQL nova, aplicada a uma tipologia de lavagem. No seletor da navbar eles aparecem agrupados por nível e numerados (1.1, 1.2, 2.1…). Use o filtro **Todos / Iniciante / Intermediário / Avançado** para enxugar a lista. No card da missão, o texto **Nível N · título da técnica** indica o degrau. A sugestão é seguir a ordem.
+Há **41 desafios base**, agrupados nos níveis **0 a 5** e numerados no seletor (`0.1`, `1.1`…). Use **Todos / Iniciante / Intermediário / Avançado**. Siga a ordem.
 
-| Nível | Técnica | Desafio | O que investigar |
-| --- | --- | --- | --- |
-| **1 — Fundamentos de Agregação** | `GROUP BY`, `HAVING`, `JOIN` | **1.1 Smurfing** | Remetentes com PIX individuais entre R$ 9.700,00 e R$ 9.999,00 para a C025, com pelo menos 2 operações |
-| | | **1.2 Incompatibilidade patrimonial** | Transferências iguais ou superiores a 30 vezes a renda declarada do titular da origem |
-| **2 — Janelas e Classificação** | `ROW_NUMBER()` | **2.1 Pico individual por conta** | O maior PIX de cada conta no dia 18/08, com quantas operações e quanto cada uma movimentou no dia (atenção ao empate) |
-| **3 — Análise Temporal** | `LAG` / `LEAD` | **3.1 Burst / alta frequência** | Transferências com no máximo 60 s em relação à anterior da mesma origem |
-| | recorte horário | **3.2 Transferência noturna sob coação** | PIX de R$ 5.000,00 ou mais entre 20h e 5h59 (Res. BCB 142 / sequestro relâmpago) |
-| **4 — Composição com CTEs** | `WITH` + janelas | **4.1 Conta "aquecida"** | Histórico curto, salto de 10× a média anterior, valor ≥ R$ 5.000,00 e até 10 dias desde o PIX anterior |
-| | soma móvel | **4.2 Acúmulo móvel (3 PIX)** | Soma dos últimos 3 PIX da mesma origem ≥ R$ 25.000,00 |
-| | PEP + janela | **4.3 Escalada rápida em PEP** | Titular PEP cuja soma móvel das últimas 3 originações supera R$ 20.000,00 |
-| **5 — Casos avançados de PLD/FT** | QSA / UBO | **5.1 Sócios relevantes da Aurora** | Sócios da C025 com ≥ 25% e poderes de administrador |
-| | telemetria | **5.2 Account takeover** | Login ok em cidade diferente do cadastro até 15 min antes de PIX de R$ 10.000,00 ou mais |
-| | produtos | **5.3 Consórcio em espécie** | Lances de consórcio já contemplados liquidados em espécie |
-| | Livre | Desafios gerados pelo agente | Casos inéditos (IA ou gerador offline), no mesmo nível 5 |
+| Nível | Técnica-alvo | Casos base (títulos) |
+| --- | --- | --- |
+| **0 — Fundamentos de Consulta** | `SELECT`, `FROM`, `WHERE`, `ORDER BY`, `GROUP BY` | Listagem de clientes; triagem PEP; operações de alto valor; baixa renda cadastral; volumetria por remetente; capilaridade de destinatários |
+| **1 — Fundamentos de Agregação** | `GROUP BY`, `HAVING`, `JOIN` | Smurfing Aurora; alta recorrência; concentração de créditos; fracionamento abaixo do limiar; matriz de criticidade; incompatibilidade patrimonial |
+| **2 — Cruzamentos cadastrais** | `JOIN` / `LEFT JOIN` e cadastro duplo | Remetentes de alto valor; QSA/administração PJ; contas dormentes; volumetria PEP; fluxos intrabanco; pico diário (`ROW_NUMBER`) |
+| **3 — Janelas temporais** | `strftime`, `date()`, `unixepoch`, `HAVING` sobre renda | Limiar noturno; liquidações em fim de semana; volume × renda; rajada na mesma data; telemetria ATO; burst; transferência noturna sob coação |
+| **4 — Window Functions** | `ROW_NUMBER`, `LAG`, `SUM OVER`, CTE em duas fases | Sequenciamento; última movimentação; intervalo entre disparos; montante acumulado; salto atípico; conta aquecida; acúmulo móvel de 3 PIX; escalada em PEP |
+| **5 — Investigações avançadas** | UBO/PEP, dwell time, telemetria, triangulação, dossiê COAF | UBO PEP; conta de passagem; vetor geográfico impossível; triangulação societária; dossiê COAF PJ; UBO Aurora; account takeover; consórcio em espécie |
+
+Desafios gerados pelo **Agente IA** entram no nível compatível com o SQL (não ficam todos no 5).
 
 ---
 
@@ -138,16 +131,16 @@ Em caso de **erro de SQL** ou de validação, você vê **apenas** o card de err
 
 | Cor | Significado |
 | --- | --- |
-| 🟢 **Esteira em conformidade** | A esteira capturou os mesmos alertas do gabarito. O título mostra **Alertas Capturados: X/X (100%)**, **Falsos Positivos: 0** e **Eficiência: 100%**, com três chips iguais abaixo. Também há a narrativa do caso e, às vezes, dicas de boas práticas |
-| 🟡 **Parcial** | Quase lá: por exemplo, os registros estão certos mas a **fila de priorização** (`ORDER BY`) não, ou alguma **métrica** calculada difere; também aparece se a esteira voltou **vazia** (filtros restritivos demais) |
-| 🔴 **Inconsistência** | Filtro, colunas, entidades diferentes do gabarito, ou um **erro de SQL** (incluindo Window Function no lugar errado) |
+| 🟢 **Esteira em conformidade** | A **matriz de dados** (linhas e valores) bate com o gabarito. Aliases ou ordem de colunas diferentes **não reprovam**: o card verde pode mostrar **Dica de Governança**. Há chips **Alertas / Falsos + / Eficiência** e a narrativa do caso |
+| 🟡 **Quase lá** | Só quando **falta ou sobra coluna** (ex.: o relatório pedia 3 métricas e vieram 2 ou 4). Os dados certos com nome/ordem diferentes **não** caem aqui |
+| 🔴 **Inconsistência** | SQL inválido, conjunto de registros diferente do gabarito, métricas que não conferem, ou esteira vazia / com ruído de volume |
 
-O que o validador **aceita**:
+O que o validador **aceita** (sucesso):
 
-- **Nomes de colunas diferentes** (aliases): se os valores conferem, está certo.
-- **Colunas em outra ordem**.
+- **Nomes de colunas diferentes** (aliases): se os valores conferem, está certo; no verde pode aparecer mentoria de schema.
+- **Colunas na ordem física diferente** do contrato.
 - **Diferenças de arredondamento** de até **R$ 0,01**.
-- **Colunas extras** (com uma sugestão de removê-las).
+- **Ordem das linhas** diferente do `ORDER BY` do enunciado (não trava a trilha; pode haver nota de fila de priorização).
 
 ### Alertas perdidos e ruído operacional
 
@@ -165,17 +158,17 @@ A dica SQL específica do desafio (por exemplo, “particionar só por origem”
 
 Quando o resultado **bate** com o gabarito, o card verde resume a esteira como em um relatório de monitoramento:
 
-> 🟢 Esteira Aprovada em Conformidade \| Alertas Capturados: X/X (100%) \| Falsos Positivos: 0 \| Eficiência: 100%
+> 🟢 Esteira Aprovada em Conformidade | Alertas Capturados: X/X (100%) | Falsos Positivos: 0 | Eficiência: 100%
 
 - **Alertas capturados** — quantos registros do gabarito sua consulta devolveu (no sucesso, todos).
 - **Falsos positivos** — linhas a mais que o corte do cenário não pedia (no sucesso, zero).
 - **Eficiência** — proporção de acertos entre o que a esteira emitiu (no sucesso, 100%).
 
-Abaixo dos chips continua a explicação do caso (contas, tipologias) e eventuais dicas de aliases ou colunas extras.
+Abaixo dos chips continua a explicação do caso. Se os aliases ou a ordem das colunas diferirem do contrato, o bloco **Dica de Governança** (borda azulada) sugere o schema de produção — sem bloquear o progresso.
 
 ### Fila de priorização
 
-Se os **mesmos** registros estão lá, mas em outra ordem, o Lab avisa que a **fila de priorização da esteira está desalinhada**. Em PLD, a ordem importa: os casos mais graves devem aparecer primeiro. Ajuste o `ORDER BY` exatamente como o objetivo pede (incluindo o desempate).
+Se os **mesmos** registros estão lá, mas em outra ordem de linhas, o Lab pode **mencionar** a fila de priorização no card verde. Em PLD, a ordem ajuda a olhar primeiro os casos mais graves. Ajuste o `ORDER BY` se o enunciado pedir (incluindo o desempate). Isso **não** vira “Quase lá”.
 
 ### Ordem do compilador SQL (Window Functions)
 
@@ -184,9 +177,9 @@ O SQLite **não deixa** filtrar `LAG()`, `ROW_NUMBER()` ou qualquer `OVER (...)`
 > **⚠️ Ordem de Execução do Compilador SQL**  
 > Envelope o cálculo em `WITH envelope_metricas AS (...)` (**Fase 1**) e aplique o corte regulatório no `WHERE` **externo** (**Fase 2**).
 
-Isso é o mesmo raciocínio do card **Decomposição em 2 Fases** nos níveis 3, 4 e nos desafios gerados. Use **Testar Seleção / CTE** para inspecionar o envelope antes do corte.
+Isso é o mesmo raciocínio da **decomposição em 2 fases** (dentro da dica de SQL) nos níveis 3, 4 e nos desafios gerados.
 
-> A validação aceita apenas consultas de leitura (`SELECT` / `WITH`). Para experimentar `INSERT`, `UPDATE` ou `DELETE`, use **Rodar Teste** e depois **↻ Restaurar Dados Originais**.
+> A validação aceita apenas consultas de leitura (`SELECT` / `WITH`). **Rodar Teste** pode alterar o banco em memória; **recarregue a página** para voltar ao dataset original.
 
 ---
 
@@ -198,7 +191,7 @@ Isso é o mesmo raciocínio do card **Decomposição em 2 Fases** nos níveis 3,
    - **Avançado** — `WITH` + `LAG()`/`LEAD()` (burst, intervalo entre PIX) e corte no `WHERE` externo, no mesmo esquema de duas fases.
 2. Clique em **✨ Gerar Novo Desafio com IA**.
 3. Acompanhe as mensagens: o agente analisa as tipologias do Bacen e o dataset, redige o caso e roda um **Sanity Check** — executa o gabarito no banco para garantir que ele funciona e encontra evidências.
-4. Quando terminar, o desafio aparece no grupo **"Nível 5 — Casos Avançados de PLD/FT"** do seletor (junto dos casos 5.1–5.3), já selecionado, e o editor recebe um **template comentado** com o título, o objetivo, as colunas esperadas e a ordenação. É só começar a escrever depois do `SELECT`.
+4. Quando terminar, o desafio entra no **nível compatível com o SQL gerado**, já selecionado. O editor recebe o **esqueleto do nível** (comentários de estrutura, sem gabarito). Escreva a consulta a partir do `SELECT`.
 
 Focos disponíveis: os clássicos (fracionamento, burst, incompatibilidade, conta de passagem, fan-in/fan-out, horário atípico, valores redondos) e os **quatro blocos avançados** — (A) coação física/furto/PIX forçado, (B) invasão digital e engenharia social, (C) laranjas e mulas, (D) Carta Circular 4.001 avançada. O agente escolhe **uma** das **15 tipologias** do catálogo e aplica o corte SQL correspondente (hora noturna, micro-PIX + salto, fan-out, round-tripping, etc.).
 
@@ -215,9 +208,9 @@ Outras informações:
 
 ## 6. Configurando a IA (Groq ou OpenAI)
 
-1. Clique em **🤖 Agente IA** e depois em **Configurar IA (Groq / OpenAI)** (bolinha **verde** = chave salva, **cinza** = modo offline).
+1. Clique em **🤖 Agente IA** e depois em **Configurar Chave de API** (bolinha **verde** = chave salva, **cinza** = modo offline).
 2. Escolha o **Provedor**:
-   - **Groq** — tem plano gratuito. Crie a chave em [console.groq.com/keys](https://console.groq.com/keys). Chaves começam com `gsk_`. Modelo padrão: `llama-3.3-70b-versatile`.
+   - **Groq** — tem plano gratuito. Crie a chave em [console.groq.com/keys](https://console.groq.com/keys). Chaves começam com `gsk_`. Modelo padrão: `openai/gpt-oss-120b`.
    - **OpenAI** — pago por uso. Crie a chave em [platform.openai.com/api-keys](https://platform.openai.com/api-keys). Chaves começam com `sk-`. Modelo padrão: `gpt-4o-mini`.
 3. Cole a **API Key** (o campo fica oculto; use **Mostrar** para conferir).
 4. Clique em **Testar conexão** para verificar a chave e o modelo.
@@ -278,10 +271,10 @@ O botão fica desabilitado enquanto não houver um resultado válido (por exempl
 
 | Atalho | Onde | Ação |
 | --- | --- | --- |
-| **Ctrl+Enter** | Editor | **Rodar Teste**: executa a consulta inteira, ou só o trecho selecionado |
+| **Ctrl+Enter** | Editor | **Rodar Teste** (consulta inteira) |
 | **Tab** | Editor | Indenta com 2 espaços |
 | **Ctrl+Z** | Editor | Desfaz (inclusive após carregar do histórico ou o gabarito) |
-| **Esc** | Histórico, exportação, aviso do editor, modal de IA, Navegador de Esquema | Fecha / mantém sua query (no esquema, fecha o painel) |
+| **Esc** | Histórico, exportação, aviso do editor, modal de IA, dicionário | Fecha / mantém sua query (no dicionário, volta à missão) |
 | **↑ / ↓** e **Enter** | Histórico | Navega e escolhe uma consulta |
 
 ---
@@ -295,10 +288,13 @@ O arquivo do banco não foi encontrado. Pare o servidor, rode `npm install` (ou 
 Os estilos vêm da internet. Verifique a conexão e recarregue a página.
 
 **Apaguei ou alterei dados sem querer.**
-Clique em **↻ Restaurar Dados Originais**. O banco volta ao estado original (seus rascunhos são mantidos).
+**Recarregue a página.** O SQLite recomeça do dataset; os rascunhos no navegador são mantidos.
 
-**Minha consulta está certa, mas a fila de priorização está desalinhada (antes: "ordenação divergente").**
-Os registros batem com o gabarito; falta só o `ORDER BY` do objetivo, inclusive o desempate (por exemplo, `ORDER BY valor_total DESC, conta_origem`).
+**O card verde mostrou Dica de Governança / aliases ou ordem de colunas.**
+Sua matriz de dados foi aprovada. O aviso é mentoria de produção (schema Bacen / CSV rígido), não uma reprovação. A trilha já avança.
+
+**Minha consulta está certa, mas a fila de priorização (linhas) está em outra ordem.**
+Os registros batem com o gabarito. O Lab não trava por `ORDER BY`; se o enunciado prioriza a fila, aplique o `ORDER BY` pedido (incluindo o desempate).
 
 **Apareceu "falsos negativos" ou "deixou escapar alertas".**
 Sua esteira filtrou demais. Confira datas inclusivas, `>=` / `<=` e se o `HAVING` ou o `WHERE` externo não está mais apertado que o enunciado. O feedback lista contas ou IDs que faltaram (ex.: `C031`).
@@ -325,7 +321,7 @@ Depois que a página estiver aberta, sim — exceto a geração com IA, que cai 
 Sempre **cinco** (`contas`, `transacoes_pix`, `socios_empresas`, `acessos_digitais`, `operacoes_produtos`), com ou sem IA. O agente só cria **desafios** novos (nível 5), não tabelas.
 
 **O dicionário some quando eu clico numa coluna?**
-Não deveria: o Navegador de Esquema só fecha no **✕** ou **Esc**. Clique insere o nome no editor e mostra **✓ inserido**.
+Não: ele só some com **← Voltar para a Missão** ou **Esc**. Clique insere o nome no editor e mostra **✓ inserido**.
 
 **A missão parece “incompleta” (corta em R$ 9.)?**
 O recorte da primeira frase ignora pontos de milhar (`9.700`). Se ainda vir texto truncado, recarregue a página após a última atualização.

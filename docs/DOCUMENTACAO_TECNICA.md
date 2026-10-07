@@ -58,7 +58,7 @@ Os scripts `predev`, `prebuild` e `postinstall` executam `scripts/copy-wasm.mjs`
 ## 3. Estrutura de pastas
 
 ```text
-index.html                 Layout: navbar, duas colunas, Schema Explorer flutuante, gaveta do agente, modal de IA
+index.html                 Layout: navbar, duas colunas (desktop), briefing/dossiê mobile, gaveta do agente, modal de IA
 scripts/
   copy-wasm.mjs            Copia o binário WASM do sql.js para public/
   generate-dataset.mjs     Dataset v1.4.0: PIX congelado (v1.3.0) + QSA/acessos/produtos (PRNG isolado)
@@ -70,19 +70,19 @@ src/
     dictionary.ts          Metadados das 5 tabelas (categoria, descrição, PK/FK, exemplos)
   database/
     schema.ts              DDL (CREATE TABLE/INDEX) — 5 tabelas; PRAGMA foreign_keys
-    sqlite.ts              Carga do WASM, criação, seed (coleções novas aceitam `[]` se o JSON for antigo) e reset
+    sqlite.ts              Carga do WASM, criação e seed (coleções novas aceitam `[]` se o JSON for antigo)
     introspection.ts       Leitura do schema (PRAGMA) e pré-visualização de tabelas
     safeQuery.ts           Bloqueio de escrita, execução isolada (SAVEPOINT), extração do ORDER BY
     cteInspector.ts        Completa um WITH sem SELECT externo para inspecionar a CTE
     sqlText.ts             Utilitários de texto SQL (remover comentários, comparar)
   challenges/
-    scenarios.ts           Interface InvestigationScenario, níveis 1–5 e **11** cenários base
+    scenarios.ts           Interface InvestigationScenario, níveis 0–5 e 41 cenários base
     twoPhase.ts            Decomposição pedagógica WITH → WHERE (N3, N4 e gerados)
     registry.ts            Catálogo único: cenários base + gerados (persistidos)
     validator.ts           Motor de validação semântica (orquestra compare + sqlErrors)
     compare.ts             Comparação com tolerância + esteira (FN/FP/fila) + banner de conformidade
     sqlErrors.ts           Erros do SQLite em vocabulário didático (5 tabelas; janela no WHERE)
-    starterTemplate.ts     Template comentado + esqueletos do nível 5 (UBO, ATO, consórcio)
+    starterTemplate.ts     Esqueleto vazio comentado por nível (sem gabarito)
     drafts.ts              Rascunhos por desafio
   agent/
     types.ts               GeneratedChallenge, AiSettings, focos (incl. blocos A–D) e catálogo de 15 tipologias
@@ -96,19 +96,21 @@ src/
     challengeAdapter.ts    GeneratedChallenge → InvestigationScenario
   export/
     dossier.ts             Construção do dossiê em Markdown/CSV (funções puras)
+  services/
+    progressService.ts     IDs concluídos (`keystone_completed_challenges`)
   ui/
     dom.ts, format.ts      Helpers de DOM, escape de HTML e formatação pt-BR
-    navbar.ts              Fecha popovers órfãos e localiza o seletor de casos
-    header.ts              Status Online/Offline e botão Restaurar Dados
-    layout.ts              Splitter da coluna esquerda (largura no localStorage)
-    schemaPanel.ts         Navegador de Esquema (painel flutuante, master-detail, insert sem fechar)
-    editor.ts              Editor SQL, banner de confirmação, `insertAtCursor` (Schema Explorer)
+    navbar.ts              Progresso da trilha, Zerar, seletor de casos, popovers
+    header.ts              Status Online/Offline do WASM
+    layout.ts              Splitter desktop; overlay/gaveta mobile
+    schemaPanel.ts         Dicionário no lugar da missão (insert sem fechar; Esc / Voltar)
+    editor.ts              Editor SQL, banner de confirmação, `insertAtCursor` (Dicionário de Dados)
     editorSession.ts       Dono do texto do editor, rascunhos e troca de desafio
     queryHistory.ts        Popover com as últimas 10 execuções
     outputPanel.ts         Painel Resultados (banner, erro exclusivo, tabela, scroll)
     resultTable.ts         Renderização tabular (moeda, datas, números)
     dossierExport.ts       Menu de exportação e download
-    investigationPanel.ts  Coluna "O que fazer": missão em linguagem de negócio, abas, atalho do esquema
+    investigationPanel.ts  Coluna "O que fazer": missão, dossiê, contrato, dica recolhida, briefing mobile
     agentPanel.ts          Gaveta do Agente Educador
     aiSettingsModal.ts     Modal BYOK (Groq/OpenAI)
     onboardingTour.ts      Tour ancorado (Entenda o Laboratório)
@@ -176,7 +178,7 @@ sequenceDiagram
 
 ### 5.1 Schema
 
-Cinco tabelas **fixas** (ver `src/database/schema.ts`). O agente de IA **não** altera o DDL: só gera desafios (nível 5) contra este schema.
+Cinco tabelas **fixas** (ver `src/database/schema.ts`). O agente de IA **não** altera o DDL: só gera desafios contra este schema.
 
 - **`contas`** — cadastro KYC: `id_conta` (PK, formato `C001`), `titular`, `tipo_pessoa` (`PF`/`PJ`), `documento` (único), `ocupacao`, `renda_mensal_declarada` (renda da PF ou faturamento da PJ), dados bancários (`banco_ispb`, `banco_nome`, `agencia`, `numero_conta`), chave PIX (`tipo_chave_pix`, `chave_pix`), `cidade`, `uf`, `data_abertura`, **`eh_pep`** (0/1) e **`cargo_pep`**. PEP plantado de forma determinística: **C013** (Deputado Estadual) e **C004** (Prefeito).
 - **`transacoes_pix`** — liquidações: `id_transacao` (PK), `id_conta_origem`/`id_conta_destino` (FK → `contas`), `valor` (> 0), `data_hora` (`TEXT 'YYYY-MM-DD HH:MM:SS'`, horário de Brasília), `tipo_chave_destino`, `chave_pix_destino`, `descricao`, `canal` (`APP`, `INTERNET_BANKING`, `API`).
@@ -186,7 +188,7 @@ Cinco tabelas **fixas** (ver `src/database/schema.ts`). O agente de IA **não** 
 
 `CHECK` constraints garantem domínios válidos, impedem origem = destino no PIX e amarram PEP: `eh_pep IN (0, 1)` e, se `eh_pep = 0`, então `cargo_pep` é NULL; se `eh_pep = 1`, `cargo_pep` é obrigatório. Há índices PIX por `data_hora`, `(id_conta_origem, data_hora)` e `(id_conta_destino, data_hora)`. `PRAGMA foreign_keys = ON` é aplicado na criação.
 
-O dicionário (`dictionary.ts`) classifica as tabelas em **Cadastral & Societário**, **Transacional**, **Segurança & Telemetria** e **Investimentos & Produtos**, com descrição, exemplo e selos PK/FK usados no Navegador de Esquema.
+O dicionário (`dictionary.ts`) classifica as tabelas em **Cadastral & Societário**, **Transacional**, **Segurança & Telemetria** e **Investimentos & Produtos**, com descrição, exemplo e selos PK/FK usados no Dicionário de Dados.
 
 ### 5.2 Dataset sintético
 
@@ -211,8 +213,7 @@ Além do "ruído" de transações legítimas, as tipologias plantadas são:
 
 ### 5.3 Ciclo de vida
 
-- `getDatabase()` cria o banco sob demanda (singleton por promessa) e faz o seed em uma transação.
-- `resetDatabase()` fecha a instância e recria tudo a partir do JSON (botão **↻ Restaurar Dados Originais**).
+- `getDatabase()` cria o banco sob demanda (singleton por promessa) e faz o seed em uma transação. Não há `resetDatabase` na UI: recarregar a página recria o singleton.
 - O WASM é localizado por URL **absoluta** (`new URL(BASE_URL + arquivo, document.baseURI)`), porque o Emscripten resolveria caminhos relativos a partir do script do sql.js.
 
 ---
@@ -223,7 +224,7 @@ Existem dois caminhos com regras diferentes:
 
 | Ação | Restrições | Efeito no banco |
 | --- | --- | --- |
-| **Rodar Teste** (Ctrl+Enter) | Nenhuma: aceita DML/DDL | Alterações persistem até o reset |
+| **Rodar Teste** (Ctrl+Enter) | Nenhuma: aceita DML/DDL | Alterações persistem até recarregar a página |
 | **Validar Desafio** | Apenas `SELECT` / `WITH` / `VALUES` | Nenhum (rollback garantido) |
 
 `src/database/safeQuery.ts`:
@@ -243,22 +244,21 @@ Existem dois caminhos com regras diferentes:
 1. Editor vazio → erro.
 2. Comando proibido → erro "Apenas consultas de leitura".
 3. Erro do SQLite → mensagem didática (`sqlErrors.ts`) com a linha e o token destacados. **Prioridade:** Window Function no `WHERE`/`HAVING` (ver 7.3). No UI, o painel Resultados mostra **somente** o card de erro (sem tabela vazia residual).
-4. Zero linhas → **aviso** de falsos negativos / alertas não capturados (`describeRowAudit` em `compare.ts`).
-5. Menos colunas que o gabarito → erro "Colunas faltando".
-6. Quantidade de linhas diferente → vocabulário de **esteira de risco** (falsos negativos, falsos positivos ou ambos), com IDs/contas da `colunaChave`. As `dicasDivergencia` do cenário vão em `details` (dica SQL específica).
-7. Alguma coluna do gabarito sem correspondente:
-   - se as linhas batem ignorando a ordem → **aviso** "Fila de priorização desalinhada";
-   - se as entidades diferem → erro de esteira (FN+FP) quando a chave foi identificada; senão "Entidades divergentes";
-   - senão → **aviso** "Divergência nas métricas calculadas".
-8. Tudo confere → **sucesso**, com título `🟢 Esteira Aprovada em Conformidade | Alertas Capturados: X/X (100%) | Falsos Positivos: 0 | Eficiência: 100%` (`formatComplianceBanner` em `compare.ts`), chips de métrica no painel **Resultados** e observações de boas práticas.
+4. Zero linhas → **erro** de falsos negativos (`describeRowAudit` em `compare.ts`).
+5. Quantidade de **linhas** diferente → **erro** de esteira (FN, FP ou ambos), com IDs/contas da `colunaChave`. `dicasDivergencia` em `details`.
+6. Quantidade de **colunas** diferente (faltou ou sobrou dimensão) → **`quase_la`**. Não se usa `quase_la` quando a matriz de dados já confere.
+7. Matriz de dados: sucesso se `rowsMatchPositionally` **ou** `mapColumnsByContent` completo **ou** `rowsMatchIgnoringOrder` (`compare.ts`). Aliases e permutação física de colunas **não** reprovam.
+8. Dados que não mapeiam → **erro** (entidades divergentes ou métricas fora da tolerância 0,01).
+9. Sucesso → título `formatComplianceBanner`, chips no `outputPanel`, `avisoConformidade` (`composeAvisoGovernanca`) se o contrato de nomes ou a ordem física divergir. `ordenacao` de linhas pode ir em `details` (fila de priorização), sem mudar o status.
 
 ### 7.2 Comparação e modo Investigador (`compare.ts`)
 
 Comparação de células:
 
 - **Tolerância numérica** de `0.01` (`NUMERIC_TOLERANCE`): valores monetários e razões com 2 casas não reprovam por arredondamento. Strings numéricas (`'10.50'`) são comparadas como números.
-- **Mapeamento de colunas por conteúdo**: para cada coluna do gabarito, procura a coluna da aluna com os mesmos valores, priorizando a mesma posição, depois o mesmo nome (case-insensitive), depois qualquer coluna livre. Por isso **aliases diferentes são aceitos**.
-- **Ordem das linhas** importa no caminho principal (o gabarito tem `ORDER BY`); `rowsMatchIgnoringOrder` serve para distinguir "dados certos, ordem errada" de "dados errados".
+- **Aprovação pela matriz**: o status `success` depende dos valores (células normalizadas), não dos nomes em `columns`. Caminhos: match posicional, mapeamento por conteúdo, ou conjunto de linhas ignorando ordem.
+- **Aliases / ordem de colunas**: `avisoConformidade` no card verde (`Dica de Governança`). Nomes iguais ao contrato (case-insensitive) e `mapping[j] === j` omitem o aviso. Famílias de sinónimos PLD ficam em `ALIAS_FAMILIES`.
+- **Ordem das linhas** (`ORDER BY`) **não** reprova; `rowsMatchIgnoringOrder` evita tratar permutação de linhas como dado errado. A nota de fila usa `describePrioritizationMismatch`.
 - `findKeyColumn` localiza a coluna-chave da aluna pelo nome ou pela maior sobreposição de valores.
 
 Mensagens de auditoria (funções `describeFalseNegatives`, `describeFalsePositives`, `describeRowAudit`, `describePrioritizationMismatch`):
@@ -267,11 +267,12 @@ Mensagens de auditoria (funções `describeFalseNegatives`, `describeFalsePositi
 | --- | --- | --- |
 | Linhas a menos (e/ou chaves do gabarito ausentes) | Falsos negativos / alertas não capturados | Quantas transações a esteira capturou, quantos alertas legítimos escaparam, exemplos (`C031`, `id_transacao`…) e convite a revisar data, intervalo em segundos e limiares de valor |
 | Linhas a mais (e/ou chaves extras) | Falsos positivos / ruído operacional | Quantos ruídos, exemplos das entidades excedentes, convite a completar o `WHERE` externo ou a janela temporal |
-| Mesmo conjunto, ordem errada | Fila de priorização desalinhada | Explica que no PLD a ordem prioriza os casos mais graves e cita `ORDER BY` esperado (`scenario.ordenacao`) |
+| Mesmo conjunto, ordem de **linhas** diferente | Nota no sucesso (fila de priorização) | Cita `ORDER BY` esperado (`scenario.ordenacao`); status permanece `success` |
+| Mesmo conjunto, aliases ou ordem de **colunas** diferentes | `avisoConformidade` | Textos de mercado/schema e layout CSV/Parquet (`composeAvisoGovernanca`) |
 
 Se faltam **e** sobram entidades, as duas explicações são concatenadas.
 
-No **sucesso**, `computeComplianceMetrics(X, X, 0)` alimenta `formatComplianceBanner`: recall 100%, zero falsos positivos, eficiência 100%. O `ValidationResult` leva `compliance` (capturados, esperados, FP, percentuais) para o `outputPanel` desenhar os chips **Alertas / Falsos + / Eficiência**. `resumirSucesso` continua sendo a narrativa pedagógica em `message` (o que o resultado revela).
+No **sucesso**, `computeComplianceMetrics(X, X, 0)` alimenta `formatComplianceBanner`. O `ValidationResult` leva `compliance` e, se couber, `avisoConformidade` para o `outputPanel`. `resumirSucesso` permanece em `message`.
 
 ### 7.3 Erros didáticos (`sqlErrors.ts`)
 
@@ -306,33 +307,33 @@ Todo desafio — base ou gerado — implementa `InvestigationScenario` (`src/cha
 
 ### 8.2 Trilha pedagógica por níveis
 
-Todo cenário tem `nivel: TrailLevel` (`1 | 2 | 3 | 4 | 5`). `TRAIL_LEVELS` guarda o título e a técnica-alvo de cada nível, e `TRAIL_ORDER` define a ordem de exibição. O `<select>` da navbar monta um `<optgroup>` por nível ("Nível N — Título"), numera as opções como `N.k` e, se um nível estiver vazio, mostra uma opção desabilitada. O filtro **Todos / Iniciante / Intermediário / Avançado** restringe os grupos visíveis. A coluna esquerda mostra o nível por extenso (sem selo `N#` isolado); o template inicial do editor começa com o nível.
+Todo cenário tem `nivel: TrailLevel` (`0 | 1 | 2 | 3 | 4 | 5`). `TRAIL_LEVELS` guarda o título e a técnica-alvo; `TRAIL_ORDER` (interno) é a ordem dos grupos. O `<select>` monta um `<optgroup>` por nível. O filtro **Todos / Iniciante (0–1) / Intermediário (2–3) / Avançado (4–5)** restringe os grupos visíveis.
 
 | Nível | Tema | Técnica-alvo |
 | --- | --- | --- |
+| 0 | Fundamentos de Consulta | `SELECT`, `FROM`, `WHERE`, `ORDER BY`, `GROUP BY` |
 | 1 | Fundamentos de Agregação | `GROUP BY`, `HAVING`, `JOIN` e limiares |
-| 2 | Janelas e Classificação | `ROW_NUMBER() OVER (PARTITION BY …)` |
-| 3 | Análise Temporal e Mudança de Padrão | `LAG` / `LEAD` e recorte horário (`strftime`) |
-| 4 | Composição Analítica com CTEs | `WITH` + janelas, `LAG` e `ROWS BETWEEN` |
-| 5 | Casos Avançados de PLD/FT | JOIN em QSA, telemetria de acesso e produtos financeiros; em seguida, desafios gerados (`nivel: 5`) |
+| 2 | Cruzamentos Cadastrais e Relações Societárias | `JOIN`, `LEFT JOIN` e cadastro duplo |
+| 3 | Janelas Temporais e Anomalias Transacionais | `strftime`, `date()`, `unixepoch`, `HAVING` sobre renda |
+| 4 | Funções de Janela | `ROW_NUMBER`, `LAG`, `SUM OVER`, CTE em duas fases |
+| 5 | Investigações Avançadas Bacen | UBO/PEP, dwell time, telemetria, triangulação, dossiê COAF |
+
+Desafios gerados (`origem` `ia`/`offline`) recebem `nivel` via `challengeAdapter.scenarioNivel` (campo `nivel`, id ou inferência do SQL) — **não** são forçados ao nível 5.
 
 ### 8.3 Cenários base
 
-| Nível | id | Título | Colunas esperadas | Ordenação |
-| --- | --- | --- | --- | --- |
-| 1 | `smurfing` | Smurfing para a receptora Aurora (C025) | `conta_origem, total_operacoes, valor_total` | `valor_total DESC` |
-| 1 | `incompatibilidade` | Incompatibilidade patrimonial bruta | `id_transacao, conta_origem, titular, renda_mensal, valor, fator_incompatibilidade` | `fator_incompatibilidade DESC` |
-| 2 | `pico-diario` | Pico individual por conta no dia 18/08 (ROW_NUMBER) | `conta_origem, id_transacao, maior_pix, data_hora, qtd_no_dia, total_no_dia` | `maior_pix DESC, conta_origem` |
-| 3 | `burst` | Burst / alta frequência em janela curta | `id_transacao, conta_origem, conta_destino, valor, data_hora, intervalo_segundos` | `conta_origem ASC, data_hora ASC` |
-| 3 | `noturno-coacao` | Nível 3.2 — Transferência Noturna Sob Coação (Sequestro / Madrugada) | `id_transacao, conta_origem, conta_destino, valor, data_hora, hora_transacao` | `valor DESC, data_hora ASC` |
-| 4 | `conta-aquecida` | Conta "aquecida": PIX de teste seguido de salto abrupto (CTE) | `id_transacao, conta_origem, titular, valor, data_hora, intervalo_horas, media_historica, salto` | `salto DESC, id_transacao` |
-| 4 | `janela-movel` | Acúmulo móvel: soma das últimas 3 originações (ROWS BETWEEN) | `id_transacao, conta_origem, titular, valor, data_hora, acumulado_movel_3` | `acumulado_movel_3 DESC, id_transacao` |
-| 4 | `pep-escalada` | Nível 4.3 — Escalada Rápida em PEP (Escrutínio Reforçado) | `id_transacao, conta_origem, titular, cargo_pep, valor, data_hora, acumulado_movel_pep` | `acumulado_movel_pep DESC, id_transacao ASC` |
-| 5 | `ubo-aurora` | Rastreio de UBO: Sócios Relevantes em Empresas Suspeitas | `nome_socio, cpf_socio, percentual_participacao, cnpj_empresa` | `percentual_participacao DESC, nome_socio` |
-| 5 | `ato-dispositivo` | Account Takeover (ATO): Dispositivo Inédito e Transação Atípica | `id_conta, device_id, geolocalizacao_cidade, valor_transacao` | `valor_transacao DESC, id_conta` |
-| 5 | `consorcio-especie` | Ocultação Patrimonial: Lance de Consórcio em Espécie | `id_conta, tipo_produto, valor_aporte, forma_liquidacao` | `valor_aporte DESC, id_conta` |
+**41** itens em `CATALOG` (`DEFAULT_SCENARIO_ID` = `cadastro-listagem`). IDs por nível:
 
-Notas de desenho:
+| Nível | ids |
+| --- | --- |
+| 0 | `cadastro-listagem`, `triagem-pep`, `pix-alto-valor`, `baixa-renda-pf`, `volumetria-remetente`, `capilaridade-destinatarios` |
+| 1 | `smurfing`, `alta-recorrencia`, `concentracao-creditos`, `fracionamento-limiar`, `matriz-criticidade`, `incompatibilidade` |
+| 2 | `enriquecimento-alto-valor`, `quadro-societario-admin`, `contas-dormentes`, `volumetria-pep`, `fluxos-intrabanco`, `pico-diario` |
+| 3 | `limiar-noturno`, `liquidacoes-fim-de-semana`, `volume-desproporcional-renda`, `rajada-mesma-data`, `telemetria-ato-janela`, `burst`, `noturno-coacao` |
+| 4 | `sequenciamento-cronologico`, `ultima-movimentacao`, `intervalo-entre-disparos`, `montante-acumulado`, `salto-variacao-consecutiva`, `conta-aquecida`, `janela-movel`, `pep-escalada` |
+| 5 | `ubo-pep-credito`, `conta-passagem-dwell`, `vetor-geografico-impossivel`, `triangulacao-societaria`, `dossie-coaf-pj`, `ubo-aurora`, `ato-dispositivo`, `consorcio-especie` |
+
+Colunas e `ordenacao` de cada caso estão no objeto em `scenarios.ts`. Notas de desenho dos casos-âncora:
 
 - **`pico-diario`** usa o dia de rajada (18/08), em que C031 e C032 enviam 9 e 7 PIX. C031 tem dois PIX empatados em R$ 4.990, então o desempate `data_hora ASC` é obrigatório para o resultado ser determinístico. `COUNT`/`SUM` com `OVER (PARTITION BY …)` mostram que janelas agregam sem colapsar linhas.
 - **`conta-aquecida`** combina quatro regras no `WHERE` externo: 1 a 3 PIX anteriores, `valor >= 10 × média histórica` (frame `ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING`), `valor >= 5000` e intervalo de até 10 dias desde o PIX anterior (`LAG`). O resultado são as quatro contas laranja que fazem PIX de teste (C026, C027, C035, C036). Relaxar o critério de histórico faz aparecer falsos positivos legítimos (C006, C016).
@@ -347,7 +348,7 @@ Notas de desenho:
 ### 8.4 Adicionar um cenário base
 
 1. Acrescente um objeto ao array `CATALOG` em `scenarios.ts` respeitando a interface e definindo `nivel`. `SCENARIOS` é o catálogo ordenado por nível (ordenação estável).
-2. Garanta que `gabaritoSql` tenha `ORDER BY` determinístico (com desempate) e que `colunasEsperadas` reflita o `SELECT` final.
+2. `colunasEsperadas` deve refletir o `SELECT` final. `ORDER BY` no gabarito é pedagógico (não é critério de aprovação).
 3. Rode `npm run typecheck` e valide o próprio gabarito pela interface (deve resultar em **sucesso**).
 
 O `registry.ts` é a única fonte para o `<select>`; não é necessário alterar a UI.
@@ -360,7 +361,7 @@ O `registry.ts` é a única fonte para o `<select>`; não é necessário alterar
 
 | Provedor | Base URL | Modelo padrão | Prefixo da chave | Formato de saída |
 | --- | --- | --- | --- | --- |
-| Groq | `https://api.groq.com/openai/v1` | `llama-3.3-70b-versatile` | `gsk_` | `response_format: json_object` |
+| Groq | `https://api.groq.com/openai/v1` | `openai/gpt-oss-120b` | `gsk_` | `response_format: json_object` |
 | OpenAI | `https://api.openai.com/v1` | `gpt-4o-mini` | `sk-` | `json_schema` estrito |
 
 Ambos usam a API compatível com OpenAI (`POST /chat/completions`, `GET /models` para testar a conexão). O modelo é editável no modal (com sugestões).
@@ -402,13 +403,13 @@ flowchart TD
 
 - **Prompt** (`prompt.ts` + `difficultyToolkit.ts` + `types.ts`): `buildSystemPrompt(db, difficulty)` **exige** o nível e injeta o toolkit como **PRIORIDADE MÁXIMA**. O system prompt inclui o **catálogo de 15 tipologias** (`ADVANCED_TYPOLOGY_CATALOG`: blocos A coação/furto, B invasão digital, C laranjas/mulas, D Carta Circular 4.001) com cláusulas SQL de corte. O user prompt injeta `FOCUS_TYPOLOGY_GUIDE[focus]`. Colunas reais (`eh_pep`, `cargo_pep`, …) e dialeto SQLite entram no contexto. Regras de ferramental:
 
-  | Nível | Obrigatório | Proibido | Foco |
-  | --- | --- | --- | --- |
-  | Iniciante | `GROUP BY`, `HAVING`, agregações (`COUNT`/`SUM`/`AVG`/`MAX`/`MIN`), `WHERE` (`BETWEEN`, `IN`, limiares) | `WITH` e Window Functions (`OVER`, `LAG`, `ROW_NUMBER`…) | Volumetria e fracionamento básico |
-  | Intermediário | `WITH` + `ROW_NUMBER()`/`RANK()`/`DENSE_RANK() OVER (...)` e corte posicional no SELECT externo | Resolver só com `GROUP BY`/`HAVING`; `LAG`/`LEAD` (reservados ao avançado) | Desduplicação, maior evento por conta, pico relativo |
-  | Avançado | `WITH` + `LAG()`/`LEAD()` **ou** ≥ 2 janelas `OVER`; corte no `WHERE` externo | `SELECT` plano sem CTE; só agregação como solução principal | Burst, mudança de comportamento, intervalo entre PIX consecutivos |
+| Nível | Obrigatório | Proibido | Foco |
+| --- | --- | --- | --- |
+| Iniciante | `GROUP BY`, `HAVING`, agregações (`COUNT`/`SUM`/`AVG`/`MAX`/`MIN`), `WHERE` (`BETWEEN`, `IN`, limiares) | `WITH` e Window Functions (`OVER`, `LAG`, `ROW_NUMBER`…) | Volumetria e fracionamento básico |
+| Intermediário | `WITH` + `ROW_NUMBER()`/`RANK()`/`DENSE_RANK() OVER (...)` e corte posicional no SELECT externo | Resolver só com `GROUP BY`/`HAVING`; `LAG`/`LEAD` (reservados ao avançado) | Desduplicação, maior evento por conta, pico relativo |
+| Avançado | `WITH` + `LAG()`/`LEAD()` **ou** ≥ 2 janelas `OVER`; corte no `WHERE` externo | `SELECT` plano sem CTE; só agregação como solução principal | Burst, mudança de comportamento, intervalo entre PIX consecutivos |
 
-  Intermediário e Avançado: `solutionQuery` na ordem do compilador, com comentários `-- FASE 1: O ENVELOPE ANALÍTICO` (carimbo linha a linha) e `-- FASE 2: O INSPETOR DE RISCO` (`WHERE` de corte + `ORDER BY`). Esqueleto em `COMPILER_SKELETON` (`difficultyToolkit.ts`). Iniciante: `SELECT` plano, comentários em `WHERE`/`GROUP BY`/`HAVING`. Demais regras: 1 a 150 linhas, `ORDER BY` externo com desempate, aliases `snake_case`.
+Intermediário e Avançado: `solutionQuery` na ordem do compilador, com comentários `-- FASE 1: O ENVELOPE ANALÍTICO` (carimbo linha a linha) e `-- FASE 2: O INSPETOR DE RISCO` (`WHERE` de corte + `ORDER BY`). Esqueleto em `COMPILER_SKELETON` (`difficultyToolkit.ts`). Iniciante: `SELECT` plano, comentários em `WHERE`/`GROUP BY`/`HAVING`. Demais regras: 1 a 150 linhas, `ORDER BY` externo com desempate, aliases `snake_case`.
 - **Sanity Check** (`challengeVerifier.ts`): somente leitura, `ORDER BY` externo, `checkDifficultyToolkit` **quando** `difficulty` é passado (pipeline LLM em `aiService`; o gerador offline **não** passa o nível, para os templates sem marcadores FASE 1/2 continuarem válidos). Executa em `runIsolated`, 1–150 linhas, mesmas colunas que `colunasEsperadas`. Nomes reais substituem os declarados. A razão da falha volta ao modelo como correção.
 - **Autocorreção**: até 3 tentativas; a conversa acumula a resposta anterior e o erro do SQLite.
 - **Timeout** de 60 s por requisição (`AbortSignal.timeout`) combinado com o cancelamento da usuária (`AbortSignal.any`). Cancelar **não** cai no offline.
@@ -416,7 +417,7 @@ flowchart TD
 
 ### 9.4 Integração com o validador
 
-`challengeAdapter.toScenario` converte o desafio gerado em `InvestigationScenario` no **Nível 5** da trilha (mesmo grupo dos casos UBO/ATO/consórcio): `ordenacao` vem de `extractOrderBy(solutionQuery)`, `colunaChave` é a primeira coluna esperada e as dicas de divergência são genéricas. Assim, desafios gerados usam exatamente o mesmo validador, a mesma tolerância e o mesmo gabarito comentado dos cenários base. O `registry.ts` guarda até 20 desafios gerados.
+`challengeAdapter.toScenario` converte o desafio gerado em `InvestigationScenario` com `nivel` inferido (`ch.nivel`, id ou SQL). `ordenacao` vem de `extractOrderBy(solutionQuery)`, `colunaChave` é a primeira coluna esperada e as dicas de divergência são genéricas. O mesmo validador dos casos base se aplica. O `registry.ts` guarda até 20 desafios gerados.
 
 ---
 
@@ -424,10 +425,10 @@ flowchart TD
 
 ### 10.1 Layout
 
-- **Navbar**: status Online/Offline, filtro da trilha, seletor de caso (default `smurfing`), **Agente IA**, **Dicionário de Tabelas** (*toggle* do esquema), **Entenda o Laboratório**, **Restaurar Dados Originais**.
-- **Coluna esquerda — O que fazer** (`investigationPanel.ts` + splitter em `layout.ts`): missão (primeira frase do `objetivo`, sem cortar `R$ 9.700`), atalho **Consultar Tabelas Disponíveis** (`schema.toggle()`), abas Dica / Dossiê / Colunas esperadas (objetivo de negócio + `<details>` de aliases), decomposição em 2 fases (N3/N4/gerados), gabarito após a primeira validação.
-- **Coluna direita — Mão na massa**: editor (`Rodar Teste`, `Validar Resposta`, restaurar modelo, testar trecho, histórico), painel Resultados com `#output-scroll` (`flex-1 min-h-0 overflow-auto`). Erro de SQL/AML renderiza só o card; sucesso mostra banner + tabela. Popovers de histórico e exportação nascem com `hidden`.
-- **Navegador de Esquema** (`schemaPanel.ts` + `#schema-drawer` em `index.html`): `fixed` ~24rem, `shadow-2xl z-30`, **sem backdrop**. Lista compacta das 5 tabelas (badge + linhas) + inspetor da tabela selecionada. Filtro `#schema-filter`. Insert via `data-insert` chama `editor.insertAtCursor` e flash **✓ inserido**; o painel **não** fecha. Fecha com **✕** ou **Esc**. Clique no editor não fecha.
+- **Navbar**: status Online/Offline, progresso + **Zerar**, filtro da trilha, seletor (default `cadastro-listagem`), **Agente IA**, **Entenda o Laboratório**.
+- **Coluna esquerda — O que fazer** (`investigationPanel.ts` + splitter em `layout.ts`): missão, dossiê, **Consultar Tabelas Disponíveis**, contrato de aliases, `<details>` **Revelar Dica de SQL** (fechado), gabarito após a 1ª validação. `#workspace-gutter` usa `hidden md:block`. Mobile: `#mobile-briefing` empilhado (badge → título → missão) e modal `#mobile-dossier-dialog`.
+- **Coluna direita — editor e resultados**: `Rodar Teste`, `Validar Resposta`, restaurar modelo, histórico. Sucesso: card verde + chips; `avisoConformidade` no bloco **Dica de Governança**. Popovers nascem com `hidden`.
+- **Dicionário** (`schemaPanel.ts` + `#schema-drawer`): substitui `#investigation-mission-view` na coluna esquerda (`dataset.view = schema`). Lista das 5 tabelas + inspetor. Filtro `#schema-filter`. Insert via `data-insert`. Fecha com **← Voltar para a Missão** ou **Esc**. No mobile o painel ocupa overlay (`data-overlay`).
 - **Gaveta Agente**: geração de desafios e atalho para o modal BYOK.
 
 ### 10.2 Sessão do editor e rascunhos (`editorSession.ts`, `drafts.ts`)
@@ -469,6 +470,7 @@ Regiões e painéis com `aria-labelledby`, status com `aria-live`, modal nativo 
 | `aml-lab:drafts` | `{ [idDoCenário]: sql }` | `challenges/drafts.ts` |
 | `aml-lab:onboarding-seen` | `'1'` depois do tour | `ui/onboardingTour.ts` |
 | `aml-lab:sidebar-width` | Largura em px da coluna esquerda | `ui/layout.ts` |
+| `keystone_completed_challenges` | IDs dos desafios aprovados | `services/progressService.ts` |
 
 Tudo é lido de forma defensiva (JSON inválido é ignorado) e gravado com `try/catch` (quota ou storage indisponível não quebram a sessão). O banco SQLite **não** é persistido: cada carga parte do dataset original.
 
@@ -488,7 +490,7 @@ Tudo é lido de forma defensiva (JSON inválido é ignorado) e gravado com `try/
 
 - A chave de API fica **somente** no `localStorage` do navegador e é enviada apenas ao provedor escolhido, no header `Authorization`. Não há servidor do projeto.
 - Qualquer script executado na mesma origem consegue ler o `localStorage`. Por isso todo conteúdo dinâmico (inclusive o que vem do LLM) é escapado antes de ir ao DOM. Recomenda-se usar chaves com limite de gastos.
-- A validação nunca altera o banco (filtro léxico + `SAVEPOINT` revertido). **Rodar Teste** altera, de propósito, e **Restaurar Dados Originais** restaura.
+- A validação nunca altera o banco (filtro léxico + `SAVEPOINT` revertido). **Rodar Teste** pode alterar o SQLite em memória; recarregar a página reseed a partir do dataset.
 - Dados 100% sintéticos.
 
 ---
@@ -501,3 +503,5 @@ Tudo é lido de forma defensiva (JSON inválido é ignorado) e gravado com `try/
 - O histórico é apenas da sessão (não persiste ao recarregar).
 - O CSV usa vírgula como separador; o Excel em pt-BR pode exigir "Dados → De Texto/CSV" para separar colunas.
 - O desafio gerado usa dicas de divergência genéricas (não específicas da tipologia).
+- Não há botão de reset do banco: DML em **Rodar Teste** dura até o reload.
+- No mobile, `#workspace-gutter` está oculto; resultados abrem em bottom sheet (`data-sheet`).
