@@ -46,18 +46,18 @@ function paintProgress(root: HTMLElement): void {
 function createProgressMeter(): HTMLElement {
   const cluster = document.createElement('div');
   cluster.id = 'lab-progress';
-  cluster.className = 'flex min-w-0 max-w-full shrink-0 items-center gap-1.5';
+  cluster.className = 'flex min-w-0 max-w-full shrink items-center gap-1.5';
 
   const meter = document.createElement('div');
   meter.setAttribute('role', 'progressbar');
   meter.className = 'flex min-w-0 items-center gap-2';
   meter.innerHTML = `
-    <span data-progress-desktop class="hidden whitespace-nowrap text-[11px] text-slate-400 md:inline">Progresso: 0/0 (0%)</span>
-    <span class="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-300 md:hidden">
+    <span data-progress-desktop class="hidden whitespace-nowrap text-[11px] text-slate-400 xl:inline">Progresso: 0/0 (0%)</span>
+    <span class="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-300 xl:hidden">
       <span aria-hidden="true">✓</span>
       <span data-progress-compact>0/0</span>
     </span>
-    <div class="hidden h-1.5 w-24 overflow-hidden rounded-full bg-slate-800 md:block" aria-hidden="true">
+    <div class="hidden h-1.5 w-24 overflow-hidden rounded-full bg-slate-800 xl:block" aria-hidden="true">
       <div data-progress-bar class="h-full rounded-full bg-emerald-500 transition-[width] duration-300" style="width: 0%"></div>
     </div>`;
 
@@ -101,56 +101,49 @@ export function initNavbar(): void {
   if (header && brand && tools && nav && header.querySelectorAll(':scope > div, :scope > nav').length >= 3) {
     const row1 = wrapRow(
       'navbar-primary',
-      'flex w-full min-h-10 shrink-0 flex-wrap items-center gap-2 md:w-auto md:flex-nowrap',
+      'flex min-w-0 max-w-full flex-wrap items-center gap-2',
       [brand, progress, nav],
     );
     const row2 = wrapRow(
       'navbar-cases',
-      'flex min-h-10 w-full min-w-0 flex-1 flex-wrap items-center gap-2 overflow-x-hidden md:flex-nowrap',
+      'flex min-h-0 min-w-0 w-full max-w-full flex-1 items-stretch overflow-hidden sm:max-w-[320px] lg:max-w-[380px]',
       [tools],
     );
     header.replaceChildren(row1, row2);
     header.classList.add(
-      'max-md:h-auto',
-      'max-md:min-h-0',
-      'max-md:flex-col',
-      'max-md:items-stretch',
-      'max-md:gap-2',
-      'max-md:py-2',
-      'max-md:overflow-x-hidden',
-      'md:h-auto',
-      'md:min-h-16',
-      'md:flex-row',
-      'md:items-center',
-      'md:py-2',
+      'w-full',
+      'max-w-full',
+      'overflow-x-hidden',
+      'flex',
+      'flex-wrap',
+      'items-center',
+      'justify-between',
+      'gap-2',
+      'px-3',
+      'sm:px-4',
+      'h-auto',
     );
-    header.classList.remove('h-16', 'overflow-x-auto');
-    nav.classList.add('ml-auto', 'flex-wrap', 'shrink-0');
-    tools.classList.add('min-w-0', 'w-full', 'max-w-full', 'flex-1');
-    tools.classList.remove('overflow-x-auto', 'flex-wrap');
+    header.classList.remove('h-16', 'overflow-x-auto', 'overflow-hidden');
+    nav.classList.add('flex-wrap', 'min-w-0');
+    nav.classList.remove('shrink-0', 'ml-auto');
+    tools.classList.add('min-w-0', 'w-full', 'max-w-full');
+    tools.classList.remove('overflow-x-auto', 'flex-wrap', 'flex-1');
   } else if (header) {
     header.append(progress);
   }
 
   if (trail) {
-    trail.classList.add('shrink-0', 'max-md:max-w-full', 'overflow-x-auto');
-    for (const button of trail.querySelectorAll('button')) {
-      button.classList.add('shrink-0', 'min-h-[38px]');
-    }
+    trail.classList.add('min-w-0', 'max-w-full', 'flex-wrap');
+    trail.classList.remove('shrink-0', 'overflow-x-auto');
   }
 
   if (select instanceof HTMLSelectElement) {
-    select.classList.add('min-h-[38px]', 'w-full', 'truncate');
-    select.classList.remove('shrink-0', 'max-w-full', 'min-w-0', 'min-w-[240px]', 'flex-1');
+    select.classList.add('min-w-0', 'w-full', 'max-w-full', 'truncate');
+    select.classList.remove('shrink-0', 'min-w-[240px]', 'flex-1');
   }
 
   for (const id of ['btn-prev-scenario', 'btn-next-scenario'] as const) {
-    document.getElementById(id)?.classList.add('min-h-[38px]', 'min-w-[38px]');
-  }
-
-  if (nav) {
-    for (const button of nav.querySelectorAll('button')) {
-      button.classList.add('shrink-0', 'min-h-[38px]');
-    }
+    document.getElementById(id)?.classList.add('shrink-0');
+    document.getElementById(id)?.classList.remove('min-w-[38px]', 'min-h-[38px]');
   }
 }

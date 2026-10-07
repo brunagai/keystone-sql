@@ -144,9 +144,9 @@ export function initWorkspaceSplit(): void {
     missionOverlayOpen = false;
     document.documentElement.classList.add('h-full');
     document.documentElement.classList.remove('overflow-y-auto');
-    document.body.classList.add('h-screen', 'overflow-hidden');
+    document.body.classList.add('h-screen', 'overflow-hidden', 'overflow-x-hidden', 'max-w-full');
     document.body.classList.remove('h-[100dvh]', 'min-h-[100dvh]', 'min-h-full', 'overflow-y-auto');
-    document.getElementById('app')?.classList.add('h-screen', 'flex', 'flex-col', 'overflow-hidden');
+    document.getElementById('app')?.classList.add('h-screen', 'flex', 'flex-col', 'overflow-hidden', 'overflow-x-hidden', 'max-w-full');
     document.getElementById('app')?.classList.remove('h-[100dvh]', 'min-h-[100dvh]', 'min-h-full', 'overflow-y-auto', 'overflow-visible', 'block');
     sidebar.hidden = false;
     queryPanel.hidden = false;
@@ -168,9 +168,9 @@ export function initWorkspaceSplit(): void {
   const applyMobilePanes = (): void => {
     document.documentElement.classList.remove('h-full');
     document.body.classList.remove('h-screen', 'h-[100dvh]', 'overflow-hidden');
-    document.body.classList.add('min-h-full', 'overflow-y-auto');
-    document.getElementById('app')?.classList.remove('h-screen', 'h-[100dvh]', 'overflow-hidden', 'flex', 'flex-col');
-    document.getElementById('app')?.classList.add('block', 'min-h-full', 'overflow-visible');
+    document.body.classList.add('min-h-full', 'overflow-y-auto', 'overflow-x-hidden', 'max-w-full');
+    document.getElementById('app')?.classList.remove('h-screen', 'h-[100dvh]', 'overflow-hidden', 'flex', 'flex-col', 'overflow-visible');
+    document.getElementById('app')?.classList.add('block', 'min-h-full', 'overflow-x-hidden', 'max-w-full');
     sidebar.style.width = '100%';
     sidebar.style.maxWidth = '100%';
     sidebar.hidden = false;

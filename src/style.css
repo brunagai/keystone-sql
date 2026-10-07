@@ -2,14 +2,54 @@
 
 html {
   height: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 body {
   min-height: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 #app {
   min-height: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+#app-header {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+#case-picker,
+#scenario-nav,
+#navbar-primary,
+#navbar-cases {
+  min-width: 0;
+  max-width: 100%;
+}
+
+#scenario-select {
+  min-width: 0;
+  max-width: 100%;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 1279px) {
+  #app-header nav button,
+  #trail-bands button {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+    font-size: 0.75rem;
+    min-height: 0;
+    min-width: 0;
+  }
 }
 
 #output-body,
@@ -35,7 +75,8 @@ body {
     height: auto !important;
     max-height: none !important;
     min-height: 100% !important;
-    overflow: visible !important;
+    overflow-x: hidden !important;
+    overflow-y: visible !important;
     touch-action: pan-y !important;
   }
 
@@ -60,7 +101,8 @@ body {
     height: auto !important;
     max-height: none !important;
     min-height: 100% !important;
-    overflow: visible !important;
+    overflow-x: hidden !important;
+    overflow-y: visible !important;
     touch-action: pan-y !important;
   }
 
@@ -68,7 +110,8 @@ body {
     position: static;
     height: auto;
     min-height: 2.5rem;
-    overflow: visible;
+    max-width: 100%;
+    overflow-x: hidden;
   }
 
   #workspace,

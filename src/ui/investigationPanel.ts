@@ -35,8 +35,8 @@ export interface InvestigationPanelHandlers {
 
 const levelLabel = (nivel: TrailLevel): string => trailOptgroupLabel(nivel);
 
-const BAND_BUTTON_ON = 'rounded-full bg-sky-600 px-3 py-1 text-[12px] font-medium text-white';
-const BAND_BUTTON_OFF = 'rounded-full px-3 py-1 text-[12px] font-medium text-slate-400 hover:bg-slate-800 hover:text-slate-100';
+const BAND_BUTTON_ON = 'rounded-full bg-sky-600 px-2 py-1 text-xs font-medium text-white xl:px-3';
+const BAND_BUTTON_OFF = 'rounded-full px-2 py-1 text-xs font-medium text-slate-400 hover:bg-slate-800 hover:text-slate-100 xl:px-3';
 
 function renderOriginBadge(s: InvestigationScenario): string {
   if (s.origem === 'base') return '';
