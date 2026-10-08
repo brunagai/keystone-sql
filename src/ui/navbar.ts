@@ -65,26 +65,17 @@ function createProgressMeter(): HTMLElement {
   return cluster;
 }
 
-/** Header em uma linha: marca + progresso | seletor sequencial | Agente e guia. */
+/** Header: duas linhas no mobile (marca+ações / seletor); uma linha no desktop. */
 export function initNavbar(): void {
   hideFloatingMenus();
 
-  const header = document.getElementById('app-header');
-  const brand = document.getElementById('navbar-brand') ?? header?.querySelector<HTMLElement>(':scope > div:first-child');
-  const nav = header?.querySelector('nav');
-  const select = document.getElementById('scenario-select');
+  const brand = document.getElementById('navbar-brand');
   const progress = createProgressMeter();
-
   if (brand && !document.getElementById('lab-progress')) brand.append(progress);
 
-  header?.classList.add('h-14', 'w-full', 'max-w-full', 'overflow-x-hidden', 'px-4');
-  header?.classList.remove('h-16', 'h-auto', 'flex-wrap', 'overflow-x-auto');
-
-  nav?.classList.add('shrink-0', 'gap-2');
-  nav?.classList.remove('flex-wrap', 'ml-auto');
-
+  const select = document.getElementById('scenario-select');
   if (select instanceof HTMLSelectElement) {
-    select.classList.add('min-w-0', 'truncate', 'max-w-full');
+    select.classList.add('min-w-0', 'truncate');
     select.classList.remove('min-w-[240px]');
   }
 }

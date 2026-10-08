@@ -23,7 +23,7 @@ export function initHeader(): HeaderController {
           ${view.ping ? `<span class="absolute inline-flex size-full animate-ping rounded-full ${view.dot} opacity-60"></span>` : ''}
           <span class="relative inline-flex size-2 rounded-full ${view.dot}"></span>
         </span>
-        <span class="text-[11px] font-medium ${view.text}">${view.label}</span>`;
+        <span class="hidden text-[11px] font-medium sm:inline ${view.text}">${view.label}</span>`;
     },
   };
 }

@@ -19,37 +19,38 @@
   </head>
   <body class="h-screen max-w-full overflow-x-hidden overflow-hidden bg-slate-950 text-[14px] text-slate-200 antialiased max-md:h-auto max-md:min-h-full max-md:overflow-y-auto">
     <div id="app" class="flex h-screen max-w-full flex-col overflow-x-hidden overflow-hidden max-md:block max-md:h-auto max-md:min-h-full max-md:overflow-x-hidden max-md:overflow-y-visible">
-      <header id="app-header" class="flex h-14 w-full max-w-full shrink-0 items-center justify-between gap-3 overflow-x-hidden border-b border-slate-800 bg-slate-950 px-4">
-        <div id="navbar-brand" class="flex min-w-0 shrink-0 items-center gap-2.5">
-          <span class="rounded-md bg-emerald-500/15 px-1.5 py-0.5 font-mono text-[11px] font-bold tracking-wide text-emerald-400">AML</span>
-          <h1 class="hidden text-[15px] font-semibold text-slate-50 sm:block">AML SQL Lab</h1>
-          <div id="wasm-status" role="status" aria-live="polite" class="flex items-center gap-1.5"></div>
+      <header id="app-header" class="flex h-auto w-full shrink-0 flex-col gap-2 border-b border-slate-800 bg-slate-950 px-3 py-2 md:flex-row md:items-center md:justify-between">
+        <div id="navbar-top" class="flex w-full items-center justify-between gap-2 md:contents">
+          <div id="navbar-brand" class="flex min-w-0 items-center gap-2 md:order-1">
+            <span class="rounded-md bg-emerald-500/15 px-1.5 py-0.5 font-mono text-[11px] font-bold tracking-wide text-emerald-400">AML</span>
+            <h1 class="truncate text-[15px] font-semibold text-slate-50">AML SQL<span class="hidden sm:inline"> Lab</span></h1>
+            <div id="wasm-status" role="status" aria-live="polite" class="flex items-center gap-1.5"></div>
+          </div>
+          <nav class="flex shrink-0 items-center gap-1.5 md:order-3" aria-label="Navegação do laboratório">
+            <button id="btn-agent" type="button" aria-haspopup="dialog" aria-controls="agent-drawer"
+              class="inline-flex h-9 min-w-9 items-center justify-center rounded-lg px-2 py-1 text-xs font-medium text-slate-200 hover:bg-violet-950/50 hover:text-violet-100 md:px-2.5">
+              🤖<span class="hidden md:inline"> Agente IA</span>
+            </button>
+            <button id="btn-lab-help" type="button" aria-haspopup="dialog" aria-controls="lab-help-dialog"
+              class="inline-flex h-9 min-w-9 items-center justify-center rounded-lg border border-sky-700/50 bg-sky-950/40 px-2 py-1 text-xs font-medium text-sky-100 hover:border-sky-500 hover:bg-sky-950/70 md:px-2.5">
+              ❓<span class="hidden md:inline"> Entenda o Laboratório</span>
+            </button>
+          </nav>
         </div>
 
-        <div id="scenario-nav" class="flex min-w-0 w-[380px] max-w-full flex-1 items-center justify-center sm:w-[460px]">
+        <div id="scenario-nav" class="flex w-full items-center gap-1.5 rounded-xl border border-slate-800 bg-slate-900/80 p-1 md:order-2 md:mx-4 md:w-auto md:max-w-[440px] md:flex-1">
           <button type="button" id="btn-prev-scenario" title="Desafio anterior" aria-label="Desafio anterior"
-            class="shrink-0 rounded-l-lg rounded-r-none border border-slate-800 bg-slate-800 px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-30">
+            class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-800 text-xs text-slate-300 hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-30">
             ←
           </button>
           <label for="scenario-select" class="sr-only">Desafio da trilha</label>
           <select id="scenario-select"
-            class="min-w-0 w-full flex-1 truncate border-y border-slate-800 bg-slate-950 px-2 py-1.5 text-xs text-slate-200 outline-none focus:border-indigo-500"></select>
+            class="min-w-0 flex-1 truncate bg-transparent px-2 py-1 text-xs text-slate-200 focus:outline-none"></select>
           <button type="button" id="btn-next-scenario" title="Próximo desafio" aria-label="Próximo desafio"
-            class="shrink-0 rounded-r-lg rounded-l-none border border-slate-800 bg-slate-800 px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-30">
+            class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-800 text-xs text-slate-300 hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-30">
             →
           </button>
         </div>
-
-        <nav class="flex shrink-0 items-center gap-2" aria-label="Navegação do laboratório">
-          <button id="btn-agent" type="button" aria-haspopup="dialog" aria-controls="agent-drawer"
-            class="rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-200 hover:bg-violet-950/50 hover:text-violet-100">
-            🤖 Agente IA
-          </button>
-          <button id="btn-lab-help" type="button" aria-haspopup="dialog" aria-controls="lab-help-dialog"
-            class="rounded-lg border border-sky-700/50 bg-sky-950/40 px-2.5 py-1.5 text-xs font-medium text-sky-100 hover:border-sky-500 hover:bg-sky-950/70">
-            ❓ Entenda o Laboratório
-          </button>
-        </nav>
       </header>
 
       <main id="workspace" class="flex min-h-0 flex-1 overflow-hidden max-md:block max-md:h-auto max-md:min-h-0 max-md:overflow-visible">
