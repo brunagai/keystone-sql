@@ -75,7 +75,8 @@ export function initNavbar(): void {
 
   const select = document.getElementById('scenario-select');
   if (select instanceof HTMLSelectElement) {
-    select.classList.add('min-w-0', 'truncate');
-    select.classList.remove('min-w-[240px]');
+    select.classList.add('min-w-0', 'truncate', 'bg-slate-900', 'text-slate-100');
+    select.classList.remove('min-w-[240px]', 'bg-transparent');
+    select.style.colorScheme = 'dark';
   }
 }

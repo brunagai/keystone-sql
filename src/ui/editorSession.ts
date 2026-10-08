@@ -33,7 +33,7 @@ function usefulDraft(sql: string | undefined, template: string): string | undefi
 }
 
 export function createEditorSession(editor: EditorController, initial: InvestigationScenario): EditorSession {
-  /** Cenário ao qual o texto atual do editor pertence (pode diferir do selecionado enquanto há confirmação pendente). */
+  /** Cenário ao qual o texto atual do editor pertence. */
   let owner = initial;
   /** Último texto carregado programaticamente; editar a partir dele caracteriza query em andamento. */
   let baseline = '';
@@ -78,36 +78,14 @@ export function createEditorSession(editor: EditorController, initial: Investiga
     async switchTo(next) {
       const token = ++switchToken;
       flush();
-      if (next.id === owner.id) {
-        editor.dismissPrompt();
-        return;
-      }
+      editor.dismissPrompt();
+      if (next.id === owner.id) return;
 
       const nextTemplate = templateOf(next);
       const draft = usefulDraft(getDraft(next.id), nextTemplate);
-      const current = editor.getFullSql();
-
-      if (hasWorkInProgress(current)) {
-        const replace = await editor.confirmReplace({
-          message: 'Você possui uma query em andamento neste desafio.',
-          detail: 'Deseja substituir pelo modelo inicial ou manter seu rascunho atual?',
-          confirmLabel: 'Carregar modelo inicial',
-          cancelLabel: 'Manter meu rascunho',
-        });
-        if (token !== switchToken) return;
-        flush();
-        if (!replace) {
-          owner = next;
-          baseline = editor.getFullSql();
-          flush();
-          editor.flashStatus(`Query mantida no editor para ${quoted(next)}.`);
-          return;
-        }
-      }
-
       if (token !== switchToken) return;
+
       if (draft !== undefined) {
-        editor.dismissPrompt();
         load(next, draft, `Rascunho de ${quoted(next)} restaurado.`);
         return;
       }

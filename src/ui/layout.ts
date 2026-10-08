@@ -98,7 +98,7 @@ export function showMobilePane(pane: MobileWorkspacePane): void {
     resultsSheetOpen = true;
     missionOverlayOpen = false;
   } else if (pane === 'mission') {
-    missionOverlayOpen = true;
+    missionOverlayOpen = false;
   } else {
     resultsSheetOpen = false;
     missionOverlayOpen = false;

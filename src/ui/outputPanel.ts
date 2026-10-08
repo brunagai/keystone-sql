@@ -2,14 +2,14 @@ import type { QueryExecResult } from 'sql.js';
 import type { ErrorHighlight } from '../challenges/sqlErrors.ts';
 import type { ValidationResult } from '../challenges/validator.ts';
 import { byId } from './dom.ts';
-import { showResultsSheet } from './layout.ts';
+import { escapeHtml, formatInline, formatInteiro, formatMs } from './format.ts';
+import { hideResultsSheet, showResultsSheet } from './layout.ts';
+import { renderResultTable } from './resultTable.ts';
 
 export interface OutputPanelHandlers {
   onSuccessNext?: () => void;
   hasNextScenario?: () => boolean;
 }
-import { escapeHtml, formatInline, formatInteiro, formatMs } from './format.ts';
-import { renderResultTable } from './resultTable.ts';
 
 export interface OutputPanelController {
   showResults(results: QueryExecResult[], elapsedMs: number, keepBanner?: boolean): void;
@@ -19,6 +19,8 @@ export interface OutputPanelController {
   showValidationPending(): void;
   showValidation(result: ValidationResult, expectedColumns: readonly string[]): void;
   clearValidation(): void;
+  /** Remove tabela, métricas e cards da execução anterior e restaura o empty state. */
+  resetResultsView(): void;
   focusResults(): void;
 }
 
@@ -293,6 +295,14 @@ export function initOutputPanel(handlers: OutputPanelHandlers = {}): OutputPanel
     },
     clearValidation() {
       setBanner('');
+    },
+    resetResultsView() {
+      meta.innerHTML = '';
+      setBanner('');
+      setBody('');
+      setSheetTitle('Resultados');
+      if (emptyState) emptyState.hidden = false;
+      hideResultsSheet();
     },
     focusResults,
   };

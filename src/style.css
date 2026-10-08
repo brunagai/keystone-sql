@@ -35,6 +35,19 @@ body {
   min-width: 0;
   max-width: 100%;
   text-overflow: ellipsis;
+  color-scheme: dark;
+}
+
+#scenario-select,
+#scenario-select option,
+#scenario-select optgroup {
+  background-color: #0f172a !important;
+  color: #f1f5f9 !important;
+}
+
+#scenario-select optgroup {
+  font-weight: 700;
+  color: #94a3b8 !important;
 }
 
 @media (max-width: 1279px) {
@@ -138,16 +151,40 @@ body {
   }
 
   #investigation-panel {
-    display: none !important;
+    display: block !important;
+    position: static !important;
+    height: auto !important;
+    max-height: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: visible !important;
   }
 
-  #investigation-panel[data-overlay='open'] {
+  #investigation-mission-view,
+  #investigation-scroll {
+    display: block !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  #investigation-panel[data-view='schema'] {
     display: flex !important;
+    flex-direction: column;
     position: fixed;
     inset: 0;
     z-index: 60;
+    height: 100% !important;
+    max-height: 100% !important;
     width: 100% !important;
-    max-width: none !important;
+    overflow: hidden !important;
+  }
+
+  #investigation-panel[data-view='schema'] #schema-drawer {
+    display: flex !important;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
   }
 
   /* Reservado no fluxo da página até o usuário executar; vira gaveta só com data-sheet=open. */
@@ -199,8 +236,7 @@ body {
   }
 
   #output-scroll,
-  #investigation-scroll,
-  #schema-tree {
+  #investigation-panel[data-view='schema'] #schema-tree {
     overflow-y: auto;
   }
 

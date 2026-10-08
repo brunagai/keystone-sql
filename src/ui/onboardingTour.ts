@@ -19,17 +19,17 @@ interface TourStep {
 
 const STEPS: readonly TourStep[] = [
   {
-    targetId: 'mobile-briefing',
+    targetId: 'mission-card',
     placement: 'below',
     title: 'A Missão',
-    body: 'No celular, o briefing fica compacto acima do editor. Toque no texto para expandir ou abra o dossiê e o contrato de colunas.',
+    body: 'Aqui está o que você precisa descobrir, em uma frase. Os blocos abaixo abrem o dicionário de tabelas, o contexto regulatório, as colunas sugeridas e a dica de SQL.',
     when: 'mobile',
   },
   {
     targetId: 'mission-card',
     placement: 'right',
     title: 'A Missão',
-    body: 'Aqui está o que você precisa descobrir, em uma frase. As abas abaixo abrem a dica de SQL, o dossiê e as colunas da resposta.',
+    body: 'Aqui está o que você precisa descobrir, em uma frase. Os blocos abaixo abrem o dicionário de tabelas, o contexto regulatório, as colunas sugeridas e a dica de SQL.',
     when: 'desktop',
   },
   {

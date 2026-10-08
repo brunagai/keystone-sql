@@ -3,6 +3,7 @@ import { DATA_DICTIONARY, type DictionaryCategory } from '../data/dictionary.ts'
 import { getDatabaseSchema, previewTable, type ColumnSchema, type TableSchema } from '../database/introspection.ts';
 import { byId } from './dom.ts';
 import { escapeHtml, formatInteiro } from './format.ts';
+import { showMobilePane } from './layout.ts';
 import { renderResultTable } from './resultTable.ts';
 
 export interface SchemaPanelController {
@@ -175,10 +176,15 @@ export function initSchemaPanel(onInsertIdentifier: (identifier: string) => void
   if (openButton instanceof HTMLButtonElement) {
     openButton.addEventListener('click', () => setOpen(!isOpen()));
   }
-  closeButton.addEventListener('click', () => setOpen(false));
+  const closeSchema = (): void => {
+    setOpen(false);
+    showMobilePane('editor');
+  };
+
+  closeButton.addEventListener('click', () => closeSchema());
   document.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape' || !isOpen() || document.querySelector('dialog[open]')) return;
-    setOpen(false);
+    closeSchema();
   });
 
   filter.addEventListener('input', () => {
@@ -235,7 +241,7 @@ export function initSchemaPanel(onInsertIdentifier: (identifier: string) => void
       setOpen(true);
     },
     close() {
-      setOpen(false);
+      closeSchema();
     },
   };
 }

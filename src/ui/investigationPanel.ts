@@ -8,7 +8,6 @@ import {
 import { DEFAULT_SCENARIO_ID, TRAIL_BAND_LEVELS, TRAIL_LEVELS, ensureRelatorioColunas, trailBandOf, trailOptgroupLabel, type InvestigationScenario, type ScenarioId, type TrailBand, type TrailLevel, type TwoPhaseReasoning } from '../challenges/scenarios.ts';
 import { resolveTwoPhase } from '../challenges/twoPhase.ts';
 import { isChallengeCompleted, markChallengeCompleted, PROGRESS_UPDATED_EVENT } from '../services/progressService.ts';
-import { showMissionOverlay } from './layout.ts';
 import { escapeHtml, formatInline } from './format.ts';
 
 function el<T extends HTMLElement>(id: string): T | null {
@@ -126,7 +125,7 @@ function renderDossierBody(s: InvestigationScenario): string {
 
 function renderSupportStack(s: InvestigationScenario, tentativas = 0): string {
   return `
-    <div class="mt-3 flex flex-col gap-2.5">
+    <div class="my-3 flex flex-col gap-2.5">
       ${renderSchemaButton()}
       ${renderAccordion('🏛️ Contexto Regulatório (Bacen/COAF)', renderDossierBody(s))}
       ${renderAccordion('💡 Colunas Sugeridas', renderSuggestedColumnsBody(s))}
@@ -161,22 +160,6 @@ function renderScenario(s: InvestigationScenario, tentativas = 0): string {
       <p class="mt-2 text-[15px] leading-relaxed text-slate-100">${escapeHtml(missionLine(s))}</p>
     </section>
     ${renderSupportStack(s, tentativas)}`;
-}
-
-function renderMobileDossier(s: InvestigationScenario, tentativas = 0): string {
-  return renderSupportStack(s, tentativas);
-}
-
-function paintMobileBriefing(s: InvestigationScenario, tentativas = 0): void {
-  const level = document.getElementById('mobile-briefing-level');
-  const title = document.getElementById('mobile-briefing-title');
-  const text = document.getElementById('mobile-briefing-text');
-  const dossier = document.getElementById('mobile-dossier-body');
-  const nivelMeta = TRAIL_LEVELS[s.nivel];
-  if (level) level.textContent = `Nível ${s.nivel}${nivelMeta ? ` · ${nivelMeta.titulo}` : ''}`;
-  if (title) title.textContent = s.titulo ?? 'Caso investigativo';
-  if (text) text.textContent = missionLine(s);
-  if (dossier) dossier.innerHTML = renderMobileDossier(s, tentativas);
 }
 
 function splitSqlComment(line: string): [code: string, comment: string] {
@@ -308,7 +291,6 @@ export function initInvestigationPanel({
       }
     }
     renderSolutionToggle();
-    paintMobileBriefing(scenario, attempts.get(scenario.id) ?? 0);
     paintStepButtons();
     if (notify && changed) onScenarioChange(scenario);
   };
@@ -335,37 +317,6 @@ export function initInvestigationPanel({
   });
   nextButton?.addEventListener('click', () => {
     stepScenario(1);
-  });
-
-  const dossierDialog = el<HTMLDialogElement>('mobile-dossier-dialog');
-  const dossierButton = el('btn-mobile-dossier');
-
-  const closeDossier = (): void => {
-    if (dossierDialog?.open) dossierDialog.close();
-  };
-
-  dossierButton?.addEventListener('click', () => {
-    paintMobileBriefing(selected, attempts.get(selected.id) ?? 0);
-    dossierDialog?.showModal();
-  });
-
-  dossierDialog?.addEventListener('click', (event) => {
-    const target = event.target;
-    if (!(target instanceof Element)) return;
-    if (target === dossierDialog || target.closest('[data-close-dialog]')) {
-      closeDossier();
-      return;
-    }
-    if (target.closest('[data-open-schema]')) {
-      closeDossier();
-      showMissionOverlay();
-      onOpenSchema?.();
-      return;
-    }
-    if (target.closest('[data-load-solution]')) {
-      closeDossier();
-      onLoadSolution(selected.gabaritoSql);
-    }
   });
 
   if (card) {

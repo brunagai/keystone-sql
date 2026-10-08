@@ -14,7 +14,7 @@ import { initEditor } from './ui/editor.ts';
 import { createEditorSession } from './ui/editorSession.ts';
 import { initHeader } from './ui/header.ts';
 import { initInvestigationPanel } from './ui/investigationPanel.ts';
-import { hideResultsSheet, initWorkspaceSplit, showMobilePane } from './ui/layout.ts';
+import { initWorkspaceSplit, showMobilePane } from './ui/layout.ts';
 import { hideFloatingMenus, initNavbar } from './ui/navbar.ts';
 import { initLabGuide, startOnboardingTour } from './ui/onboardingTour.ts';
 import { initOutputPanel } from './ui/outputPanel.ts';
@@ -34,10 +34,9 @@ const output = initOutputPanel({
   hasNextScenario: () => investigation.hasNextScenario(),
   onSuccessNext: () => {
     if (!investigation.stepScenario(1)) return;
-    hideResultsSheet();
     showMobilePane('editor');
     editor.focus();
-    document.getElementById('mobile-briefing')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.getElementById('mission-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   },
 });
 const dossier = initDossierExport();
@@ -55,12 +54,12 @@ const schema = initSchemaPanel((identifier) => editor.insertAtCursor(identifier)
 const investigation = initInvestigationPanel({
   onLoadSolution: (sql) => editor.replaceSql(sql),
   onScenarioChange: (scenario) => {
-    output.clearValidation();
+    output.resetResultsView();
+    dossier.setData(null);
     void session.switchTo(scenario);
   },
   onOpenSchema: () => {
-    showMobilePane('mission');
-    schema.toggle();
+    schema.open();
   },
 });
 const editor = initEditor({
@@ -229,7 +228,7 @@ async function bootstrap(): Promise<void> {
 
   try {
     applyDatabase(await getDatabase());
-    output.showMessage('Modelo do desafio carregado. Complete a consulta e use Rodar Teste para explorar os dados.');
+    output.resetResultsView();
     startOnboardingTour();
   } catch (error) {
     console.error(error);
