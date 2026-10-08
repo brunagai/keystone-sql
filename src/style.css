@@ -133,6 +133,16 @@ body {
     touch-action: pan-y !important;
   }
 
+  #editor-toolbar {
+    overflow: visible !important;
+    position: relative;
+    z-index: 20;
+  }
+
+  #history-panel {
+    z-index: 50;
+  }
+
   #workspace-gutter {
     display: none !important;
     width: 0 !important;
@@ -171,8 +181,11 @@ body {
   #investigation-panel[data-view='schema'] {
     display: flex !important;
     flex-direction: column;
-    position: fixed;
-    inset: 0;
+    position: fixed !important;
+    top: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
     z-index: 60;
     height: 100% !important;
     max-height: 100% !important;
@@ -180,11 +193,17 @@ body {
     overflow: hidden !important;
   }
 
-  #investigation-panel[data-view='schema'] #schema-drawer {
+  #investigation-panel[data-view='schema'] #schema-drawer,
+  #investigation-panel[data-view='schema'] #schema-panel {
     display: flex !important;
     flex: 1 1 auto;
     min-height: 0;
+    height: 100%;
     overflow: hidden;
+  }
+
+  body[data-schema-overlay='open'] {
+    overflow: hidden !important;
   }
 
   /* Reservado no fluxo da página até o usuário executar; vira gaveta só com data-sheet=open. */

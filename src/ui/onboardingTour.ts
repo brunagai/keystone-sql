@@ -22,14 +22,14 @@ const STEPS: readonly TourStep[] = [
     targetId: 'mission-card',
     placement: 'below',
     title: 'A Missão',
-    body: 'Aqui está o que você precisa descobrir, em uma frase. Os blocos abaixo abrem o dicionário de tabelas, o contexto regulatório, as colunas sugeridas e a dica de SQL.',
+    body: 'Aqui está o que você precisa descobrir, com a norma aplicável e o escopo da evidência. Os blocos abaixo abrem o dicionário de tabelas e, sob demanda, colunas sugeridas, dica de SQL e gabarito.',
     when: 'mobile',
   },
   {
     targetId: 'mission-card',
     placement: 'right',
     title: 'A Missão',
-    body: 'Aqui está o que você precisa descobrir, em uma frase. Os blocos abaixo abrem o dicionário de tabelas, o contexto regulatório, as colunas sugeridas e a dica de SQL.',
+    body: 'Aqui está o que você precisa descobrir, com a norma aplicável e o escopo da evidência. Os blocos abaixo abrem o dicionário de tabelas e, sob demanda, colunas sugeridas, dica de SQL e gabarito.',
     when: 'desktop',
   },
   {

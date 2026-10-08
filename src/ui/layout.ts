@@ -128,8 +128,9 @@ export function initWorkspaceSplit(): void {
   editorContainer.classList.add('max-md:w-full');
   byId('btn-run').classList.add('max-md:min-h-10');
   byId('btn-validate').classList.add('max-md:min-h-10');
-  const editorToolbar = editorContainer.querySelector<HTMLElement>(':scope > div.flex.h-12');
-  editorToolbar?.classList.add('max-md:h-auto', 'max-md:min-h-10', 'max-md:overflow-x-auto', 'max-md:flex-nowrap');
+  const editorToolbar = document.getElementById('editor-toolbar');
+  editorToolbar?.classList.add('relative', 'z-20', 'overflow-visible', 'max-md:h-auto', 'max-md:min-h-10', 'max-md:flex-wrap');
+  editorToolbar?.classList.remove('overflow-hidden', 'overflow-x-auto');
 
   const apply = (width: number): number => {
     const next = clampWidth(workspace, width);

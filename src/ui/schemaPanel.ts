@@ -108,7 +108,7 @@ function renderTableButton(table: TableSchema, selected: boolean): string {
   const on = selected ? 'border-sky-700 bg-sky-950/50' : 'border-transparent hover:bg-slate-800/70';
   return `
     <button type="button" data-select-table="${escapeHtml(table.name)}"
-      class="flex w-full items-center gap-2 rounded-lg border px-2 py-1.5 text-left ${on}">
+      class="flex w-full items-center gap-1.5 rounded-lg border px-2 py-1 text-left ${on}">
       <span class="min-w-0 flex-1 truncate font-mono text-[12px] text-slate-100">${escapeHtml(table.name)}</span>
       ${badge}
       <span class="shrink-0 font-mono text-[10px] text-slate-500">${formatInteiro(table.rowCount)}</span>
@@ -130,16 +130,53 @@ export function initSchemaPanel(onInsertIdentifier: (identifier: string) => void
   let selected: string | null = null;
   let query = '';
   let flashTimer: ReturnType<typeof setTimeout> | undefined;
+  let savedScrollY = 0;
+
+  const isMobileSchema = (): boolean => window.matchMedia('(max-width: 767px)').matches;
 
   const isOpen = (): boolean => !drawer.hidden;
 
+  const resetSchemaScroll = (): void => {
+    window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    sidebar.scrollTop = 0;
+    drawer.scrollTop = 0;
+    const panel = document.getElementById('schema-panel');
+    if (panel) panel.scrollTop = 0;
+    list.scrollTop = 0;
+    inspector.scrollTop = 0;
+  };
+
   const setOpen = (open: boolean): void => {
+    const mobile = isMobileSchema();
+    if (open && !isOpen() && mobile) {
+      savedScrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop;
+    }
+
     drawer.hidden = !open;
     missionView.hidden = open;
     sidebar.dataset['view'] = open ? 'schema' : 'mission';
     if (openButton instanceof HTMLButtonElement) {
       openButton.setAttribute('aria-expanded', String(open));
       openButton.setAttribute('aria-pressed', String(open));
+    }
+
+    if (open && mobile) {
+      document.body.dataset['schemaOverlay'] = 'open';
+      resetSchemaScroll();
+      requestAnimationFrame(() => {
+        resetSchemaScroll();
+        closeButton.focus();
+      });
+      return;
+    }
+
+    if (!open && mobile) {
+      delete document.body.dataset['schemaOverlay'];
+      window.scrollTo({ top: savedScrollY, behavior: 'instant' as ScrollBehavior });
+      document.documentElement.scrollTop = savedScrollY;
+      document.body.scrollTop = savedScrollY;
     }
   };
 

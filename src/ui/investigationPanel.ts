@@ -89,14 +89,14 @@ const ACCORDION_CLASS =
   'group rounded-xl border border-slate-800 bg-slate-900/50 p-3 text-xs text-slate-300 transition-colors hover:bg-slate-900/80';
 
 const ACCORDION_SUMMARY_CLASS =
-  'flex cursor-pointer list-none select-none items-center gap-2 text-xs font-medium text-slate-400 hover:text-slate-200 [&::-webkit-details-marker]:hidden';
+  'flex cursor-pointer list-none select-none items-center justify-center gap-2 text-center text-xs font-medium text-slate-400 hover:text-slate-200 [&::-webkit-details-marker]:hidden';
 
-function renderAccordion(titulo: string, corpo: string, extraSummary = ''): string {
+function renderAccordion(titulo: string, corpo: string, extraSummary = '', extraClass = ''): string {
   return `
-    <details class="${ACCORDION_CLASS}">
+    <details class="${ACCORDION_CLASS}${extraClass ? ` ${extraClass}` : ''}">
       <summary class="${ACCORDION_SUMMARY_CLASS}">
         <span class="text-[10px] text-slate-500 transition group-open:rotate-90" aria-hidden="true">▸</span>
-        <span class="min-w-0 flex-1">${titulo}</span>
+        <span class="min-w-0">${titulo}</span>
         ${extraSummary}
       </summary>
       <div class="mt-3 space-y-2 border-t border-slate-800/80 pt-3">${corpo}</div>
@@ -104,7 +104,7 @@ function renderAccordion(titulo: string, corpo: string, extraSummary = ''): stri
 }
 
 const SCHEMA_BUTTON_CLASS =
-  'flex w-full items-center justify-center gap-2 rounded-xl border border-slate-800 bg-slate-900/50 px-3 py-2.5 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-900/80';
+  'flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-slate-800 bg-slate-900/50 px-3 py-2 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-900/80';
 
 function renderSchemaButton(): string {
   return `<button type="button" data-open-schema class="${SCHEMA_BUTTON_CLASS}">📊 Consultar Tabelas Disponíveis</button>`;
@@ -117,19 +117,49 @@ function renderSqlHintBody(s: InvestigationScenario): string {
     ${renderTwoPhase(s)}`;
 }
 
-function renderDossierBody(s: InvestigationScenario): string {
+function renderHelpBundle(s: InvestigationScenario, tentativas = 0): string {
+  const colunas = renderSuggestedColumnsBody(s);
+  const dica = renderSqlHintBody(s);
+  const gabaritoMobile =
+    tentativas > 0
+      ? `<section>
+          <h4 class="mb-1 text-[11px] font-semibold text-slate-300">📖 Gabarito Comentado</h4>
+          ${renderDidacticGabarito(s)}
+          <button type="button" data-load-solution
+            class="mt-2 w-full cursor-pointer rounded-lg border border-slate-700 px-3 py-2 text-[12px] text-slate-300 hover:border-sky-600 hover:text-sky-200">
+            Abrir gabarito no editor
+          </button>
+        </section>`
+      : '';
   return `
-    <p class="text-[11px] font-semibold uppercase tracking-wider text-amber-200/80">${escapeHtml(s.enquadramento ?? '')}</p>
-    <p class="text-[13px] leading-relaxed text-slate-400">${escapeHtml(s.dossie ?? '')}</p>`;
+    <details class="rounded-lg border border-slate-800 bg-slate-900/60 p-2 text-xs text-slate-300 md:hidden">
+      <summary class="flex cursor-pointer list-none items-center justify-center gap-1 text-center font-medium text-slate-400 hover:text-slate-200 [&::-webkit-details-marker]:hidden">
+        <span class="text-[10px] text-slate-500" aria-hidden="true">▸</span>
+        💡 Ajuda e Dicas (Colunas, SQL${tentativas > 0 ? ', Gabarito' : ''})
+      </summary>
+      <div class="mt-2 space-y-2 border-t border-slate-800/80 pt-2">
+        <section>
+          <h4 class="mb-1 text-[11px] font-semibold text-slate-300">💡 Colunas Sugeridas</h4>
+          ${colunas}
+        </section>
+        <section>
+          <h4 class="mb-1 text-[11px] font-semibold text-slate-300">🔍 Dica de SQL</h4>
+          ${dica}
+        </section>
+        ${gabaritoMobile}
+      </div>
+    </details>
+    <div class="hidden flex-col gap-2.5 md:flex">
+      ${renderAccordion('💡 Colunas Sugeridas', colunas)}
+      ${renderAccordion('🔍 Dica de SQL', dica)}
+    </div>`;
 }
 
 function renderSupportStack(s: InvestigationScenario, tentativas = 0): string {
   return `
-    <div class="my-3 flex flex-col gap-2.5">
+    <div class="my-2 flex flex-col gap-1.5 md:my-3 md:gap-2.5">
       ${renderSchemaButton()}
-      ${renderAccordion('🏛️ Contexto Regulatório (Bacen/COAF)', renderDossierBody(s))}
-      ${renderAccordion('💡 Colunas Sugeridas', renderSuggestedColumnsBody(s))}
-      ${renderAccordion('🔍 Dica de SQL', renderSqlHintBody(s))}
+      ${renderHelpBundle(s, tentativas)}
       ${renderGabaritoAccordion(s, tentativas)}
     </div>`;
 }
@@ -141,10 +171,11 @@ function renderGabaritoAccordion(s: InvestigationScenario, tentativas: number): 
     '📖 Gabarito Comentado',
     `${renderDidacticGabarito(s)}
         <button type="button" data-load-solution
-          class="w-full rounded-lg border border-slate-700 px-3 py-2 text-[12px] text-slate-300 hover:border-sky-600 hover:text-sky-200">
+          class="w-full cursor-pointer rounded-lg border border-slate-700 px-3 py-2 text-[12px] text-slate-300 hover:border-sky-600 hover:text-sky-200">
           Abrir gabarito no editor
         </button>`,
     extra,
+    'hidden md:block',
   );
 }
 
