@@ -1006,33 +1006,30 @@ WHERE a.status_dispositivo != 'CONFIÁVEL';`,
       'pagamentos e pessoas físicas no Rio de Janeiro. O padrão sugere automação para pulverizar recursos em cadeia ' +
       '(layering) sem propósito comercial aparente.',
     objetivo:
-      'Com base na Carta Circular Bacen 4.001/2020, Inciso IV (alta frequência em janela curta incompatível com uso humano), isole a rajada. Identifique a transação, a conta remetente, a conta favorecida, o valor, o momento da liquidação e o intervalo em segundos até o envio imediatamente anterior da mesma conta, quando esse intervalo for de no máximo 60 segundos.',
+      'Com base na Carta Circular Bacen 4.001/2020, Inciso IV (alta frequência em janela curta incompatível com uso humano), isole a rajada. Identifique a transação, a conta remetente, a conta favorecida, o valor, o momento da liquidação e o intervalo em segundos decorrido desde o envio imediatamente anterior da mesma conta, quando essa diferença for de no máximo 60 segundos.',
     colunasEsperadas: ['id_transacao', 'conta_origem', 'conta_destino', 'valor', 'data_hora', 'intervalo_segundos'],
     ordenacao: 'conta_origem ASC, data_hora ASC',
     dicaTexto:
-      'Funções de janela não podem ser filtradas diretamente no WHERE do mesmo SELECT: calcule o LAG em uma CTE e filtre na consulta externa.',
-    dicaSql: `WITH sequencia AS (
-  SELECT *,
-         LAG(data_hora) OVER (
-           PARTITION BY id_conta_origem
-           ORDER BY data_hora
-         ) AS lag_data_hora
+      'Carimbe o horário do envio anterior da mesma origem numa etapa à parte e só depois corte a janela curta. Métrica de sequência não entra no filtro do mesmo SELECT.',
+    dicaSql: `-- Etapa 1: linha do tempo por remetente (horário do envio anterior)
+WITH sequencia AS (
+  SELECT ...
   FROM transacoes_pix
 )
-SELECT ...,
-       strftime('%s', data_hora) - strftime('%s', lag_data_hora) AS intervalo_segundos
+-- Etapa 2: mantenha só a rajada (intervalo curto)
+SELECT ...
 FROM sequencia
 WHERE ...;`,
     decomposicao: {
       fase1: {
         titulo: 'Fase 1 — O envelope `WITH`',
         texto:
-          'Calcule, linha a linha, o horário do PIX anterior da mesma conta de origem com `LAG(data_hora) OVER (PARTITION BY id_conta_origem ORDER BY data_hora)` e o `intervalo_segundos` (`strftime(\'%s\', …)`). Faça isso no `WITH`: funções de janela não podem ir no `WHERE` do mesmo `SELECT`. Selecione o miolo da CTE e use Testar Seleção / CTE para ver o carimbo antes de filtrar.',
+          'Carimbe, linha a linha, o horário do PIX anterior da mesma origem e o intervalo até esse envio. Faça isso no `WITH`: métricas de sequência não vão no `WHERE` do mesmo `SELECT`. Inspecione o envelope antes de cortar a janela curta.',
       },
       fase2: {
         titulo: 'Fase 2 — O filtro do `WHERE` externo',
         texto:
-          'No `SELECT` externo, isole apenas as linhas já carimbadas em que `intervalo_segundos <= 60` (janela de alta frequência da Carta Circular 4.001/2020). A primeira transação de cada conta não tem `LAG` (`NULL`) e sai nesta fase.',
+          'No `SELECT` externo, isole só as linhas já carimbadas com intervalo de no máximo 60 segundos (janela de alta frequência da Carta Circular 4.001/2020). A primeira transação de cada conta não tem antecessor e sai nesta fase.',
       },
     },
     gabaritoSql: `-- Gabarito comentado · Burst / alta frequência (LAG)
@@ -1184,16 +1181,16 @@ ORDER BY valor DESC, data_hora ASC;`,
       'Comunicação interna aponta que clientes de baixa renda declarada (estudante, aposentada e MEI) passaram a ' +
       'movimentar centenas de milhares de reais em agosto/2026, em operações com uma holding recém-constituída.',
     objetivo:
-      'Com base na Circular Bacen 3.978/2020, Art. 38, c/c Carta Circular 4.001/2020, Inciso II (incompatibilidade grave com a capacidade econômico-financeira), identifique a transação, a conta remetente, o titular, a renda mensal declarada, o valor enviado e o grau de distorção quando o disparo equivaler a 30 vezes ou mais a renda de quem originou.',
+      'Com base na Circular Bacen 3.978/2020, Art. 38, c/c Carta Circular 4.001/2020, Inciso II (incompatibilidade grave com a capacidade econômico-financeira), a esteira precisa flagrar disparos desproporcionais à capacidade cadastral. Identifique as transações em que o valor enviado equivaler a 30 vezes ou mais a renda mensal declarada de quem originou. Traga a transação, a conta remetente, o titular, a renda declarada, o valor do envio e o fator de incompatibilidade (a razão entre o montante transferido e a renda declarada do pagador).',
     colunasEsperadas: ['id_transacao', 'conta_origem', 'titular', 'renda_mensal', 'valor', 'fator_incompatibilidade'],
     ordenacao: 'fator_incompatibilidade DESC',
-    dicaTexto: 'Faça JOIN da transação com a conta pela ORIGEM e compare o valor com um múltiplo da renda declarada.',
-    dicaSql: `SELECT t.id_transacao,
-       ...,
-       ROUND(t.valor / c.renda_mensal_declarada, 2) AS fator_incompatibilidade
-FROM transacoes_pix t
-JOIN contas c ON c.id_conta = t.id_conta_origem
-WHERE ...
+    dicaTexto:
+      'Faça a junção das transações com o cadastro para obter a renda de quem envia e use uma divisão simples para calcular a proporção entre o valor transferido e a capacidade financeira declarada.',
+    dicaSql: `-- Cruze a transação com o cadastro de quem origina o PIX
+SELECT ...
+FROM transacoes_pix
+JOIN contas ON ...
+WHERE -- valor desproporcional à renda declarada
 ORDER BY ...;`,
     gabaritoSql: `-- Gabarito comentado · Incompatibilidade patrimonial (ratio valor/renda)
 SELECT
@@ -1709,24 +1706,15 @@ WHERE ranking_recente = 1;`,
       'A cadência entre envios sucessivos distingue uso humano de automação. A mesa pede, ao lado de cada PIX, o horário ' +
       'do disparo anterior da mesma conta e quantos segundos separam os dois — o primeiro envio de cada titular fica sem antecessor.',
     objetivo:
-      'Com base na Carta Circular Bacen 4.001/2020, Inciso IV (alta frequência e cadência incompatível com uso humano), identifique a transação, a conta remetente, o momento atual, o horário do disparo anterior da mesma conta e quantos segundos separam os dois — o primeiro de cada titular fica sem antecessor.',
+      'Com base na Carta Circular Bacen 4.001/2020, Inciso IV (alta frequência e cadência transacional), identifique a transação, a conta remetente, o momento atual, o horário do envio imediatamente anterior da mesma conta e o intervalo em segundos decorrido entre as duas transferências — o primeiro envio de cada titular fica sem antecessor.',
     colunasEsperadas: ['id_transacao', 'id_conta_origem', 'data_hora', 'data_hora_anterior', 'intervalo_segundos'],
     ordenacao: 'id_conta_origem ASC, data_hora ASC',
     dicaTexto:
-      'Para cada envio, busque o horário imediatamente anterior da mesma conta e converta a diferença para segundos. O marco zero de cada titular não tem operação prévia.',
-    dicaSql: `-- LAG pega a marcação anterior na mesma partição
--- unixepoch transforma data/hora em segundos (a 1ª linha de cada conta fica NULL)
-SELECT id_transacao, id_conta_origem, data_hora,
-       LAG(data_hora) OVER (
-         PARTITION BY id_conta_origem
-         ORDER BY data_hora ASC, id_transacao ASC
-       ) AS data_hora_anterior,
-       (unixepoch(data_hora) - unixepoch(LAG(data_hora) OVER (
-         PARTITION BY id_conta_origem
-         ORDER BY data_hora ASC, id_transacao ASC
-       ))) AS intervalo_segundos
+      'Para cada envio, recupere o horário imediatamente anterior da mesma conta e meça o tempo decorrido em segundos. O primeiro disparo de cada titular não tem antecessor.',
+    dicaSql: `-- Linha do tempo por remetente: instante atual, instante anterior e diferença
+SELECT ...
 FROM transacoes_pix
-ORDER BY id_conta_origem ASC, data_hora ASC;`,
+ORDER BY ...;`,
     gabaritoSql: `-- Gabarito · intervalo em segundos até o PIX anterior da mesma origem
 SELECT
   id_transacao,
@@ -1825,26 +1813,21 @@ FROM transacoes_pix;`,
       'Saltos de valor entre PIX consecutivos da mesma conta indicam aquecimento, teste de canal ou mudança de propósito. ' +
       'A mesa pede a diferença entre o envio atual e o anterior, descartando a primeira operação — que não tem base de comparação.',
     objetivo:
-      'Com base na Carta Circular Bacen 4.001/2020 (mudança abrupta de padrão transacional), identifique a transação e a conta remetente, compare o valor atual com o valor anterior da mesma conta, traga a diferença absoluta (pode ser negativa) e descarte a primeira operação — ela não tem base de comparação.',
+      'Com base na Carta Circular Bacen 4.001/2020 (mudança abrupta de padrão transacional), identifique a transação e a conta remetente, compare o valor atual com o do envio anterior da mesma conta e calcule a variação de valor ocorrida entre as duas operações consecutivas (mantendo o sinal caso tenha ocorrido redução), desconsiderando a primeira operação do histórico.',
     colunasEsperadas: ['id_transacao', 'id_conta_origem', 'valor_anterior', 'valor_atual', 'variacao_absoluta'],
     ordenacao: 'variacao_absoluta DESC',
     dicaTexto:
-      'Carimbe o valor do envio anterior na mesma conta e, na etapa seguinte, elimine quem não tem antecessor. A variação é o valor atual menos o anterior (pode ser negativa).',
-    dicaSql: `-- Fase 1: LAG(valor) na linha do tempo da conta
--- Fase 2: WHERE valor_anterior IS NOT NULL (expurga o marco zero)
+      'Carimbe o valor do envio anterior da mesma conta e, na etapa seguinte, descarte quem não tem histórico. A variação é a diferença entre o valor atual e o anterior (pode ser negativa).',
+    dicaSql: `-- Etapa 1: valor atual e valor imediatamente anterior da mesma origem
 WITH historico_valores AS (
-  SELECT id_transacao, id_conta_origem, valor AS valor_atual,
-         LAG(valor) OVER (
-           PARTITION BY id_conta_origem
-           ORDER BY data_hora ASC, id_transacao ASC
-         ) AS valor_anterior
+  SELECT ...
   FROM transacoes_pix
 )
-SELECT id_transacao, id_conta_origem, valor_anterior, valor_atual,
-       (valor_atual - valor_anterior) AS variacao_absoluta
+-- Etapa 2: só quem tem operação prévia
+SELECT ...
 FROM historico_valores
-WHERE valor_anterior IS NOT NULL
-ORDER BY variacao_absoluta DESC;`,
+WHERE ...
+ORDER BY ...;`,
     gabaritoSql: `-- Gabarito · variação vs. PIX anterior (sem a primeira operação da conta)
 WITH historico_valores AS (
   SELECT
@@ -1895,7 +1878,7 @@ WHERE valor_anterior IS NOT NULL;`,
       'mercado) para simular uso normal e, poucos dias depois, passa a movimentar valores dezenas de vezes maiores. A área de ' +
       'PLD quer uma regra que combine histórico curto, salto em relação ao próprio histórico e proximidade temporal.',
     objetivo:
-      'Com base na Circular Bacen 3.978/2020 c/c Carta Circular 4.001/2020 (mudança de padrão e aquecimento de contas de laranja), identifique a transação, a conta remetente, o titular, o valor, o momento, o intervalo em horas até o disparo anterior, a média histórica e o salto, nas originações com histórico curto (um a três envios anteriores), valor atual pelo menos dez vezes essa média e também de R$ 5.000,00 ou mais, em até dez dias depois do disparo anterior.',
+      'Com base na Circular Bacen 3.978/2020 c/c Carta Circular 4.001/2020 (aquecimento de contas e mudança atípica de perfil), identifique transações em que o valor atual atinja ao menos dez vezes a média dos envios anteriores da conta e seja de R$ 5.000,00 ou mais, ocorrendo em até dez dias após o envio anterior e com histórico curto (um a três envios prévios). Traga a transação, a conta remetente, o titular, o valor, o momento, o tempo decorrido em horas desde a operação anterior, a média dos envios históricos prévios e o salto (quantas vezes o valor atual supera essa média histórica).',
     colunasEsperadas: [
       'id_transacao',
       'conta_origem',
@@ -1908,35 +1891,28 @@ WHERE valor_anterior IS NOT NULL;`,
     ],
     ordenacao: 'salto DESC, id_transacao',
     dicaTexto:
-      'Calcule todas as métricas de janela na CTE (o WHERE não enxerga funções de janela do mesmo SELECT). O frame "ROWS BETWEEN ' +
-      'UNBOUNDED PRECEDING AND 1 PRECEDING" exclui o próprio PIX da média, então a primeira transação de cada conta fica com média NULL.',
-    dicaSql: `WITH metricas AS (
-  SELECT t.id_transacao, t.id_conta_origem AS conta_origem, c.titular, t.valor, t.data_hora,
-         unixepoch(t.data_hora)
-           - unixepoch(LAG(t.data_hora) OVER (PARTITION BY ... ORDER BY ...)) AS intervalo_segundos,
-         AVG(t.valor) OVER (
-           PARTITION BY ... ORDER BY ...
-           ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
-         ) AS media_historica,
-         COUNT(*) OVER (...mesmo frame...) AS qtd_historico
-  FROM transacoes_pix t
-  JOIN contas c ON ...
+      'Carimbe numa etapa à parte o tempo desde o envio anterior, a média só dos envios prévios e o tamanho desse histórico. O corte combinado (histórico curto, salto, valor mínimo e janela de dias) vai no SELECT externo.',
+    dicaSql: `-- Etapa 1: métricas por remetente (tempo desde o anterior, média prévia, tamanho do histórico)
+WITH metricas AS (
+  SELECT ...
+  FROM transacoes_pix
+  JOIN contas ON ...
 )
+-- Etapa 2: histórico curto + salto + valor mínimo + janela de dias
 SELECT ...
 FROM metricas
-WHERE qtd_historico BETWEEN ... AND ...
-  AND ...
+WHERE ...
 ORDER BY ...;`,
     decomposicao: {
       fase1: {
         titulo: 'Fase 1 — O envelope `WITH`',
         texto:
-          'Na CTE `metricas`, carimbe cada PIX com três métricas antes do corte: `intervalo_segundos` (`LAG` da mesma origem), `media_historica` (`AVG(valor) OVER` só dos PIX anteriores) e `qtd_historico` (mesmo frame). Selecione o `WITH metricas AS (...)` e use Testar Seleção / CTE para inspecionar médias e intervalos ainda sem filtro.',
+          'Carimbe cada PIX com três métricas antes do corte: o intervalo até o envio anterior da mesma origem, a média só dos PIX prévios e quantos envios sustentam essa média. Inspecione o envelope ainda sem filtro.',
       },
       fase2: {
         titulo: 'Fase 2 — O filtro do `WHERE` externo',
         texto:
-          'No `WHERE` externo, aplique as regras em conjunto (`AND`) sobre o dado já carimbado: `qtd_historico BETWEEN 1 AND 3`, `valor >= 10 * media_historica`, `valor >= 5000` e `intervalo_segundos <= 864000` (10 dias). Cortar cedo demais (no envelope) impede de ver o histórico que sustenta o salto.',
+          'No SELECT externo, aplique as regras em conjunto sobre o dado já carimbado: um a três envios prévios, valor pelo menos dez vezes a média histórica, piso de R$ 5.000,00 e até dez dias desde o envio anterior. Cortar cedo demais impede de ver o histórico que sustenta o salto.',
       },
     },
     gabaritoSql: `-- Gabarito comentado · Conta "aquecida" (CTE + LAG + média histórica)
@@ -2013,26 +1989,21 @@ WHERE qtd_historico BETWEEN 1 AND 3        -- histórico curto: conta recém-"aq
       'rajadas de três PIX consecutivos da mesma origem. Cada transferência isolada pode parecer rotineira; a soma móvel ' +
       'das últimas três originações revela o acúmulo. A esteira deve carimbar essa métrica linha a linha e só então aplicar o corte.',
     objetivo:
-      'Com base na Carta Circular Bacen 4.001/2020 (fracionamento e estruturação em janela curta), a soma das últimas três originações da mesma conta revela o padrão. Identifique a transação, a conta remetente, o titular, o valor unitário, o momento e o acúmulo móvel quando essa soma chegar a R$ 25.000,00 ou mais, priorizando os maiores volumes.',
+      'Com base na Carta Circular Bacen 4.001/2020 (fracionamento e estruturação em janela curta), a soma móvel das últimas três originações da mesma conta (o envio atual somado aos dois anteriores) revela o padrão. Identifique a transação, a conta remetente, o titular, o valor unitário, o momento e o acúmulo móvel de três disparos quando essa soma chegar a R$ 25.000,00 ou mais, priorizando os maiores volumes.',
     colunasEsperadas: ['id_transacao', 'conta_origem', 'titular', 'valor', 'data_hora', 'acumulado_movel_3'],
     ordenacao: 'acumulado_movel_3 DESC, id_transacao',
     dicaTexto:
-      'O frame `ROWS BETWEEN 2 PRECEDING AND CURRENT ROW` inclui a linha atual e as duas anteriores da mesma partição. ' +
-      'Nas primeiras linhas de cada conta a janela fica menor (1 ou 2 PIX) — o `SUM` ainda é válido. Não filtre a janela no mesmo `SELECT`.',
-    dicaSql: `-- FASE 1
+      'Carimbe, linha a linha, a soma do envio atual com os dois precedentes da mesma origem. Nas primeiras linhas de cada conta a janela fica menor — a soma ainda vale. Não filtre essa métrica no mesmo SELECT.',
+    dicaSql: `-- Etapa 1: soma móvel do envio atual com os precedentes da mesma origem
 WITH envelope_metricas AS (
-  SELECT t.id_transacao, t.id_conta_origem AS conta_origem, c.titular, t.valor, t.data_hora,
-         SUM(t.valor) OVER (
-           PARTITION BY t.id_conta_origem ORDER BY t.data_hora
-           ROWS BETWEEN 2 PRECEDING AND CURRENT ROW
-         ) AS acumulado_movel_3
-  FROM transacoes_pix t
-  JOIN contas c ON c.id_conta = t.id_conta_origem
+  SELECT ...
+  FROM transacoes_pix
+  JOIN contas ON ...
 )
--- FASE 2
+-- Etapa 2: corte pelo acúmulo mínimo
 SELECT ...
 FROM envelope_metricas
-WHERE acumulado_movel_3 >= ...
+WHERE ...
 ORDER BY ...;`,
     decomposicao: {
       fase1: {
@@ -2112,7 +2083,7 @@ ORDER BY acumulado_movel_3 DESC;`,
       'deputado estadual (C013), cada PIX isolado abaixo de R$ 10 mil. A esteira deve cruzar `eh_pep` com a soma móvel das ' +
       'últimas três operações e só então aplicar o corte de escrutínio.',
     objetivo:
-      'Com base na Circular Bacen 3.978/2020 c/c Carta Circular 4.001/2020 (escrutínio reforçado em Pessoas Expostas Politicamente), titular com cargo público justifica alerta mais cedo. Identifique a transação, a conta remetente, o titular, o cargo público, o valor, o momento e o acúmulo móvel das últimas três originações quando essa soma superar R$ 20.000,00, priorizando os maiores acúmulos.',
+      'Com base na Circular Bacen 3.978/2020 c/c Carta Circular 4.001/2020 (escrutínio reforçado em Pessoas Expostas Politicamente), o cargo público justifica alerta antecipado. Identifique a transação, conta remetente, titular, cargo público, valor, momento e o acúmulo móvel das últimas três operações (envio atual mais dois anteriores) quando essa soma superar R$ 20.000,00, priorizando os maiores acúmulos.',
     colunasEsperadas: [
       'id_transacao',
       'conta_origem',
@@ -2124,29 +2095,23 @@ ORDER BY acumulado_movel_3 DESC;`,
     ],
     ordenacao: 'acumulado_movel_pep DESC, id_transacao ASC',
     dicaTexto:
-      'Faça o JOIN de `transacoes_pix` com `contas` no envelope para carimbar a janela e o cargo. O corte `eh_pep = 1` e ' +
-      '`acumulado_movel_pep > 20000` vai no `WHERE` externo — Window Function não entra no `WHERE` do mesmo `SELECT`.',
-    dicaSql: `-- FASE 1
+      'Cruze as transações com o cadastro no envelope para carimbar o cargo e a soma móvel. O recorte de PEP e o piso de acúmulo vão no SELECT externo — métrica de janela não entra no filtro do mesmo SELECT.',
+    dicaSql: `-- Etapa 1: cruze PIX com cadastro e carimbe a soma móvel da origem
 WITH envelope_metricas AS (
-  SELECT t.id_transacao, t.id_conta_origem AS conta_origem, c.titular, c.eh_pep, c.cargo_pep,
-         t.valor, t.data_hora,
-         SUM(t.valor) OVER (
-           PARTITION BY t.id_conta_origem ORDER BY t.data_hora
-           ROWS BETWEEN 2 PRECEDING AND CURRENT ROW
-         ) AS acumulado_movel_pep
-  FROM transacoes_pix t
-  JOIN contas c ON c.id_conta = t.id_conta_origem
+  SELECT ...
+  FROM transacoes_pix
+  JOIN contas ON ...
 )
--- FASE 2
+-- Etapa 2: só PEP e acúmulo acima do piso de escrutínio
 SELECT ...
 FROM envelope_metricas
-WHERE eh_pep = 1 AND acumulado_movel_pep > ...
+WHERE ...
 ORDER BY ...;`,
     decomposicao: {
       fase1: {
         titulo: 'Fase 1 — O envelope `WITH`',
         texto:
-          'Faça o `JOIN` entre `transacoes_pix` e `contas` e carimbe `SUM(valor) OVER (PARTITION BY id_conta_origem ORDER BY data_hora ROWS BETWEEN 2 PRECEDING AND CURRENT ROW)` mais `eh_pep` e `cargo_pep`. A janela considera todas as originações da conta, não só as de PEP. Selecione o `WITH` e use Testar Seleção / CTE.',
+          'Cruze as transações com o cadastro e carimbe a soma móvel da origem (envio atual mais precedentes) junto do sinalizador e do cargo PEP. A janela considera todas as originações da conta, não só as de PEP. Inspecione o envelope antes do corte.',
       },
       fase2: {
         titulo: 'Fase 2 — O filtro do `WHERE` externo',
@@ -2285,7 +2250,7 @@ WHERE c_emp.tipo_pessoa = 'PJ'
       'Contas de passagem recebem um crédito relevante e esvaziam o saldo em minutos, no mesmo ciclo operacional. O ' +
       'dwell time crítico da esteira é de até dez minutos entre a entrada e a saída pela mesma conta intermediária.',
     objetivo:
-      'Com base na Carta Circular Bacen 4.001/2020 (contas de passagem e layering em janela curta), identifique a conta intermediária, a transação de entrada, a transação de saída, o valor recebido, o valor reenviado e o intervalo em segundos quando o crédito for de R$ 20.000,00 ou mais e a saída ocorrer em até dez minutos, no mesmo dia.',
+      'Com base na Carta Circular Bacen 4.001/2020 (contas de passagem e layering em janela curta), identifique a conta intermediária, a transação de entrada, a de saída, o valor recebido, o valor reenviado e o tempo de retenção em segundos decorrido entre a entrada e a saída, quando o crédito for de R$ 20.000,00 ou mais e o esvaziamento ocorrer em até dez minutos, no mesmo dia.',
     colunasEsperadas: [
       'conta_passagem',
       'transacao_entrada',
@@ -2296,20 +2261,14 @@ WHERE c_emp.tipo_pessoa = 'PJ'
     ],
     ordenacao: 'intervalo_segundos ASC',
     dicaTexto:
-      'Pareie cada crédito relevante com saídas posteriores da mesma conta, medindo os segundos entre a entrada e a saída e mantendo só o trânsito de até dez minutos.',
-    dicaSql: `-- Autorelacionamento: destino da entrada = origem da saída; saída não pode preceder a entrada
-SELECT t_in.id_conta_destino AS conta_passagem,
-       t_in.id_transacao AS transacao_entrada,
-       t_out.id_transacao AS transacao_saida,
-       t_in.valor AS valor_entrada,
-       t_out.valor AS valor_saida,
-       (unixepoch(t_out.data_hora) - unixepoch(t_in.data_hora)) AS intervalo_segundos
-FROM transacoes_pix t_in
-JOIN transacoes_pix t_out ON t_in.id_conta_destino = t_out.id_conta_origem
-  AND unixepoch(t_out.data_hora) >= unixepoch(t_in.data_hora)
-  AND (unixepoch(t_out.data_hora) - unixepoch(t_in.data_hora)) <= 600
-WHERE t_in.valor >= ...
-ORDER BY intervalo_segundos ASC;`,
+      'Pareie cada crédito relevante com saídas posteriores da mesma conta intermediária e meça o tempo de retenção. Mantenha só o trânsito de até dez minutos no mesmo dia.',
+    dicaSql: `-- Autorelacionamento: destino da entrada = origem da saída
+-- Saída não pode preceder a entrada; retenção máxima de dez minutos
+SELECT ...
+FROM transacoes_pix AS entrada
+JOIN transacoes_pix AS saida ON ...
+WHERE ...
+ORDER BY ...;`,
     gabaritoSql: `-- Gabarito · dwell time ≤ 600 s após crédito ≥ R$ 20 mil
 SELECT
   t_in.id_conta_destino AS conta_passagem,
@@ -2353,30 +2312,21 @@ WHERE t_in.valor >= 20000;`,
       'Dois logins em cidades diferentes em menos de uma hora não se explicam por deslocamento físico habitual. A esteira ' +
       'compara sessões consecutivas da mesma conta e isola a troca de cidade nesse intervalo.',
     objetivo:
-      'Com base na Circular Bacen 3.978/2020 (canais eletrônicos e geolocalização incompatível), dois logins em cidades diferentes em menos de uma hora não se explicam por deslocamento físico. Identifique a conta, a cidade da sessão anterior, a cidade da sessão atual e o intervalo em segundos nas sessões consecutivas com troca de cidade nesse recorte.',
+      'Com base na Circular Bacen 3.978/2020 (canais eletrônicos e incompatibilidade geográfica), identifique a conta, a cidade da sessão imediatamente anterior, a cidade da sessão atual e o intervalo em segundos transcorrido entre esses dois acessos sucessivos da mesma conta quando houver troca de cidade em menos de uma hora.',
     colunasEsperadas: ['id_conta', 'cidade_origem', 'cidade_destino', 'intervalo_segundos'],
     ordenacao: 'intervalo_segundos ASC',
     dicaTexto:
-      'Para cada acesso, recupere a cidade e o horário da sessão imediatamente anterior da mesma conta; na etapa seguinte, mantenha só a troca de cidade em até uma hora e descarte quem não tem sessão prévia.',
-    dicaSql: `-- Fase 1: LAG da cidade e do horário na linha do tempo da conta
--- Fase 2: troca de cidade e intervalo ≤ 3600 s
+      'Para cada acesso, recupere a cidade e o horário da sessão imediatamente anterior da mesma conta; na etapa seguinte, mantenha só a troca de cidade em menos de uma hora e descarte quem não tem sessão prévia.',
+    dicaSql: `-- Etapa 1: sessão atual e sessão imediatamente anterior da mesma conta
 WITH sessoes_sequenciais AS (
-  SELECT id_conta, geolocalizacao_cidade AS cidade_atual, data_hora,
-         LAG(geolocalizacao_cidade) OVER (
-           PARTITION BY id_conta ORDER BY data_hora ASC
-         ) AS cidade_anterior,
-         LAG(data_hora) OVER (
-           PARTITION BY id_conta ORDER BY data_hora ASC
-         ) AS data_hora_anterior
+  SELECT ...
   FROM acessos_digitais
 )
-SELECT id_conta, cidade_anterior AS cidade_origem, cidade_atual AS cidade_destino,
-       (unixepoch(data_hora) - unixepoch(data_hora_anterior)) AS intervalo_segundos
+-- Etapa 2: troca de cidade em menos de uma hora
+SELECT ...
 FROM sessoes_sequenciais
-WHERE cidade_anterior IS NOT NULL
-  AND cidade_atual <> cidade_anterior
-  AND (unixepoch(data_hora) - unixepoch(data_hora_anterior)) <= 3600
-ORDER BY intervalo_segundos ASC;`,
+WHERE ...
+ORDER BY ...;`,
     gabaritoSql: `-- Gabarito · sessões consecutivas em cidades distintas em até 1 h
 WITH sessoes_sequenciais AS (
   SELECT
@@ -2497,32 +2447,27 @@ WHERE s_a.cpf_socio = s_c.cpf_socio
     colunasEsperadas: ['razao_social', 'renda_mensal_declarada', 'total_movimentado', 'ticket_medio', 'total_operacoes'],
     ordenacao: 'total_movimentado DESC',
     dicaTexto:
-      'Separe a consolidação dos envios (com o piso de volume) da lista de empresas que têm administrador; depois cruze com o cadastro PJ.',
-    dicaSql: `-- Bloco 1: volumetria com corte de grupo; Bloco 2: QSA com administrador; SELECT: só PJ
+      'Separe a consolidação dos envios (quantidade, volume e ticket, com o piso de volume) da lista de empresas que têm administrador; depois cruze só com cadastro PJ.',
+    dicaSql: `-- Bloco 1: volumetria por empresa (quantidade, volume, ticket e piso)
+-- Bloco 2: quem tem administrador no quadro
+-- SELECT: só PJ acima do piso
 WITH volumetria_empresas AS (
-  SELECT id_conta_origem,
-         COUNT(*) AS total_operacoes,
-         SUM(valor) AS total_movimentado,
-         AVG(valor) AS ticket_medio
+  SELECT ...
   FROM transacoes_pix
-  GROUP BY id_conta_origem
-  HAVING SUM(valor) > 150000
+  GROUP BY ...
+  HAVING ...
 ),
 empresas_com_administrador AS (
-  SELECT DISTINCT id_conta_empresa
+  SELECT ...
   FROM socios_empresas
-  WHERE eh_administrador = 1
+  WHERE ...
 )
-SELECT c.titular AS razao_social,
-       c.renda_mensal_declarada,
-       v.total_movimentado,
-       v.ticket_medio,
-       v.total_operacoes
-FROM volumetria_empresas v
-JOIN contas c ON v.id_conta_origem = c.id_conta
-JOIN empresas_com_administrador adm ON c.id_conta = adm.id_conta_empresa
-WHERE c.tipo_pessoa = 'PJ'
-ORDER BY v.total_movimentado DESC;`,
+SELECT ...
+FROM volumetria_empresas
+JOIN contas ON ...
+JOIN empresas_com_administrador ON ...
+WHERE ...
+ORDER BY ...;`,
     gabaritoSql: `-- Gabarito · dossiê COAF: PJ com volume > R$ 150 mil e administrador no QSA
 WITH volumetria_empresas AS (
   SELECT
